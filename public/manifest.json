@@ -1,0 +1,21 @@
+{
+  "id": "/",
+  "name": "Maldives School Attendance & Analytics Portal",
+  "short_name": "MoE Attend",
+  "description": "Offline-First Attendance Tracking & Analytics Portal for Maldives Island Schools",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f172a",
+  "theme_color": "#0284c7",
+  "categories": ["education", "productivity"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

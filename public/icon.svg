@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <rect width="512" height="512" rx="128" fill="#0284c7"/>
+  <circle cx="256" cy="256" r="190" fill="#0369a1" opacity="0.4"/>
+  <!-- Palm Island / Crescent Silhouette representing Maldives Education -->
+  <path d="M160 360 C 220 340, 300 340, 360 360 C 330 385, 190 385, 160 360 Z" fill="#38bdf8"/>
+  <path d="M256 120 V 270" stroke="#ffffff" stroke-width="20" stroke-linecap="round"/>
+  <!-- Graduation cap & school book motif -->
+  <path d="M140 210 L256 150 L372 210 L256 265 Z" fill="#ffffff"/>
+  <path d="M185 245 V 300 C 185 325, 327 325, 327 300 V 245" fill="none" stroke="#ffffff" stroke-width="16" stroke-linecap="round"/>
+  <path d="M372 210 V 285" stroke="#fcd34d" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="372" cy="295" r="10" fill="#fcd34d"/>
+  <!-- Verified check badge -->
+  <circle cx="350" cy="160" r="32" fill="#10b981"/>
+  <path d="M336 160 L346 170 L366 148" stroke="#ffffff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

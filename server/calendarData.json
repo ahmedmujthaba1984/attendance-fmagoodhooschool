@@ -1,0 +1,147 @@
+[
+  {
+    "id": "cal-1",
+    "date": "2026-01-01",
+    "dayType": "PUBLIC_HOLIDAY",
+    "description": "New Year's Day",
+    "descriptionDhivehi": "މީލާދީ އައު އަހަރު ދުވަސް",
+    "isManualOverride": false
+  },
+  {
+    "id": "cal-2",
+    "date": "2026-02-18",
+    "dayType": "PUBLIC_HOLIDAY",
+    "description": "First Day of Ramadan",
+    "descriptionDhivehi": "ރަމަޟާން މަހުގެ ފުރަތަމަ ދުވަސް",
+    "isManualOverride": false
+  },
+  {
+    "id": "cal-3",
+    "date": "2026-03-20",
+    "dayType": "PUBLIC_HOLIDAY",
+    "description": "Eid al-Fitr (Fith'r Eid)",
+    "descriptionDhivehi": "ފިޠުރު ޢީދު ދުވަސް",
+    "isManualOverride": false
+  },
+  {
+    "id": "cal-4",
+    "date": "2026-03-21",
+    "dayType": "PUBLIC_HOLIDAY",
+    "description": "Eid al-Fitr Holiday",
+    "descriptionDhivehi": "ފިޠުރު ޢީދު ބަންދު",
+    "isManualOverride": false
+  },
+  {
+    "id": "cal-5",
+    "date": "2026-03-22",
+    "dayType": "PUBLIC_HOLIDAY",
+    "description": "Eid al-Fitr Holiday",
+    "descriptionDhivehi": "ފިޠުރު ޢީދު ބަންދު",
+    "isManualOverride": false
+  },
+  {
+    "id": "cal-6",
+    "date": "2026-05-01",
+    "dayType": "PUBLIC_HOLIDAY",
+    "description": "Labour Day",
+    "descriptionDhivehi": "މަސައްކަތްތެރިންގެ ދުވަސް",
+    "isManualOverride": false
+  },
+  {
+    "id": "cal-7",
+    "date": "2026-05-26",
+    "dayType": "PUBLIC_HOLIDAY",
+    "description": "Hajj Day",
+    "descriptionDhivehi": "ޙައްޖު ދުވަސް",
+    "isManualOverride": false
+  },
+  {
+    "id": "cal-8",
+    "date": "2026-05-27",
+    "dayType": "PUBLIC_HOLIDAY",
+    "description": "Eid al-Adha (Bodu Eid)",
+    "descriptionDhivehi": "އަޟްޙާ ޢީދު ދުވަސް",
+    "isManualOverride": false
+  },
+  {
+    "id": "cal-9",
+    "date": "2026-05-28",
+    "dayType": "PUBLIC_HOLIDAY",
+    "description": "Eid al-Adha Holiday",
+    "descriptionDhivehi": "އަޟްޙާ ޢީދު ބަންދު",
+    "isManualOverride": false
+  },
+  {
+    "id": "cal-10",
+    "date": "2026-05-29",
+    "dayType": "PUBLIC_HOLIDAY",
+    "description": "Eid al-Adha Holiday",
+    "descriptionDhivehi": "އަޟްޙާ ޢީދު ބަންދު",
+    "isManualOverride": false
+  },
+  {
+    "id": "cal-11",
+    "date": "2026-06-16",
+    "dayType": "PUBLIC_HOLIDAY",
+    "description": "Islamic New Year (1 Muharram)",
+    "descriptionDhivehi": "ހިޖުރީ އައު އަހަރު ދުވަސް",
+    "isManualOverride": false
+  },
+  {
+    "id": "cal-12",
+    "date": "2026-07-26",
+    "dayType": "PUBLIC_HOLIDAY",
+    "description": "Independence Day (Minivan Dhuvas)",
+    "descriptionDhivehi": "މިނިވަން ދުވަސް",
+    "isManualOverride": false
+  },
+  {
+    "id": "cal-13",
+    "date": "2026-07-27",
+    "dayType": "PUBLIC_HOLIDAY",
+    "description": "Independence Day Holiday",
+    "descriptionDhivehi": "މިނިވަން ދުވަހުގެ ބަންދު",
+    "isManualOverride": false
+  },
+  {
+    "id": "cal-14",
+    "date": "2026-08-26",
+    "dayType": "PUBLIC_HOLIDAY",
+    "description": "Prophet Muhammad's Birthday (Mawlid)",
+    "descriptionDhivehi": "ކީރިތި ރަސޫލާގެ ޢީދު މީލާދު",
+    "isManualOverride": false
+  },
+  {
+    "id": "cal-16",
+    "date": "2026-09-13",
+    "dayType": "PUBLIC_HOLIDAY",
+    "description": "Day Maldives Embraced Islam",
+    "descriptionDhivehi": "ރާއްޖެ އިސްލާމްވި ދުވަސް",
+    "isManualOverride": false
+  },
+  {
+    "id": "cal-17",
+    "date": "2026-11-03",
+    "dayType": "PUBLIC_HOLIDAY",
+    "description": "Victory Day (Nasru Dhuvas)",
+    "descriptionDhivehi": "ނަޞްރުގެ ދުވަސް",
+    "isManualOverride": false
+  },
+  {
+    "id": "cal-18",
+    "date": "2026-11-11",
+    "dayType": "PUBLIC_HOLIDAY",
+    "description": "Republic Day (Jumhooree Dhuvas)",
+    "descriptionDhivehi": "ޖުމްހޫރީ ދުވަސް",
+    "isManualOverride": false
+  },
+  {
+    "id": "cal-custom-1789922915305",
+    "date": "2026-09-22",
+    "dayType": "SPECIAL_ACTIVITY",
+    "description": "Special Override",
+    "descriptionDhivehi": "ޚާއްޞަ ބަދަލު",
+    "isManualOverride": true,
+    "updatedByUserId": "stf-32"
+  }
+]

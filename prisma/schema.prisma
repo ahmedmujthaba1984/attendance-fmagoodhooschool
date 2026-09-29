@@ -1,0 +1,172 @@
+// Prisma Schema for Maldives School Attendance & Analytics Portal
+// Designed for PostgreSQL with Row-Level Security (RLS) & Multi-Role Staff Access
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  TEACHER
+}
+
+enum DayType {
+  REGULAR_SCHOOL
+  TERM_BREAK
+  PUBLIC_HOLIDAY
+  NON_TEACHING_DAY
+  EXAM_DAY
+  SCHOOL_CLOSED
+}
+
+enum SessionType {
+  MORNING_BEFORE_BREAK
+  POST_BREAK
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  LEAVE
+}
+
+enum LeaveReason {
+  NONE
+  SICK_LEAVE
+  SICK_LEAVE_MC
+  NOT_IN_ISLAND
+  OFFICIAL_DUTY
+  OTHER
+}
+
+enum SyncStatus {
+  SYNCED
+  PENDING_OFFLINE
+}
+
+enum StudentStatus {
+  ACTIVE
+  INACTIVE
+  TRANSFERRED
+}
+
+model User {
+  id               String            @id @default(uuid())
+  username         String            @unique
+  passwordHash     String
+  fullName         String
+  fullNameDhivehi  String?
+  role             Role              @default(TEACHER)
+  designation      String?
+  phone            String?
+  isActive         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  originalSubstitutions ClassDelegation[] @relation("OriginalTeacher")
+  substituteAssignments ClassDelegation[] @relation("SubstituteTeacher")
+  markedSessions        AttendanceSession[]
+  auditLogs             AuditLog[]
+
+  @@map("users")
+}
+
+model Student {
+  id                 String              @id @default(uuid())
+  admissionNumber    String              @unique
+  fullName           String
+  fullNameDhivehi    String
+  gender             String              // MALE or FEMALE
+  gradeLevel         String              // LKG, UKG, Grade 1 to Grade 10
+  section            String              @default("A")
+  parentContactPhone String
+  parentEmail        String?
+  status             StudentStatus       @default(ACTIVE)
+  islandAddress      String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  attendanceRecords  AttendanceSession[]
+
+  @@index([gradeLevel])
+  @@index([status])
+  @@map("students")
+}
+
+model ClassDelegation {
+  id                  String   @id @default(uuid())
+  date                DateTime @db.Date
+  originalTeacherId   String
+  substituteTeacherId String
+  gradeLevel          String
+  reason              String?
+  notes               String?
+  createdAt           DateTime @default(now())
+
+  originalTeacher     User     @relation("OriginalTeacher", fields: [originalTeacherId], references: [id])
+  substituteTeacher   User     @relation("SubstituteTeacher", fields: [substituteTeacherId], references: [id])
+
+  @@index([date, gradeLevel])
+  @@map("class_delegations")
+}
+
+model AcademicCalendarDay {
+  id                String   @id @default(uuid())
+  date              DateTime @unique @db.Date
+  dayType           DayType  @default(REGULAR_SCHOOL)
+  description       String?
+  descriptionDhivehi String?
+  isManualOverride  Boolean  @default(false)
+  updatedByUserId   String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([date])
+  @@map("academic_calendar_days")
+}
+
+model AttendanceSession {
+  id             String           @id @default(uuid())
+  studentId      String
+  date           DateTime         @db.Date
+  sessionType    SessionType
+  status         AttendanceStatus @default(PRESENT)
+  leaveReason    LeaveReason      @default(NONE)
+  markedByUserId String
+  arrivalTime    String?          // e.g. "07:45", "08:15"
+  remarks        String?
+  syncStatus     SyncStatus       @default(SYNCED)
+  clientSyncId   String?          @unique
+  updatedAt      DateTime         @updatedAt
+  createdAt      DateTime         @default(now())
+
+  student        Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  markedBy       User             @relation(fields: [markedByUserId], references: [id])
+
+  @@unique([studentId, date, sessionType])
+  @@index([date, sessionType])
+  @@index([studentId])
+  @@map("attendance_sessions")
+}
+
+model AuditLog {
+  id             String   @id @default(uuid())
+  timestamp      DateTime @default(now())
+  userId         String?
+  actionType     String   // LOGIN, ATTENDANCE_SUBMIT, BULK_MARK, SUBSTITUTE_ASSIGN, CALENDAR_OVERRIDE, OFFLINE_SYNC
+  entityAffected String   // AttendanceSession, ClassDelegation, AcademicCalendarDay, User
+  ipAddress      String?
+  details        String   @db.Text
+
+  user           User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([timestamp])
+  @@index([actionType])
+  @@map("audit_logs")
+}

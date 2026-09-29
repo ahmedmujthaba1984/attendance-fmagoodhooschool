@@ -1,0 +1,262 @@
+[
+  {
+    "id": "audit-1790668133969-7n134m",
+    "timestamp": "2026-09-29T07:48:53.969Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "TERM_DATES_UPDATED",
+    "entityAffected": "AcademicCalendar",
+    "ipAddress": "127.0.0.1",
+    "details": "Updated school term duration dates"
+  },
+  {
+    "id": "audit-1790668125695-qtmalu",
+    "timestamp": "2026-09-29T07:48:45.695Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "TERM_DATES_UPDATED",
+    "entityAffected": "AcademicCalendar",
+    "ipAddress": "127.0.0.1",
+    "details": "Updated school term duration dates"
+  },
+  {
+    "id": "audit-1790589586506-h5qs1a",
+    "timestamp": "2026-09-28T09:59:46.506Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "SUBSTITUTE_UPDATED",
+    "entityAffected": "ClassDelegation",
+    "ipAddress": "127.0.0.1",
+    "details": "Updated substitute delegation del-1789922915302: Fathimath Dhunya covering Grade 4 for Aishath Sulthana on 2026-09-21"
+  },
+  {
+    "id": "audit-1790589580766-7vp41o",
+    "timestamp": "2026-09-28T09:59:40.766Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "SUBSTITUTE_DELETED",
+    "entityAffected": "ClassDelegation",
+    "ipAddress": "127.0.0.1",
+    "details": "Deleted substitute delegation del-1790589578463 (Grade 5 - Sub: Ibrahim Rasheed for Mohamed Fayaz on 2026-09-28)"
+  },
+  {
+    "id": "audit-1790589578463-1xf10k",
+    "timestamp": "2026-09-28T09:59:38.463Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "SUBSTITUTE_ASSIGNED",
+    "entityAffected": "ClassDelegation",
+    "ipAddress": "127.0.0.1",
+    "details": "Assigned substitute Ibrahim Rasheed to cover Grade 5 for Mohamed Fayaz on 2026-09-28"
+  },
+  {
+    "id": "audit-1790589576209-zvttr7",
+    "timestamp": "2026-09-28T09:59:36.209Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "SUBSTITUTE_UPDATED",
+    "entityAffected": "ClassDelegation",
+    "ipAddress": "127.0.0.1",
+    "details": "Updated substitute delegation del-1789922915302: Fathimath Dhunya covering Grade 4 for Aishath Sulthana on 2026-09-21"
+  },
+  {
+    "id": "audit-1790588152239-68gqfw",
+    "timestamp": "2026-09-28T09:35:52.239Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "SUBSTITUTE_ASSIGNED",
+    "entityAffected": "ClassDelegation",
+    "ipAddress": "203.104.27.154, 169.254.169.126",
+    "details": "Assigned substitute Adam Saeed to cover Grade 9 for Sadiya Sulaiman on 2026-09-28"
+  },
+  {
+    "id": "audit-1790504431456-0b5lli",
+    "timestamp": "2026-09-27T10:20:31.456Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "BULK_ATTENDANCE_MARKED",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Bulk attendance saved for 24 students on 2026-09-27 (MORNING_BEFORE_BREAK) by Ahmed Mujthaba (Senior School Administration Officer)"
+  },
+  {
+    "id": "audit-1789922921236-fl0y65",
+    "timestamp": "2026-09-20T16:48:41.236Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ADMIN_RESET_STAFF_PASSWORD",
+    "entityAffected": "User",
+    "ipAddress": "127.0.0.1",
+    "details": "Super Admin reset password for Aishath Sulthana (aishath.sulthana@fmagoodhooschool.edu.mv) to default (1234)"
+  },
+  {
+    "id": "audit-1789922915305-coc0lw",
+    "timestamp": "2026-09-20T16:48:35.305Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "CALENDAR_OVERRIDE",
+    "entityAffected": "AcademicCalendarDay",
+    "ipAddress": "127.0.0.1",
+    "details": "Calendar override for 2026-09-22 set to SPECIAL_ACTIVITY ()"
+  },
+  {
+    "id": "audit-1789922915303-psgb43",
+    "timestamp": "2026-09-20T16:48:35.303Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "SUBSTITUTE_ASSIGNED",
+    "entityAffected": "ClassDelegation",
+    "ipAddress": "127.0.0.1",
+    "details": "Assigned substitute Fathimath Dhunya to cover Grade 4 for Aishath Sulthana on 2026-09-21"
+  },
+  {
+    "id": "audit-1789922915298-70hzp5",
+    "timestamp": "2026-09-20T16:48:35.298Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "DHIVEHI_NAMES_BATCH_CORRECTED",
+    "entityAffected": "StudentDirectory",
+    "ipAddress": "127.0.0.1",
+    "details": "Audited student directory and corrected 0 Dhivehi student names."
+  },
+  {
+    "id": "audit-1789922910446-nwtwxp",
+    "timestamp": "2026-09-20T16:48:30.446Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "DHIVEHI_NAMES_BATCH_CORRECTED",
+    "entityAffected": "StudentDirectory",
+    "ipAddress": "127.0.0.1",
+    "details": "Audited student directory and corrected 0 Dhivehi student names."
+  },
+  {
+    "id": "audit-1789922863441-vh4dmm",
+    "timestamp": "2026-09-20T16:47:43.441Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "DHIVEHI_NAMES_BATCH_CORRECTED",
+    "entityAffected": "StudentDirectory",
+    "ipAddress": "127.0.0.1",
+    "details": "Audited student directory and corrected 0 Dhivehi student names."
+  },
+  {
+    "id": "audit-1789922858482-cfbx5p",
+    "timestamp": "2026-09-20T16:47:38.482Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "OFFLINE_QUEUE_FLUSH",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "BullMQ Worker synced 1 queued attendance payloads (0 conflicts resolved)"
+  },
+  {
+    "id": "audit-1789922834992-15fzav",
+    "timestamp": "2026-09-20T16:47:14.992Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_SESSION_REVERTED_BY_SUPER_ADMIN",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Super Admin (Ahmed Mujthaba) unlocked/reopened finalized attendance session for 2026-09-20 (MORNING_BEFORE_BREAK). Reason: Testing revert"
+  },
+  {
+    "id": "audit-1789922834990-824u3x",
+    "timestamp": "2026-09-20T16:47:14.991Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_SESSION_FINALIZED",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Attendance session finalized for 2026-09-20 (MORNING_BEFORE_BREAK) by Ahmed Mujthaba (Senior School Administration Officer)"
+  },
+  {
+    "id": "audit-1789922826232-ocpm6u",
+    "timestamp": "2026-09-20T16:47:06.232Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "STAFF_LOGIN",
+    "entityAffected": "User",
+    "ipAddress": "127.0.0.1",
+    "details": "Ahmed Mujthaba (ahmed.mujthaba@fmagoodhooschool.edu.mv) logged in successfully"
+  },
+  {
+    "id": "audit-1789918121245-aigwzb",
+    "timestamp": "2026-09-20T15:28:41.245Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "203.104.27.154, 169.254.169.126",
+    "details": "Marked Fathimath Eenaal Mohamed Rafeeu (Grade 4) as ABSENT  on 2026-09-09 by Ahmed Mujthaba (Senior School Administration Officer)"
+  },
+  {
+    "id": "audit-1789918117629-exg10u",
+    "timestamp": "2026-09-20T15:28:37.629Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "203.104.27.154, 169.254.169.126",
+    "details": "Marked Fathimath Eenaal Mohamed Rafeeu (Grade 4) as LEAVE (SICK_LEAVE) on 2026-09-09 by Ahmed Mujthaba (Senior School Administration Officer)"
+  },
+  {
+    "id": "audit-1789918114966-xby64o",
+    "timestamp": "2026-09-20T15:28:34.966Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "203.104.27.154, 169.254.169.126",
+    "details": "Marked Fathimath Eenaal Mohamed Rafeeu (Grade 4) as LATE  on 2026-09-09 by Ahmed Mujthaba (Senior School Administration Officer)"
+  },
+  {
+    "id": "audit-1789918092960-lg9kzx",
+    "timestamp": "2026-09-20T15:28:12.960Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_SESSION_FINALIZED",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "203.104.27.154, 169.254.169.126",
+    "details": "Attendance session finalized for 2026-09-20 (MORNING_BEFORE_BREAK) by Ahmed Mujthaba (Senior School Administration Officer)"
+  },
+  {
+    "id": "audit-1789918066629-tlst6v",
+    "timestamp": "2026-09-20T15:27:46.629Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_SESSION_FINALIZED",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "203.104.27.154, 169.254.169.126",
+    "details": "Attendance session finalized for 2026-09-20 (MORNING_BEFORE_BREAK) by Ahmed Mujthaba (Senior School Administration Officer)"
+  },
+  {
+    "id": "audit-1789918064861-k76nx8",
+    "timestamp": "2026-09-20T15:27:44.861Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_SESSION_FINALIZED",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "203.104.27.154, 169.254.169.126",
+    "details": "Attendance session finalized for 2026-09-20 (MORNING_BEFORE_BREAK) by Ahmed Mujthaba (Senior School Administration Officer)"
+  },
+  {
+    "id": "audit-1789814095622-qm5fxq",
+    "timestamp": "2026-09-19T10:34:55.623Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "HOLIDAY_DELETED",
+    "entityAffected": "AcademicCalendarDay",
+    "ipAddress": "127.0.0.1",
+    "details": "Deleted holiday \"National Day (Qaumee Dhuvas)\" (2026-09-12)"
+  },
+  {
+    "id": "audit-1789813978016-init",
+    "timestamp": "2026-09-19T10:32:58.016Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "SYSTEM_BOOT",
+    "entityAffected": "System",
+    "ipAddress": "127.0.0.1",
+    "details": "System initialized with 215 students across 12 grades and 46 academic staff. Pre-loaded Maldivian calendar and past attendance."
+  }
+]

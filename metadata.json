@@ -1,0 +1,10 @@
+{
+  "name": "Maldives School Attendance & Analytics Portal",
+  "description": "Production-ready, offline-first attendance portal tailored for Maldivian island schools with Dhivehi/Thaana RTL support, dual sessions, voice dictation, and MoE compliance exports.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

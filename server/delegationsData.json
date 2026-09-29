@@ -1,0 +1,22 @@
+[
+  {
+    "id": "del-1790588152238",
+    "date": "2026-09-28",
+    "originalTeacherId": "stf-15",
+    "substituteTeacherId": "stf-08",
+    "gradeLevel": "Grade 9",
+    "reason": "Medical Leave / Doctor Visit to Malé",
+    "notes": "",
+    "createdAt": "2026-09-28T09:35:52.238Z"
+  },
+  {
+    "id": "del-1789922915302",
+    "date": "2026-09-21",
+    "originalTeacherId": "stf-03",
+    "substituteTeacherId": "stf-04",
+    "gradeLevel": "Grade 4",
+    "reason": "Medical leave",
+    "createdAt": "2026-09-20T16:48:35.302Z",
+    "notes": ""
+  }
+]

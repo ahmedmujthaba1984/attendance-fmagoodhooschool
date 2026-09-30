@@ -23,6 +23,11 @@ import { ExtraClassesModule } from './components/ExtraClassesModule';
 import { syncEngine } from './lib/syncEngine';
 import { offlineDb } from './lib/db';
 import {
+  DEFAULT_STAFF,
+  DEFAULT_STUDENTS,
+  DEFAULT_CALENDAR,
+} from './data/fallbackData';
+import {
   User,
   Student,
   AttendanceRecord,
@@ -43,13 +48,26 @@ function MainApp() {
   // Navigation state
   const [activeTab, setActiveTab] = useState<string>('attendance');
 
-  // Core Data State
-  const [staffList, setStaffList] = useState<User[]>([]);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [students, setStudents] = useState<Student[]>([]);
+  // Core Data State (initialized with complete bundled data for 100% offline & Vercel reliability)
+  const [staffList, setStaffList] = useState<User[]>(DEFAULT_STAFF);
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    const savedUserJson = localStorage.getItem('moe_logged_in_user');
+    if (savedUserJson) {
+      try {
+        return JSON.parse(savedUserJson);
+      } catch {}
+    }
+    const savedId = localStorage.getItem('moe_active_user_id');
+    if (savedId) {
+      const found = DEFAULT_STAFF.find((s) => s.id === savedId);
+      if (found) return found;
+    }
+    return DEFAULT_STAFF[0] || null;
+  });
+  const [students, setStudents] = useState<Student[]>(DEFAULT_STUDENTS);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [counterpartRecords, setCounterpartRecords] = useState<AttendanceRecord[]>([]);
-  const [calendarDays, setCalendarDays] = useState<AcademicCalendarDay[]>([]);
+  const [calendarDays, setCalendarDays] = useState<AcademicCalendarDay[]>(DEFAULT_CALENDAR);
   const [delegations, setDelegations] = useState<ClassDelegation[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [pendingExtraClassesCount, setPendingExtraClassesCount] = useState<number>(0);
@@ -156,54 +174,46 @@ function MainApp() {
   const initData = async () => {
     try {
       // 1. Fetch Staff
-      const staffRes = await fetch('/api/auth/staff');
-      if (staffRes.ok) {
-        const data = await staffRes.json();
-        setStaffList(data.staff || []);
-        const savedId = localStorage.getItem('moe_active_user_id');
-        const isSessionValid = localStorage.getItem('moe_portal_logged_in');
-        if (isSessionValid === 'true' && savedId) {
-          const active = data.staff?.find((s: User) => s.id === savedId);
-          if (active) {
-            setCurrentUser(active);
-            setIsLoggedIn(true);
-            if (active.assignedGrade) {
-              setSelectedGrade(active.assignedGrade);
+      try {
+        const staffRes = await fetch('/api/auth/staff');
+        const cType = staffRes.headers.get('content-type') || '';
+        if (staffRes.ok && cType.includes('application/json')) {
+          const data = await staffRes.json();
+          if (data.staff && data.staff.length > 0) {
+            setStaffList(data.staff);
+            const savedId = localStorage.getItem('moe_active_user_id');
+            const isSessionValid = localStorage.getItem('moe_portal_logged_in');
+            if (isSessionValid === 'true' && savedId) {
+              const active = data.staff.find((s: User) => s.id === savedId);
+              if (active) {
+                setCurrentUser(active);
+                setIsLoggedIn(true);
+                if (active.assignedGrade) {
+                  setSelectedGrade(active.assignedGrade);
+                }
+              }
             }
-          } else {
-            const defaultUser = data.staff?.[0];
-            if (defaultUser) {
-              setCurrentUser(defaultUser);
-              setIsLoggedIn(true);
-              localStorage.setItem('moe_active_user_id', defaultUser.id);
-              localStorage.setItem('moe_portal_logged_in', 'true');
-              if (defaultUser.assignedGrade) setSelectedGrade(defaultUser.assignedGrade);
-            }
-          }
-        } else if (isSessionValid !== 'false') {
-          // First time opening on this browser or PC - auto select lead staff/principal
-          const defaultUser = data.staff?.[0];
-          if (defaultUser) {
-            setCurrentUser(defaultUser);
-            setIsLoggedIn(true);
-            localStorage.setItem('moe_active_user_id', defaultUser.id);
-            localStorage.setItem('moe_portal_logged_in', 'true');
-            if (defaultUser.assignedGrade) setSelectedGrade(defaultUser.assignedGrade);
           }
         }
-      }
+      } catch (e) {}
 
       // 2. Fetch Students
-      const studentRes = await fetch('/api/students');
-      if (studentRes.ok) {
-        const sData = await studentRes.json();
-        setStudents(sData.students || []);
-        // Cache in Dexie for offline readiness
-        if (sData.students?.length > 0) {
-          await offlineDb.students.bulkPut(sData.students);
+      try {
+        const studentRes = await fetch('/api/students');
+        const cType = studentRes.headers.get('content-type') || '';
+        if (studentRes.ok && cType.includes('application/json')) {
+          const sData = await studentRes.json();
+          if (sData.students && sData.students.length > 0) {
+            setStudents(sData.students);
+            await offlineDb.students.bulkPut(sData.students);
+          }
+        } else {
+          const cachedStudents = await offlineDb.students.toArray();
+          if (cachedStudents.length > 0) {
+            setStudents(cachedStudents);
+          }
         }
-      } else {
-        // Load from Dexie cache if offline
+      } catch (e) {
         const cachedStudents = await offlineDb.students.toArray();
         if (cachedStudents.length > 0) {
           setStudents(cachedStudents);

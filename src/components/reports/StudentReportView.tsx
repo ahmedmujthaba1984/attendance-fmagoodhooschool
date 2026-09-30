@@ -30,6 +30,7 @@ import {
   AttendanceRecord,
 } from '../../types';
 import { ALL_ACADEMIC_WEEKS_2026, getCurrentOrLatestSchoolWeek } from '../../utils/academicWeeks';
+import { generateClientStudentReport } from '../../utils/reportGenerator';
 
 interface StudentReportViewProps {
   students: Student[];
@@ -68,8 +69,23 @@ export const StudentReportView: React.FC<StudentReportViewProps> = ({
   const [customStartDate, setCustomStartDate] = useState<string>(selectedDate || '2026-09-01');
   const [customEndDate, setCustomEndDate] = useState<string>(selectedDate || '2026-09-30');
 
+  const currentStudent = students.find((s) => s.id === selectedStudentId) || students[0];
+
   const [loading, setLoading] = useState(false);
-  const [reportData, setReportData] = useState<StudentAttendanceReport | null>(null);
+  const [reportData, setReportData] = useState<StudentAttendanceReport | null>(() => {
+    if (!currentStudent) return null;
+    return generateClientStudentReport({
+      student: currentStudent,
+      period,
+      year,
+      month,
+      weekStart,
+      startDate: customStartDate,
+      endDate: customEndDate,
+      reportMode: mode,
+      records,
+    });
+  });
 
   // Sync external mode change
   useEffect(() => {
@@ -96,8 +112,22 @@ export const StudentReportView: React.FC<StudentReportViewProps> = ({
 
   // Fetch student report
   const fetchStudentReport = async () => {
-    if (!selectedStudentId) return;
+    if (!selectedStudentId || !currentStudent) return;
     setLoading(true);
+
+    // Immediately provide local computation so the UI never displays blank
+    const fallbackReport = generateClientStudentReport({
+      student: currentStudent,
+      period,
+      year,
+      month,
+      weekStart,
+      startDate: customStartDate,
+      endDate: customEndDate,
+      reportMode: mode,
+      records,
+    });
+
     try {
       const queryParams = new URLSearchParams({
         reportType: 'student',
@@ -153,9 +183,13 @@ export const StudentReportView: React.FC<StudentReportViewProps> = ({
           }
         }
         setReportData(data);
+      } else {
+        // Non-JSON or serverless failure (e.g. on Vercel deployment) -> use guaranteed client report
+        setReportData(fallbackReport);
       }
     } catch (err) {
-      console.error('Failed to load student report', err);
+      console.warn('Backend reporting API offline or warm-up, utilizing instant client generator', err);
+      setReportData(fallbackReport);
     } finally {
       setLoading(false);
     }
@@ -164,8 +198,6 @@ export const StudentReportView: React.FC<StudentReportViewProps> = ({
   useEffect(() => {
     fetchStudentReport();
   }, [selectedStudentId, mode, period, year, month, weekStart, customStartDate, customEndDate, records]);
-
-  const currentStudent = students.find((s) => s.id === selectedStudentId) || students[0];
 
   const handlePrint = () => {
     window.print();

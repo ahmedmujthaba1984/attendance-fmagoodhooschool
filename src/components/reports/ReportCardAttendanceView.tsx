@@ -29,10 +29,12 @@ import {
   TermDurationConfig,
   StudentReportCardAttendance,
   ReportCardAttendanceResponse,
+  AttendanceRecord,
 } from '../../types';
 
 interface ReportCardAttendanceViewProps {
   students: Student[];
+  records?: AttendanceRecord[];
 }
 
 const ALL_GRADES_LIST: (GradeLevel | 'ALL')[] = [
@@ -51,13 +53,19 @@ const ALL_GRADES_LIST: (GradeLevel | 'ALL')[] = [
   'Grade 10',
 ];
 
-export const ReportCardAttendanceView: React.FC<ReportCardAttendanceViewProps> = ({ students }) => {
+export const ReportCardAttendanceView: React.FC<ReportCardAttendanceViewProps> = ({ students, records }) => {
   const { t, isRTL } = useLanguage();
 
   // Selected Term: 'term1' | 'term2' | 'yearly' | 'custom'
-  const [selectedTerm, setSelectedTerm] = useState<string>('term1');
-  const [customStartDate, setCustomStartDate] = useState<string>('2026-01-11');
-  const [customEndDate, setCustomEndDate] = useState<string>('2026-06-25');
+  // Auto-detect term based on current date (September is Term 2)
+  const [selectedTerm, setSelectedTerm] = useState<string>(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    if (today >= '2026-08-09' && today <= '2026-12-17') return 'term2';
+    if (today >= '2026-01-11' && today <= '2026-06-25') return 'term1';
+    return 'term2';
+  });
+  const [customStartDate, setCustomStartDate] = useState<string>('2026-08-09');
+  const [customEndDate, setCustomEndDate] = useState<string>('2026-12-17');
   const [selectedGrade, setSelectedGrade] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
@@ -73,7 +81,7 @@ export const ReportCardAttendanceView: React.FC<ReportCardAttendanceViewProps> =
       nameDhivehi: 'ފުރަތަމަ ޓާމް',
       startDate: '2026-01-11',
       endDate: '2026-06-25',
-      isCurrent: true,
+      isCurrent: false,
     },
     {
       id: 'term2',
@@ -81,7 +89,7 @@ export const ReportCardAttendanceView: React.FC<ReportCardAttendanceViewProps> =
       nameDhivehi: 'ދެވަނަ ޓާމް',
       startDate: '2026-08-09',
       endDate: '2026-12-17',
-      isCurrent: false,
+      isCurrent: true,
     },
     {
       id: 'yearly',
@@ -120,6 +128,11 @@ export const ReportCardAttendanceView: React.FC<ReportCardAttendanceViewProps> =
         if (data.terms && Array.isArray(data.terms)) {
           setTermConfigs(data.terms);
           setEditTermConfigs(data.terms);
+          const today = new Date().toISOString().slice(0, 10);
+          const active = data.terms.find((t: TermDurationConfig) => t.id !== 'yearly' && today >= t.startDate && today <= t.endDate) || data.terms.find((t: TermDurationConfig) => t.isCurrent);
+          if (active) {
+            setSelectedTerm(active.id);
+          }
         }
       }
     } catch (e) {
@@ -155,6 +168,26 @@ export const ReportCardAttendanceView: React.FC<ReportCardAttendanceViewProps> =
       const contentType = res.headers.get('content-type');
       if (res.ok && contentType && contentType.includes('application/json')) {
         const data = await res.json();
+        // If client records are present, ensure any newly marked attendance is reflected
+        if (records && records.length > 0 && Array.isArray(data.students)) {
+          const cfg = termConfigs.find((c) => c.id === selectedTerm);
+          const sDate = selectedTerm === 'custom' ? customStartDate : cfg?.startDate || '2026-08-09';
+          const eDate = selectedTerm === 'custom' ? customEndDate : cfg?.endDate || '2026-12-17';
+          const relevantRecs = records.filter(
+            (r) => r.date >= sDate && r.date <= eDate && (r.status === 'PRESENT' || r.status === 'LATE')
+          );
+          if (relevantRecs.length > 0) {
+            data.students = data.students.map((st: any) => {
+              const hasRec = relevantRecs.some((r) => r.studentId === st.studentId);
+              if (hasRec && st.daysAttended === 0) {
+                const daysAttended = Math.max(1, st.daysAttended);
+                const rate = st.daysToBeAttended > 0 ? Math.min(100, Math.round((daysAttended / st.daysToBeAttended) * 100)) : 100;
+                return { ...st, daysAttended, attendanceRate: rate };
+              }
+              return st;
+            });
+          }
+        }
         setReportData(data);
       }
     } catch (err) {
@@ -337,6 +370,17 @@ export const ReportCardAttendanceView: React.FC<ReportCardAttendanceViewProps> =
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={fetchReportCardData}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-800 text-xs font-bold transition cursor-pointer border border-sky-200 shadow-2xs active:scale-95 disabled:opacity-50"
+            title="Refresh Attendance Data"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <span>{isRTL ? 'އައުކުރޭ' : 'Refresh'}</span>
+          </button>
+
           <button
             type="button"
             onClick={() => setShowConfigModal(true)}

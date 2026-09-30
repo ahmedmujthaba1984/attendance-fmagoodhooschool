@@ -166,10 +166,19 @@ function MainApp() {
     initData();
   }, []);
 
-  // 2. Refresh attendance whenever date, grade, or session changes
+  // 2. Refresh attendance & stats whenever date, grade, or session changes
   useEffect(() => {
     fetchAttendance();
+    fetchMoEStats();
   }, [selectedDate, selectedGrade, selectedSession]);
+
+  // 2b. Re-fetch stats & attendance whenever switching to reports tab
+  useEffect(() => {
+    if (activeTab === 'reports') {
+      fetchMoEStats();
+      fetchAttendance();
+    }
+  }, [activeTab]);
 
   const initData = async () => {
     try {
@@ -459,8 +468,11 @@ function MainApp() {
         body: JSON.stringify({ records: updatedRecords }),
       });
       if (res.ok) {
+        const resData = await res.json().catch(() => ({}));
         await offlineDb.attendance.bulkPut(updatedRecords);
-        setIsSessionSubmitted(true);
+        if (resData.isSessionSubmitted) {
+          setIsSessionSubmitted(true);
+        }
       } else {
         await syncEngine.bulkRecordAttendance(updatedRecords);
       }
@@ -1121,6 +1133,12 @@ function MainApp() {
             students={students}
             records={attendanceRecords}
             selectedDate={selectedDate}
+            selectedGrade={selectedGrade}
+            currentUser={currentUser}
+            onRefresh={() => {
+              fetchMoEStats();
+              fetchAttendance();
+            }}
             overallRate={stats.overallAttendanceRate}
             activeLeaves={stats.activeLeavesCount}
             lateEntries={stats.lateEntriesCount}

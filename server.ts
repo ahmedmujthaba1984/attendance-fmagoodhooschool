@@ -88,43 +88,59 @@ const TERM_DATES_FILE_PATH = path.join(process.cwd(), 'server', 'termDates.json'
 const REPORT_CARD_OVERRIDES_FILE_PATH = path.join(process.cwd(), 'server', 'reportCardOverrides.json');
 
 function loadTermDatesFromDisk(): TermDurationConfig[] {
+  let list: TermDurationConfig[] = [];
   try {
     if (fs.existsSync(TERM_DATES_FILE_PATH)) {
       const raw = fs.readFileSync(TERM_DATES_FILE_PATH, 'utf-8');
       const data = JSON.parse(raw);
       if (Array.isArray(data) && data.length > 0) {
-        return data;
+        list = data;
       }
     }
   } catch (err) {
     console.warn('Could not load term dates from disk:', err);
   }
-  return [
-    {
-      id: 'term1',
-      name: 'Term 1',
-      nameDhivehi: 'ފުރަތަމަ ޓާމް',
-      startDate: '2026-01-11',
-      endDate: '2026-06-25',
-      isCurrent: true,
-    },
-    {
-      id: 'term2',
-      name: 'Term 2',
-      nameDhivehi: 'ދެވަނަ ޓާމް',
-      startDate: '2026-08-09',
-      endDate: '2026-12-17',
-      isCurrent: false,
-    },
-    {
-      id: 'yearly',
-      name: 'Full Academic Year',
-      nameDhivehi: 'އަހަރީ ޖުމްލަ',
-      startDate: '2026-01-11',
-      endDate: '2026-12-17',
-      isCurrent: false,
-    },
-  ];
+
+  if (!list || list.length === 0) {
+    list = [
+      {
+        id: 'term1',
+        name: 'Term 1',
+        nameDhivehi: 'ފުރަތަމަ ޓާމް',
+        startDate: '2026-01-11',
+        endDate: '2026-06-25',
+        isCurrent: false,
+      },
+      {
+        id: 'term2',
+        name: 'Term 2',
+        nameDhivehi: 'ދެވަނަ ޓާމް',
+        startDate: '2026-08-09',
+        endDate: '2026-12-17',
+        isCurrent: true,
+      },
+      {
+        id: 'yearly',
+        name: 'Full Academic Year',
+        nameDhivehi: 'އަހަރީ ޖުމްލަ',
+        startDate: '2026-01-11',
+        endDate: '2026-12-17',
+        isCurrent: false,
+      },
+    ];
+  }
+
+  // Dynamically set isCurrent based on today's date if within range
+  const today = new Date().toISOString().slice(0, 10);
+  const activeTerm = list.find((t) => t.id !== 'yearly' && today >= t.startDate && today <= t.endDate);
+  if (activeTerm) {
+    return list.map((t) => ({
+      ...t,
+      isCurrent: t.id === activeTerm.id,
+    }));
+  }
+
+  return list;
 }
 
 function saveTermDatesToDisk(terms: TermDurationConfig[]) {
@@ -1495,9 +1511,8 @@ app.post('/api/attendance/bulk', (req, res) => {
     });
   });
 
-  // Mark session as submitted/completed
-  markSessionSubmitted(`${targetDate}_${targetSession}`);
   saveAttendanceToDisk(attendanceStore);
+  const isSubmitted = submittedSessions.has(`${targetDate}_${targetSession}`);
 
   logAudit(
     'BULK_ATTENDANCE_MARKED',
@@ -1507,7 +1522,7 @@ app.post('/api/attendance/bulk', (req, res) => {
     markerStaff.id
   );
 
-  res.json({ success: true, count: records.length, isSessionSubmitted: true });
+  res.json({ success: true, count: records.length, isSessionSubmitted: isSubmitted });
 });
 
 // Single Attendance Record Update Handler
@@ -2684,6 +2699,7 @@ app.get('/api/reports/moe', (req, res) => {
     let pPres = 0;
     let pAbs = 0;
     let recordedStudents = 0;
+    let postRecordedStudents = 0;
 
     gradeStudents.forEach((st) => {
       const mRec = attendanceStore.get(`${st.id}_${targetDate}_MORNING_BEFORE_BREAK`);
@@ -2698,12 +2714,19 @@ app.get('/api/reports/moe', (req, res) => {
       }
 
       if (pRec) {
+        postRecordedStudents++;
         if (pRec.status === 'PRESENT' || pRec.status === 'LATE') pPres++;
         else if (pRec.status === 'ABSENT') pAbs++;
       }
     });
 
-    const rate = recordedStudents > 0 ? Math.round(((mPres + mLate) / recordedStudents) * 100) : null;
+    const mRate = recordedStudents > 0 ? Math.round(((mPres + mLate) / recordedStudents) * 100) : null;
+    const pRate = postRecordedStudents > 0 ? Math.round((pPres / postRecordedStudents) * 100) : null;
+    const rate = mRate !== null && pRate !== null
+      ? Math.round((mRate + pRate) / 2)
+      : mRate !== null
+      ? mRate
+      : pRate;
 
     // Calculate real chronic absentees count (<80% MoE threshold) for this grade
     let chronicGradeCount = 0;
@@ -2780,17 +2803,23 @@ app.get('/api/reports/moe', (req, res) => {
     });
   }
 
-  const overallRate = isClosed
+  const morningRate = isClosed
     ? null
     : hasDayRecords && totalMorningRecorded > 0
     ? Math.round(((totalPres + totalLate) / totalMorningRecorded) * 100)
     : null;
-  const morningRate = overallRate;
   const postBreakRate = isClosed
     ? null
     : hasDayRecords && totalPostRecorded > 0
     ? Math.round((postPresTotal / totalPostRecorded) * 100)
     : null;
+  const overallRate = isClosed
+    ? null
+    : morningRate !== null && postBreakRate !== null
+    ? Math.round((((totalPres + totalLate) + postPresTotal) / (totalMorningRecorded + totalPostRecorded)) * 100)
+    : morningRate !== null
+    ? morningRate
+    : postBreakRate;
   const postBreakRecoveryRate = isClosed
     ? null
     : hasDayRecords && totalPostRecorded > 0 && morningAttendedCount > 0

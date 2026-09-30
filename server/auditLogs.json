@@ -1,5 +1,55 @@
 [
   {
+    "id": "audit-1790755364838-n67m1g",
+    "timestamp": "2026-09-30T08:02:44.838Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Mohamed Azaan Bin Areen (Grade 7) as PRESENT  on 2026-09-30 by Ahmed Mujthaba (Senior School Administration Officer)"
+  },
+  {
+    "id": "audit-1790754894950-hnln81",
+    "timestamp": "2026-09-30T07:54:54.950Z",
+    "userId": "stf-01",
+    "userName": "Mohamed Fayaz",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Mohamed Azaan Bin Areen (Grade 7) as PRESENT  on 2026-09-30 by Mohamed Fayaz (Principal)"
+  },
+  {
+    "id": "audit-1790754886505-58et7y",
+    "timestamp": "2026-09-30T07:54:46.505Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Mohamed Azaan Bin Areen (Grade 7) as ABSENT  on 2026-09-30 by Ahmed Mujthaba (Senior School Administration Officer)"
+  },
+  {
+    "id": "audit-1790754880464-vyo8zq",
+    "timestamp": "2026-09-30T07:54:40.464Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "BULK_ATTENDANCE_MARKED",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Bulk attendance saved for 21 students on 2026-09-30 (MORNING_BEFORE_BREAK) by Ahmed Mujthaba (Senior School Administration Officer)"
+  },
+  {
+    "id": "audit-1790754731834-u07a6p",
+    "timestamp": "2026-09-30T07:52:11.834Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Aasha Binth Nafiz (LKG) as PRESENT  on 2026-09-30 by Ahmed Mujthaba (Senior School Administration Officer)"
+  },
+  {
     "id": "audit-1790752264223-q6uktf",
     "timestamp": "2026-09-30T07:11:04.223Z",
     "userId": "stf-32",

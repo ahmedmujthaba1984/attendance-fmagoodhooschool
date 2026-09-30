@@ -27,6 +27,7 @@ import {
   StudentAttendanceReport,
   ReportPeriodType,
   AttendanceReportMode,
+  AttendanceRecord,
 } from '../../types';
 import { ALL_ACADEMIC_WEEKS_2026, getCurrentOrLatestSchoolWeek } from '../../utils/academicWeeks';
 
@@ -35,6 +36,8 @@ interface StudentReportViewProps {
   initialStudentId?: string;
   reportMode?: AttendanceReportMode;
   onReportModeChange?: (mode: AttendanceReportMode) => void;
+  records?: AttendanceRecord[];
+  selectedDate?: string;
 }
 
 export const StudentReportView: React.FC<StudentReportViewProps> = ({
@@ -42,6 +45,8 @@ export const StudentReportView: React.FC<StudentReportViewProps> = ({
   initialStudentId,
   reportMode: propReportMode,
   onReportModeChange,
+  records,
+  selectedDate,
 }) => {
   const { t, isRTL } = useLanguage();
   const defaultWeek = getCurrentOrLatestSchoolWeek();
@@ -51,11 +56,17 @@ export const StudentReportView: React.FC<StudentReportViewProps> = ({
   const [mode, setMode] = useState<AttendanceReportMode>(propReportMode || 'BOTH');
   const [searchQuery, setSearchQuery] = useState('');
   const [period, setPeriod] = useState<ReportPeriodType>('monthly');
-  const [year, setYear] = useState<number>(2026);
-  const [month, setMonth] = useState<number>(9);
+  const [year, setYear] = useState<number>(() => {
+    if (selectedDate) return parseInt(selectedDate.slice(0, 4), 10) || 2026;
+    return 2026;
+  });
+  const [month, setMonth] = useState<number>(() => {
+    if (selectedDate) return parseInt(selectedDate.slice(5, 7), 10) || 9;
+    return 9;
+  });
   const [weekStart, setWeekStart] = useState<string>(defaultWeek.startDate);
-  const [customStartDate, setCustomStartDate] = useState<string>('2026-09-01');
-  const [customEndDate, setCustomEndDate] = useState<string>('2026-09-30');
+  const [customStartDate, setCustomStartDate] = useState<string>(selectedDate || '2026-09-01');
+  const [customEndDate, setCustomEndDate] = useState<string>(selectedDate || '2026-09-30');
 
   const [loading, setLoading] = useState(false);
   const [reportData, setReportData] = useState<StudentAttendanceReport | null>(null);
@@ -104,6 +115,43 @@ export const StudentReportView: React.FC<StudentReportViewProps> = ({
       const contentType = res.headers.get('content-type');
       if (res.ok && contentType && contentType.includes('application/json')) {
         const data = await res.json();
+        // If client records are present, ensure any newly marked attendance is reflected immediately
+        if (records && records.length > 0 && Array.isArray(data.dailyRecords)) {
+          const studentRecs = records.filter((r) => r.studentId === selectedStudentId);
+          studentRecs.forEach((cr) => {
+            const dayRecord = data.dailyRecords.find((dr: any) => dr.date === cr.date);
+            if (dayRecord) {
+              if (cr.sessionType === 'MORNING_BEFORE_BREAK') {
+                dayRecord.morningStatus = cr.status;
+                if (cr.arrivalTime) dayRecord.morningArrivalTime = cr.arrivalTime;
+                if (cr.leaveReason) dayRecord.morningLeaveReason = cr.leaveReason;
+              } else if (cr.sessionType === 'POST_BREAK') {
+                dayRecord.postBreakStatus = cr.status;
+                if (cr.leaveReason) dayRecord.postBreakLeaveReason = cr.leaveReason;
+              }
+            }
+          });
+          // Recalculate present days and rate
+          let mornP = 0;
+          let mornTotal = 0;
+          data.dailyRecords.forEach((dr: any) => {
+            if (dr.morningStatus) {
+              mornTotal++;
+              if (dr.morningStatus === 'PRESENT' || dr.morningStatus === 'LATE') mornP++;
+            }
+          });
+          if (mornTotal > 0) {
+            data.morningPresentDays = Math.max(data.morningPresentDays || 0, mornP);
+            data.presentDays = Math.max(data.presentDays || 0, mornP);
+            data.morningAttendanceRate = Math.round((mornP / mornTotal) * 100);
+            if (data.officialAttendanceRate == null) {
+              data.officialAttendanceRate = data.morningAttendanceRate;
+            }
+            if (data.combinedAttendanceRate == null) {
+              data.combinedAttendanceRate = data.morningAttendanceRate;
+            }
+          }
+        }
         setReportData(data);
       }
     } catch (err) {
@@ -115,7 +163,7 @@ export const StudentReportView: React.FC<StudentReportViewProps> = ({
 
   useEffect(() => {
     fetchStudentReport();
-  }, [selectedStudentId, mode, period, year, month, weekStart, customStartDate, customEndDate]);
+  }, [selectedStudentId, mode, period, year, month, weekStart, customStartDate, customEndDate, records]);
 
   const currentStudent = students.find((s) => s.id === selectedStudentId) || students[0];
 
@@ -505,6 +553,16 @@ export const StudentReportView: React.FC<StudentReportViewProps> = ({
             )}
 
             {/* Action buttons */}
+            <button
+              type="button"
+              onClick={fetchStudentReport}
+              disabled={loading}
+              className="p-1.5 px-3 rounded-lg border border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-800 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer active:scale-95 disabled:opacity-50"
+              title="Refresh Student Attendance Data"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              <span>{isRTL ? 'އައުކުރޭ' : 'Refresh'}</span>
+            </button>
             <button
               type="button"
               onClick={handlePrint}

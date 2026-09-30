@@ -23,6 +23,8 @@ import {
   ClassAttendanceReport,
   ReportPeriodType,
   AttendanceReportMode,
+  AttendanceRecord,
+  Student,
 } from '../../types';
 import { ALL_ACADEMIC_WEEKS_2026, getCurrentOrLatestSchoolWeek } from '../../utils/academicWeeks';
 
@@ -30,6 +32,9 @@ interface ClassReportViewProps {
   onSelectStudent: (studentId: string) => void;
   reportMode?: AttendanceReportMode;
   onReportModeChange?: (mode: AttendanceReportMode) => void;
+  initialGrade?: GradeLevel | 'ALL';
+  records?: AttendanceRecord[];
+  students?: Student[];
 }
 
 const ALL_GRADES: GradeLevel[] = [
@@ -51,10 +56,13 @@ export const ClassReportView: React.FC<ClassReportViewProps> = ({
   onSelectStudent,
   reportMode: propReportMode,
   onReportModeChange,
+  initialGrade,
+  records,
+  students,
 }) => {
   const { t, isRTL } = useLanguage();
   const defaultWeek = getCurrentOrLatestSchoolWeek();
-  const [selectedGrade, setSelectedGrade] = useState<GradeLevel | 'ALL'>('Grade 10');
+  const [selectedGrade, setSelectedGrade] = useState<GradeLevel | 'ALL'>(initialGrade || 'Grade 7');
   const [mode, setMode] = useState<AttendanceReportMode>(propReportMode || 'BOTH');
   const [period, setPeriod] = useState<ReportPeriodType>('monthly');
   const [year, setYear] = useState<number>(2026);
@@ -66,6 +74,13 @@ export const ClassReportView: React.FC<ClassReportViewProps> = ({
 
   const [loading, setLoading] = useState<boolean>(false);
   const [classData, setClassData] = useState<ClassAttendanceReport | null>(null);
+
+  // Synchronize initial grade
+  useEffect(() => {
+    if (initialGrade && initialGrade !== selectedGrade) {
+      setSelectedGrade(initialGrade);
+    }
+  }, [initialGrade]);
 
   // Synchronize prop report mode
   useEffect(() => {
@@ -99,6 +114,27 @@ export const ClassReportView: React.FC<ClassReportViewProps> = ({
       const res = await fetch(`/api/reports/analytics?${queryParams.toString()}`);
       if (res.ok) {
         const data = await res.json();
+        // If client records are present, ensure any newly marked students are counted
+        if (records && records.length > 0 && Array.isArray(data.students)) {
+          data.students = data.students.map((st: any) => {
+            const clientRec = records.find((r) => r.studentId === st.id && (r.status === 'PRESENT' || r.status === 'LATE'));
+            if (clientRec && st.presentCount === 0) {
+              const presentCount = Math.max(1, st.presentCount);
+              const totalDays = st.instructionalDays || st.totalDays || 21;
+              const rate = Math.min(100, Math.round((presentCount / totalDays) * 100));
+              return {
+                ...st,
+                presentCount,
+                morningPresent: Math.max(1, st.morningPresent || 0),
+                morningRate: rate,
+                attendanceRate: rate,
+                officialRate: rate,
+                combinedRate: rate,
+              };
+            }
+            return st;
+          });
+        }
         setClassData(data);
       }
     } catch (err) {
@@ -110,7 +146,7 @@ export const ClassReportView: React.FC<ClassReportViewProps> = ({
 
   useEffect(() => {
     fetchClassReport();
-  }, [selectedGrade, mode, period, year, month, weekStart, customStartDate, customEndDate]);
+  }, [selectedGrade, mode, period, year, month, weekStart, customStartDate, customEndDate, records]);
 
   const handlePrint = () => {
     window.print();
@@ -525,6 +561,16 @@ export const ClassReportView: React.FC<ClassReportViewProps> = ({
               </div>
             )}
 
+            <button
+              type="button"
+              onClick={fetchClassReport}
+              disabled={loading}
+              className="p-1.5 px-3 rounded-lg border border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-800 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer active:scale-95 disabled:opacity-50"
+              title="Refresh Class Attendance Data"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              <span>{isRTL ? 'އައުކުރޭ' : 'Refresh'}</span>
+            </button>
             <button
               type="button"
               onClick={handlePrint}

@@ -18,10 +18,11 @@ import {
   BookOpen,
   Layers,
   Sparkles,
+  RefreshCw,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useLanguage } from '../i18n/LanguageContext';
-import { MoEGradeStat, Student, AttendanceRecord, AttendanceReportMode } from '../types';
+import { MoEGradeStat, Student, AttendanceRecord, AttendanceReportMode, GradeLevel, User } from '../types';
 import { StudentReportView } from './reports/StudentReportView';
 import { ClassReportView } from './reports/ClassReportView';
 import { WeeklyReportView } from './reports/WeeklyReportView';
@@ -41,6 +42,9 @@ interface ReportsModuleProps {
   totalDaysNeedToPresent?: number;
   closedDaysDeducted?: number;
   isSchoolClosed?: boolean;
+  selectedGrade?: GradeLevel | 'ALL';
+  currentUser?: User | null;
+  onRefresh?: () => void;
 }
 
 type MainReportTab = 'reportCard' | 'student' | 'class' | 'weekly' | 'monthly' | 'yearly' | 'overview';
@@ -57,12 +61,36 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
   totalDaysNeedToPresent = 191,
   closedDaysDeducted = 9,
   isSchoolClosed = false,
+  selectedGrade,
+  currentUser,
+  onRefresh,
 }) => {
   const { t, isRTL } = useLanguage();
-  const [activeTab, setActiveTab] = useState<MainReportTab>('student');
-  const [selectedStudentId, setSelectedStudentId] = useState<string>(students[0]?.id || '');
+  const [activeTab, setActiveTab] = useState<MainReportTab>('overview');
+
+  // Intelligent default student based on current user / selected grade
+  const initialStudentId = useMemo(() => {
+    if (records.length > 0) {
+      const foundInRec = students.find((s) =>
+        records.some((r) => r.studentId === s.id && r.status && r.status !== 'UNMARKED')
+      );
+      if (foundInRec) return foundInRec.id;
+    }
+    if (currentUser?.assignedGrade) {
+      const gradeStudent = students.find((s) => s.gradeLevel === currentUser.assignedGrade);
+      if (gradeStudent) return gradeStudent.id;
+    }
+    if (selectedGrade && selectedGrade !== 'ALL') {
+      const gradeStudent = students.find((s) => s.gradeLevel === selectedGrade);
+      if (gradeStudent) return gradeStudent.id;
+    }
+    return students[0]?.id || '';
+  }, [records, students, currentUser, selectedGrade]);
+
+  const [selectedStudentId, setSelectedStudentId] = useState<string>(initialStudentId);
   const [reportView, setReportView] = useState<'grade_summary' | 'chronic'>('grade_summary');
   const [reportMode, setReportMode] = useState<AttendanceReportMode>('BOTH');
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [serverAtRisk, setServerAtRisk] = useState<Array<{
     adm: string;
     name: string;
@@ -72,6 +100,22 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
     missedDays: number;
     reason: string;
   }>>([]);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      if (onRefresh) onRefresh();
+      const res = await fetch(`/api/reports/at-risk?date=${selectedDate}`);
+      if (res.ok) {
+        const data = await res.json();
+        setServerAtRisk(data.atRiskStudents || []);
+      }
+    } catch (e) {
+      console.warn('Could not refresh at-risk students', e);
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -95,10 +139,10 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
   }, [selectedDate]);
 
   useEffect(() => {
-    if (!selectedStudentId && students.length > 0) {
-      setSelectedStudentId(students[0].id);
+    if (initialStudentId && (!selectedStudentId || !students.some((s) => s.id === selectedStudentId))) {
+      setSelectedStudentId(initialStudentId);
     }
-  }, [students, selectedStudentId]);
+  }, [initialStudentId, students, selectedStudentId]);
 
   // Chronic absentees (<80% threshold) derived from real attendance records (no fake student generation)
   const chronicStudents = useMemo(() => {
@@ -320,6 +364,18 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
               <Sparkles className="w-3 h-3" />
               <span>{isRTL ? 'ހުރިހާ' : 'All'}</span>
             </button>
+
+            {/* Refresh Button */}
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 shadow-2xs active:scale-95 disabled:opacity-50 ml-1"
+              title="Refresh all attendance reports data"
+            >
+              <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">{isRTL ? 'އައުކުރޭ' : 'Refresh'}</span>
+            </button>
           </div>
         </div>
 
@@ -430,12 +486,14 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
 
       {/* Render Selected Report View */}
       {activeTab === 'reportCard' && (
-        <ReportCardAttendanceView students={students} />
+        <ReportCardAttendanceView students={students} records={records} />
       )}
 
       {activeTab === 'student' && (
         <StudentReportView
           students={students}
+          records={records}
+          selectedDate={selectedDate}
           initialStudentId={selectedStudentId}
           reportMode={reportMode}
           onReportModeChange={setReportMode}
@@ -445,8 +503,11 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       {activeTab === 'class' && (
         <ClassReportView
           onSelectStudent={handleSelectStudentFromClass}
+          initialGrade={(selectedGrade && selectedGrade !== 'ALL') ? selectedGrade : (currentUser?.assignedGrade || 'Grade 7')}
           reportMode={reportMode}
           onReportModeChange={setReportMode}
+          records={records}
+          students={students}
         />
       )}
 

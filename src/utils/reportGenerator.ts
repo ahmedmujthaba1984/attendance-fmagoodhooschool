@@ -182,9 +182,11 @@ export function generateClientStudentReport({
       ? afternoonAttendanceRate
       : officialAttendanceRate;
 
-  const moeStatus = displayRate != null
-    ? (displayRate >= 90 ? 'EXEMPLARY' : displayRate >= 80 ? 'SATISFACTORY' : 'AT_RISK')
-    : '-';
+  const moeStatus = (displayRate != null && displayRate >= 90)
+    ? 'EXEMPLARY'
+    : (displayRate != null && displayRate >= 80)
+    ? 'SATISFACTORY'
+    : 'AT_RISK';
 
   return {
     student,
@@ -367,11 +369,132 @@ export function generateClientClassReport({
     extraClassOverallRate: null,
     combinedOverallRate: overallRate,
     totalExtraClasses: 0,
-    extraClassesHeld: 0,
+    extraClassesHeld: [],
     instructionalDays,
     closedDays: 0,
     students: studentRows,
     chronicCount,
     perfectAttendanceCount: perfectCount,
+  };
+}
+
+export function generateClientReportCardData({
+  term = 'term2',
+  grade = 'ALL',
+  students = [],
+  records = [],
+  termConfigs = [],
+  startDate,
+  endDate,
+}: {
+  term?: string;
+  grade?: string;
+  students: Student[];
+  records?: AttendanceRecord[];
+  termConfigs?: any[];
+  startDate?: string;
+  endDate?: string;
+}) {
+  let sDate = startDate || '2026-08-09';
+  let eDate = endDate || '2026-12-17';
+  let termName = 'Term 2';
+  let termNameDhivehi = 'ދެވަނަ ޓާމް';
+
+  if (term === 'term1') {
+    sDate = '2026-01-11';
+    eDate = '2026-06-25';
+    termName = 'Term 1';
+    termNameDhivehi = 'ފުރަތަމަ ޓާމް';
+  } else if (term === 'yearly') {
+    sDate = '2026-01-11';
+    eDate = '2026-12-17';
+    termName = 'Full Academic Year';
+    termNameDhivehi = 'އަހަރީ ޖުމްލަ';
+  } else if (term === 'custom' && startDate && endDate) {
+    sDate = startDate;
+    eDate = endDate;
+    termName = 'Custom Period';
+    termNameDhivehi = 'ޚާއްޞަ މުއްދަތު';
+  } else {
+    const cfg = termConfigs.find((c: any) => c.id === term);
+    if (cfg) {
+      sDate = cfg.startDate;
+      eDate = cfg.endDate;
+      termName = cfg.name;
+      termNameDhivehi = cfg.nameDhivehi;
+    }
+  }
+
+  const schoolDates = getClientSchoolDatesBetween(sDate, eDate);
+  const daysToBeAttended = Math.max(1, schoolDates.length);
+
+  const targetStudents = grade === 'ALL'
+    ? students
+    : students.filter((s) => s.gradeLevel === grade);
+
+  const studentRows = targetStudents.map((st) => {
+    const studentRecs = records.filter(
+      (r) => r.studentId === st.id && r.date >= sDate && r.date <= eDate
+    );
+
+    let daysAttended = 0;
+    let daysLate = 0;
+    let daysAbsent = 0;
+    let daysLeave = 0;
+
+    const countedDates = new Set<string>();
+    studentRecs.forEach((r) => {
+      if (!countedDates.has(r.date)) {
+        if (r.status === 'PRESENT') {
+          daysAttended++;
+          countedDates.add(r.date);
+        } else if (r.status === 'LATE') {
+          daysAttended++;
+          daysLate++;
+          countedDates.add(r.date);
+        } else if (r.status === 'LEAVE') {
+          daysLeave++;
+          countedDates.add(r.date);
+        } else if (r.status === 'ABSENT') {
+          daysAbsent++;
+          countedDates.add(r.date);
+        }
+      }
+    });
+
+    const attendanceRate = daysToBeAttended > 0
+      ? Math.min(100, Math.round((daysAttended / daysToBeAttended) * 100))
+      : 0;
+
+    return {
+      studentId: st.id,
+      admissionNumber: st.admissionNumber,
+      fullName: st.fullName,
+      fullNameDhivehi: st.fullNameDhivehi || st.fullName,
+      gradeLevel: st.gradeLevel,
+      gender: st.gender,
+      daysToBeAttended,
+      daysAttended,
+      daysLate,
+      daysAbsent,
+      daysLeave,
+      attendanceRate,
+    };
+  });
+
+  const totalRate = studentRows.reduce((acc, curr) => acc + curr.attendanceRate, 0);
+  const schoolAverageRate = studentRows.length > 0 ? Math.round(totalRate / studentRows.length) : 0;
+
+  return {
+    term,
+    termName,
+    termNameDhivehi,
+    grade,
+    startDate: sDate,
+    endDate: eDate,
+    daysToBeAttended,
+    totalStudents: targetStudents.length,
+    schoolAverageRate,
+    students: studentRows,
   };
 }

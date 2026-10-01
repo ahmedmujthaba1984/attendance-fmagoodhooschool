@@ -144,6 +144,73 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
     }
   }, [initialStudentId, students, selectedStudentId]);
 
+  // Guaranteed grade-level statistics from client records if server stats are pending/offline
+  const effectiveGradeStats = useMemo(() => {
+    const hasPropsData = gradeStats && gradeStats.some((gs) => gs.morningPresent > 0 || gs.morningLate > 0 || gs.morningAbsent > 0 || gs.postBreakPresent > 0);
+    if (hasPropsData) return gradeStats;
+
+    const ALL_GRADES_LIST: GradeLevel[] = [
+      'LKG', 'UKG', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4',
+      'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10',
+    ];
+
+    const todayRecords = records.filter((r) => r.date === selectedDate);
+    return ALL_GRADES_LIST.map((grade) => {
+      const gradeStudents = students.filter((s) => s.gradeLevel === grade);
+      const totalEnrolled = gradeStudents.length || 1;
+
+      let mPres = 0;
+      let mLate = 0;
+      let mLeave = 0;
+      let mAbs = 0;
+      let pPres = 0;
+      let pAbs = 0;
+      let recCount = 0;
+
+      gradeStudents.forEach((st) => {
+        const mRec = todayRecords.find((r) => r.studentId === st.id && r.sessionType === 'MORNING_BEFORE_BREAK');
+        const pRec = todayRecords.find((r) => r.studentId === st.id && r.sessionType === 'POST_BREAK');
+
+        if (mRec && mRec.status) {
+          recCount++;
+          if (mRec.status === 'PRESENT') mPres++;
+          else if (mRec.status === 'LATE') mLate++;
+          else if (mRec.status === 'LEAVE') mLeave++;
+          else if (mRec.status === 'ABSENT') mAbs++;
+        }
+        if (pRec && pRec.status) {
+          if (pRec.status === 'PRESENT' || pRec.status === 'LATE') pPres++;
+          else if (pRec.status === 'ABSENT') pAbs++;
+        }
+      });
+
+      const rate = recCount > 0 ? Math.round(((mPres + mLate) / recCount) * 100) : null;
+      return {
+        grade,
+        totalEnrolled,
+        morningPresent: mPres,
+        morningAbsent: mAbs,
+        morningLate: mLate,
+        morningLeave: mLeave,
+        postBreakPresent: pPres,
+        postBreakAbsent: pAbs,
+        attendanceRate: rate,
+        chronicAbsenteesCount: 0,
+        isSchoolClosed,
+      };
+    });
+  }, [gradeStats, records, students, selectedDate, isSchoolClosed]);
+
+  const computedOverallRate = useMemo(() => {
+    if (overallRate != null && overallRate > 0) return overallRate;
+    const recorded = effectiveGradeStats.filter((g) => g.attendanceRate != null);
+    if (recorded.length > 0) {
+      const sum = recorded.reduce((acc, g) => acc + (g.attendanceRate || 0), 0);
+      return Math.round(sum / recorded.length);
+    }
+    return overallRate;
+  }, [overallRate, effectiveGradeStats]);
+
   // Chronic absentees (<80% threshold) derived from real attendance records (no fake student generation)
   const chronicStudents = useMemo(() => {
     if (serverAtRisk.length > 0) {
@@ -599,7 +666,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
               <div>
                 <span className="text-slate-500 block">{isRTL ? 'މިއަދުގެ ހާޒިރީ:' : 'Attendance Rate:'}</span>
                 <span className="text-base font-black text-emerald-700">
-                  {isSchoolClosed ? (isRTL ? 'ބަންދު (100%)' : 'Closed (Excused)') : (overallRate != null ? `${overallRate}%` : '-')}
+                  {isSchoolClosed ? (isRTL ? 'ބަންދު (100%)' : 'Closed (Excused)') : (computedOverallRate != null ? `${computedOverallRate}%` : '-')}
                 </span>
               </div>
               <div>
@@ -702,7 +769,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {gradeStats.map((stat) => (
+                    {effectiveGradeStats.map((stat) => (
                       <tr key={stat.grade} className="hover:bg-slate-50/60 transition">
                         <td className="py-2.5 px-3 font-bold text-slate-900">{stat.grade}</td>
                         <td className="py-2.5 px-3 text-center font-mono">{stat.totalEnrolled}</td>

@@ -31,6 +31,7 @@ import {
   ReportCardAttendanceResponse,
   AttendanceRecord,
 } from '../../types';
+import { generateClientReportCardData } from '../../utils/reportGenerator';
 
 interface ReportCardAttendanceViewProps {
   students: Student[];
@@ -69,10 +70,6 @@ export const ReportCardAttendanceView: React.FC<ReportCardAttendanceViewProps> =
   const [selectedGrade, setSelectedGrade] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Data State
-  const [loading, setLoading] = useState<boolean>(false);
-  const [reportData, setReportData] = useState<ReportCardAttendanceResponse | null>(null);
-
   // Term Configurations
   const [termConfigs, setTermConfigs] = useState<TermDurationConfig[]>([
     {
@@ -100,6 +97,21 @@ export const ReportCardAttendanceView: React.FC<ReportCardAttendanceViewProps> =
       isCurrent: false,
     },
   ]);
+
+  // Data State - immediately initialized with client computation so UI is never blank
+  const [loading, setLoading] = useState<boolean>(false);
+  const [reportData, setReportData] = useState<ReportCardAttendanceResponse | null>(() => {
+    if (!students || students.length === 0) return null;
+    return generateClientReportCardData({
+      term: selectedTerm,
+      grade: selectedGrade,
+      students,
+      records,
+      termConfigs,
+      startDate: selectedTerm === 'custom' ? customStartDate : undefined,
+      endDate: selectedTerm === 'custom' ? customEndDate : undefined,
+    });
+  });
 
   // Modal States
   const [showConfigModal, setShowConfigModal] = useState<boolean>(false);
@@ -189,9 +201,30 @@ export const ReportCardAttendanceView: React.FC<ReportCardAttendanceViewProps> =
           }
         }
         setReportData(data);
+      } else {
+        const fallback = generateClientReportCardData({
+          term: selectedTerm,
+          grade: selectedGrade,
+          students,
+          records,
+          termConfigs,
+          startDate: selectedTerm === 'custom' ? customStartDate : undefined,
+          endDate: selectedTerm === 'custom' ? customEndDate : undefined,
+        });
+        setReportData(fallback);
       }
     } catch (err) {
-      console.error('Failed to load report card attendance data:', err);
+      console.warn('Backend reporting API offline or warm-up, utilizing instant client generator', err);
+      const fallback = generateClientReportCardData({
+        term: selectedTerm,
+        grade: selectedGrade,
+        students,
+        records,
+        termConfigs,
+        startDate: selectedTerm === 'custom' ? customStartDate : undefined,
+        endDate: selectedTerm === 'custom' ? customEndDate : undefined,
+      });
+      setReportData(fallback);
     } finally {
       setLoading(false);
     }
@@ -199,7 +232,7 @@ export const ReportCardAttendanceView: React.FC<ReportCardAttendanceViewProps> =
 
   useEffect(() => {
     fetchReportCardData();
-  }, [selectedTerm, customStartDate, customEndDate, selectedGrade, termConfigs]);
+  }, [selectedTerm, customStartDate, customEndDate, selectedGrade, termConfigs, records]);
 
   // Handle Save Term Configurations
   const handleSaveTermConfigs = async (e: React.FormEvent) => {

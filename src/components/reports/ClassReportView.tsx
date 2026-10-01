@@ -27,6 +27,7 @@ import {
   Student,
 } from '../../types';
 import { ALL_ACADEMIC_WEEKS_2026, getCurrentOrLatestSchoolWeek } from '../../utils/academicWeeks';
+import { generateClientClassReport } from '../../utils/reportGenerator';
 
 interface ClassReportViewProps {
   onSelectStudent: (studentId: string) => void;
@@ -73,7 +74,21 @@ export const ClassReportView: React.FC<ClassReportViewProps> = ({
   const [searchFilter, setSearchFilter] = useState<string>('');
 
   const [loading, setLoading] = useState<boolean>(false);
-  const [classData, setClassData] = useState<ClassAttendanceReport | null>(null);
+  const [classData, setClassData] = useState<ClassAttendanceReport | null>(() => {
+    if (!students || students.length === 0) return null;
+    return generateClientClassReport({
+      grade: selectedGrade,
+      students,
+      period,
+      year,
+      month,
+      weekStart,
+      startDate: customStartDate,
+      endDate: customEndDate,
+      reportMode: mode,
+      records,
+    });
+  });
 
   // Synchronize initial grade
   useEffect(() => {
@@ -98,6 +113,21 @@ export const ClassReportView: React.FC<ClassReportViewProps> = ({
 
   const fetchClassReport = async () => {
     setLoading(true);
+    const fallbackReport = students && students.length > 0
+      ? generateClientClassReport({
+          grade: selectedGrade,
+          students,
+          period,
+          year,
+          month,
+          weekStart,
+          startDate: customStartDate,
+          endDate: customEndDate,
+          reportMode: mode,
+          records,
+        })
+      : null;
+
     try {
       const queryParams = new URLSearchParams({
         reportType: 'class',
@@ -112,7 +142,8 @@ export const ClassReportView: React.FC<ClassReportViewProps> = ({
       });
 
       const res = await fetch(`/api/reports/analytics?${queryParams.toString()}`);
-      if (res.ok) {
+      const contentType = res.headers.get('content-type');
+      if (res.ok && contentType && contentType.includes('application/json')) {
         const data = await res.json();
         // If client records are present, ensure any newly marked students are counted
         if (records && records.length > 0 && Array.isArray(data.students)) {
@@ -136,9 +167,12 @@ export const ClassReportView: React.FC<ClassReportViewProps> = ({
           });
         }
         setClassData(data);
+      } else if (fallbackReport) {
+        setClassData(fallbackReport);
       }
     } catch (err) {
-      console.error('Failed to load class report', err);
+      console.warn('Backend reporting API offline or warm-up, utilizing instant client generator', err);
+      if (fallbackReport) setClassData(fallbackReport);
     } finally {
       setLoading(false);
     }

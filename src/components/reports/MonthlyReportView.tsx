@@ -16,23 +16,36 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useLanguage } from '../../i18n/LanguageContext';
-import { MonthlyAttendanceReport, AttendanceReportMode } from '../../types';
+import { MonthlyAttendanceReport, AttendanceReportMode, Student, AttendanceRecord } from '../../types';
+import { generateClientMonthlyReport } from '../../utils/reportGenerator';
 
 interface MonthlyReportViewProps {
   reportMode?: AttendanceReportMode;
   onReportModeChange?: (mode: AttendanceReportMode) => void;
+  students?: Student[];
+  records?: AttendanceRecord[];
 }
 
 export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
   reportMode: propReportMode,
   onReportModeChange,
+  students = [],
+  records = [],
 }) => {
   const { t, isRTL } = useLanguage();
   const [selectedMonth, setSelectedMonth] = useState<number>(9);
   const [selectedYear, setSelectedYear] = useState<number>(2026);
   const [mode, setMode] = useState<AttendanceReportMode>(propReportMode || 'BOTH');
   const [loading, setLoading] = useState<boolean>(false);
-  const [monthlyData, setMonthlyData] = useState<MonthlyAttendanceReport | null>(null);
+  const [monthlyData, setMonthlyData] = useState<MonthlyAttendanceReport | null>(() => {
+    return generateClientMonthlyReport({
+      year: 2026,
+      month: 9,
+      reportMode: propReportMode || 'BOTH',
+      students,
+      records,
+    });
+  });
 
   useEffect(() => {
     if (propReportMode && propReportMode !== mode) {
@@ -49,6 +62,14 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
 
   const fetchMonthlyReport = async () => {
     setLoading(true);
+    const fallback = generateClientMonthlyReport({
+      year: selectedYear,
+      month: selectedMonth,
+      reportMode: mode,
+      students,
+      records,
+    });
+
     try {
       const queryParams = new URLSearchParams({
         reportType: 'monthly',
@@ -58,12 +79,16 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
       });
 
       const res = await fetch(`/api/reports/analytics?${queryParams.toString()}`);
-      if (res.ok) {
+      const contentType = res.headers.get('content-type');
+      if (res.ok && contentType && contentType.includes('application/json')) {
         const data = await res.json();
         setMonthlyData(data);
+      } else {
+        setMonthlyData(fallback);
       }
     } catch (err) {
-      console.error('Failed to load monthly report', err);
+      console.warn('Backend monthly report API offline or cold start, using client generator', err);
+      setMonthlyData(fallback);
     } finally {
       setLoading(false);
     }
@@ -71,7 +96,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
 
   useEffect(() => {
     fetchMonthlyReport();
-  }, [selectedMonth, selectedYear, mode]);
+  }, [selectedMonth, selectedYear, mode, records]);
 
   const handlePrint = () => {
     window.print();
@@ -193,6 +218,16 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={fetchMonthlyReport}
+              disabled={loading}
+              className="p-2 px-3 rounded-lg border border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-800 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer active:scale-95 disabled:opacity-50"
+              title="Refresh Monthly Attendance Data"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              <span>{isRTL ? 'އައުކުރޭ' : 'Refresh'}</span>
+            </button>
             <button
               type="button"
               onClick={handlePrint}

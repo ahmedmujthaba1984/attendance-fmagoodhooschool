@@ -582,6 +582,8 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
         <WeeklyReportView
           reportMode={reportMode}
           onReportModeChange={setReportMode}
+          students={students}
+          records={records}
         />
       )}
 
@@ -589,6 +591,8 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
         <MonthlyReportView
           reportMode={reportMode}
           onReportModeChange={setReportMode}
+          students={students}
+          records={records}
         />
       )}
 
@@ -596,6 +600,8 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
         <YearlyReportView
           reportMode={reportMode}
           onReportModeChange={setReportMode}
+          students={students}
+          records={records}
         />
       )}
 

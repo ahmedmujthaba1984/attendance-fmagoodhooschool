@@ -97,6 +97,7 @@ interface AttendanceMatrixProps {
   staffList?: User[];
   onSwitchStaff?: (staffId: string) => void;
   onOpenLoginView?: () => void;
+  onRapidModeChange?: (isRapid: boolean) => void;
 }
 
 export const MALDIVIAN_HOLIDAY_PRESETS = [
@@ -149,6 +150,7 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
     afternoon: { startTime: '10:45', endTime: '13:15', label: 'Afternoon Session', labelDhivehi: 'މެންދުރުފަހުގެ ސެޝަން' },
   },
   onUpdateSessionTimings,
+  onRapidModeChange,
 }) => {
   const { t, isRTL } = useLanguage();
 
@@ -163,6 +165,11 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
   const [showWarningModal, setShowWarningModal] = useState(false);
   const [showLockedNoticeModal, setShowLockedNoticeModal] = useState(false);
   const [showTimingsModal, setShowTimingsModal] = useState(false);
+
+  const handleSetRollCallMode = (mode: 'cards' | 'rapid') => {
+    setMobileRollCallMode(mode);
+    onRapidModeChange?.(mode === 'rapid');
+  };
 
   // Compute effective session timing (normal or temporary override for selected date)
   const effectiveTimings = getEffectiveSessionTimings(sessionTimings, selectedDate);
@@ -443,8 +450,34 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
 
   return (
     <div className="space-y-5">
-      {/* Universal Staff Attendance Marking Banner */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-linear-to-r from-teal-50 via-emerald-50/60 to-cyan-50 border border-teal-200/80 shadow-xs">
+      {mobileRollCallMode === 'rapid' ? (
+        <RapidRollCallView
+          students={rosterStudents}
+          allStudents={students}
+          recordsMap={recordsMap}
+          counterpartMap={counterpartMap}
+          selectedSession={selectedSession}
+          onSelectSession={setSelectedSession}
+          selectedDate={selectedDate}
+          onSelectDate={setSelectedDate}
+          selectedGrade={selectedGrade}
+          onSelectGrade={setSelectedGrade}
+          sessionTimings={sessionTimings}
+          isSchoolClosed={isSchoolClosed}
+          isSessionSubmitted={isSessionSubmitted}
+          isSuperAdmin={isSuperAdmin}
+          onStatusChange={handleStatusChange}
+          onArrivalTimeChange={handleArrivalTimeChange}
+          onReasonChange={handleReasonChange}
+          onBulkMarkPresent={handleBulkMarkPresentClicked}
+          onOpenSmsDraftModal={onOpenSmsDraftModal}
+          onSubmitSession={onSubmitSession}
+          onSwitchToCards={() => handleSetRollCallMode('cards')}
+        />
+      ) : (
+        <>
+          {/* Universal Staff Attendance Marking Banner */}
+          <div className="flex flex-wrap items-center justify-between gap-2.5 p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-linear-to-r from-teal-50 via-emerald-50/60 to-cyan-50 border border-teal-200/80 shadow-xs">
         <div className="flex items-center gap-2.5 sm:gap-3">
           <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center shrink-0 shadow-xs">
             <UserCheck className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -946,7 +979,7 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
               <button
                 type="button"
                 id="mode-roster-list-btn"
-                onClick={() => setMobileRollCallMode('cards')}
+                onClick={() => handleSetRollCallMode('cards')}
                 className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg transition cursor-pointer min-h-[38px] sm:min-h-0 ${
                   mobileRollCallMode === 'cards'
                     ? 'bg-white text-slate-900 shadow-xs'
@@ -960,7 +993,7 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
               <button
                 type="button"
                 id="mode-rapid-rollcall-btn"
-                onClick={() => setMobileRollCallMode('rapid')}
+                onClick={() => handleSetRollCallMode('rapid')}
                 className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg transition cursor-pointer min-h-[38px] sm:min-h-0 ${
                   mobileRollCallMode === 'rapid'
                     ? 'bg-linear-to-r from-teal-600 to-emerald-600 text-white shadow-xs'
@@ -1066,28 +1099,8 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
         </div>
       </div>
 
-      {/* Student List Matrix Cards or Rapid Roll Call Mode */}
-      {mobileRollCallMode === 'rapid' ? (
-        <RapidRollCallView
-          students={filteredStudents}
-          recordsMap={recordsMap}
-          counterpartMap={counterpartMap}
-          selectedSession={selectedSession}
-          selectedDate={selectedDate}
-          selectedGrade={selectedGrade === 'ALL' ? (isRTL ? 'ހުރިހާ ގްރޭޑެއް' : 'All Grades') : selectedGrade}
-          isSchoolClosed={isSchoolClosed}
-          isSessionSubmitted={isSessionSubmitted}
-          isSuperAdmin={isSuperAdmin}
-          onStatusChange={handleStatusChange}
-          onArrivalTimeChange={handleArrivalTimeChange}
-          onReasonChange={handleReasonChange}
-          onBulkMarkPresent={handleBulkMarkPresentClicked}
-          onOpenSmsDraftModal={onOpenSmsDraftModal}
-          onSubmitSession={onSubmitSession}
-          onSwitchToCards={() => setMobileRollCallMode('cards')}
-        />
-      ) : (
-        <div className="space-y-3">
+      {/* Student List Matrix Cards */}
+      <div className="space-y-3">
           {filteredStudents.length === 0 ? (
             <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-500">
               <Info className="w-8 h-8 mx-auto text-slate-400 mb-2" />
@@ -1480,7 +1493,6 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
           })
         )}
       </div>
-      )}
 
       {/* 2. Floating Mobile Action Dock (Quick Submit / Roster Summary) */}
       <div className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-30 px-3.5 py-2.5 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-lg flex items-center justify-between md:hidden">
@@ -1503,7 +1515,7 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
           {/* Quick Mode Toggle in Floating Dock */}
           <button
             type="button"
-            onClick={() => setMobileRollCallMode(mobileRollCallMode === 'rapid' ? 'cards' : 'rapid')}
+            onClick={() => handleSetRollCallMode(mobileRollCallMode === 'rapid' ? 'cards' : 'rapid')}
             className={`px-2.5 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1 min-h-[40px] shadow-2xs ${
               mobileRollCallMode === 'rapid'
                 ? 'bg-slate-900 text-white'
@@ -1566,6 +1578,8 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
           )}
         </div>
       </div>
+      </>
+    )}
 
       {/* 3. Pending Attendance Warning Modal */}
       <PendingAttendanceWarningModal

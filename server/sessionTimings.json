@@ -1,0 +1,29 @@
+{
+  "normal": {
+    "morning": {
+      "startTime": "07:45",
+      "endTime": "10:15",
+      "label": "Morning Session",
+      "labelDhivehi": "ހެނދުނުގެ ސެޝަން"
+    },
+    "afternoon": {
+      "startTime": "10:45",
+      "endTime": "13:15",
+      "label": "Afternoon Session",
+      "labelDhivehi": "މެންދުރުފަހުގެ ސެޝަން"
+    }
+  },
+  "morning": {
+    "startTime": "07:45",
+    "endTime": "10:15",
+    "label": "Morning Session",
+    "labelDhivehi": "ހެނދުނުގެ ސެޝަން"
+  },
+  "afternoon": {
+    "startTime": "10:45",
+    "endTime": "13:15",
+    "label": "Afternoon Session",
+    "labelDhivehi": "މެންދުރުފަހުގެ ސެޝަން"
+  },
+  "temporaryOverrides": []
+}

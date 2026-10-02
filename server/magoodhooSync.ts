@@ -3,7 +3,7 @@ import http from 'http';
 import vm from 'vm';
 import fs from 'fs';
 import path from 'path';
-import { Student, GradeLevel, User } from '../src/types';
+import type { Student, GradeLevel, User } from '../src/types.ts';
 
 export interface MagoodhooSyncState {
   sourceUrl: string;
@@ -64,11 +64,13 @@ export class MagoodhooSyncEngine {
 
   private constructor() {
     this.loadInitialCache();
-    // Perform initial live sync immediately on startup
-    this.syncFromRemotePortal().catch((err) => {
-      console.warn('[MagoodhooSync] Initial live sync failed, using cached directory:', err.message);
-    });
-    this.startAutoSync(3 * 60 * 1000); // Check every 3 minutes
+    // In persistent server mode (e.g. AI Studio dev), perform initial live sync & start interval
+    if (!process.env.VERCEL && !process.env.NOW_REGION) {
+      this.syncFromRemotePortal().catch((err) => {
+        console.warn('[MagoodhooSync] Initial live sync failed, using cached directory:', err.message);
+      });
+      this.startAutoSync(3 * 60 * 1000); // Check every 3 minutes
+    }
   }
 
   public static getInstance(): MagoodhooSyncEngine {

@@ -1,6 +1,6 @@
 // Seed Data Generator for 215 Maldivian Students, 35 Staff Members, and Academic Calendar
 
-import { User, Student, GradeLevel, AcademicCalendarDay, AttendanceRecord, ClassDelegation } from '../src/types';
+import type { User, Student, GradeLevel, AcademicCalendarDay, AttendanceRecord, ClassDelegation } from '../src/types.ts';
 
 export const ALL_GRADES: GradeLevel[] = [
   'LKG', 'UKG',

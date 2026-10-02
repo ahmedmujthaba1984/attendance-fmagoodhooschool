@@ -35,6 +35,7 @@ import {
   LayoutGrid,
   ListFilter,
   Zap,
+  Settings,
 } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import {
@@ -47,10 +48,13 @@ import {
   PendingAttendanceSession,
   DayType,
   User,
+  SchoolSessionTimings,
 } from '../types';
 import { PendingAttendanceWarningModal } from './PendingAttendanceWarningModal';
 import { SuperAdminRevertModal } from './SuperAdminRevertModal';
 import { RapidRollCallView } from './RapidRollCallView';
+import { SessionTimingsModal } from './SessionTimingsModal';
+import { getEffectiveSessionTimings } from '../utils/sessionTimingsHelper';
 
 interface AttendanceMatrixProps {
   students: Student[];
@@ -62,6 +66,8 @@ interface AttendanceMatrixProps {
   setSelectedSession: (s: SessionType) => void;
   selectedDate: string;
   setSelectedDate: (d: string) => void;
+  sessionTimings?: SchoolSessionTimings;
+  onUpdateSessionTimings?: (timings: SchoolSessionTimings) => Promise<void> | void;
   onUpdateRecord: (rec: AttendanceRecord) => void;
   onBulkMarkPresent: (onlyUnmarked?: boolean) => void;
   onOpenVoiceModal: () => void;
@@ -138,6 +144,11 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
   staffList,
   onSwitchStaff,
   onOpenLoginView,
+  sessionTimings = {
+    morning: { startTime: '07:45', endTime: '10:15', label: 'Morning Session', labelDhivehi: 'ހެނދުނުގެ ސެޝަން' },
+    afternoon: { startTime: '10:45', endTime: '13:15', label: 'Afternoon Session', labelDhivehi: 'މެންދުރުފަހުގެ ސެޝަން' },
+  },
+  onUpdateSessionTimings,
 }) => {
   const { t, isRTL } = useLanguage();
 
@@ -151,6 +162,10 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
   const [mobileRollCallMode, setMobileRollCallMode] = useState<'cards' | 'rapid'>('cards');
   const [showWarningModal, setShowWarningModal] = useState(false);
   const [showLockedNoticeModal, setShowLockedNoticeModal] = useState(false);
+  const [showTimingsModal, setShowTimingsModal] = useState(false);
+
+  // Compute effective session timing (normal or temporary override for selected date)
+  const effectiveTimings = getEffectiveSessionTimings(sessionTimings, selectedDate);
 
   const handlePrevDay = () => {
     try {
@@ -310,10 +325,6 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
     if (isSchoolClosed) {
       return;
     }
-    if (pendingPreviousSession) {
-      setShowWarningModal(true);
-      return;
-    }
     if (isSessionSubmitted) {
       if (!isSuperAdmin) {
         setShowLockedNoticeModal(true);
@@ -351,10 +362,6 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
 
   const handleReasonChange = (studentId: string, reason: LeaveReason) => {
     if (isSchoolClosed) return;
-    if (pendingPreviousSession) {
-      setShowWarningModal(true);
-      return;
-    }
     if (isSessionSubmitted && !isSuperAdmin) {
       setShowLockedNoticeModal(true);
       return;
@@ -374,10 +381,6 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
 
   const handleArrivalTimeChange = (studentId: string, time: string) => {
     if (isSchoolClosed) return;
-    if (pendingPreviousSession) {
-      setShowWarningModal(true);
-      return;
-    }
     if (isSessionSubmitted && !isSuperAdmin) {
       setShowLockedNoticeModal(true);
       return;
@@ -397,10 +400,6 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
 
   const handleBulkMarkPresentClicked = (onlyUnmarked: boolean = false) => {
     if (isSchoolClosed) return;
-    if (pendingPreviousSession) {
-      setShowWarningModal(true);
-      return;
-    }
     if (isSessionSubmitted && !isSuperAdmin) {
       setShowLockedNoticeModal(true);
       return;
@@ -410,10 +409,6 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
 
   const handleVoiceModalClicked = () => {
     if (isSchoolClosed) return;
-    if (pendingPreviousSession) {
-      setShowWarningModal(true);
-      return;
-    }
     if (isSessionSubmitted && !isSuperAdmin) {
       setShowLockedNoticeModal(true);
       return;
@@ -579,7 +574,7 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
                       : 'bg-slate-100 text-slate-600'
                   }`}
                 >
-                  07:45-10:15
+                  {effectiveTimings.morning.startTime}-{effectiveTimings.morning.endTime}
                 </span>
               </button>
               <button
@@ -605,8 +600,35 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
                       : 'bg-slate-100 text-slate-600'
                   }`}
                 >
-                  10:45-13:15
+                  {effectiveTimings.afternoon.startTime}-{effectiveTimings.afternoon.endTime}
                 </span>
+              </button>
+
+              {/* Configure Session Timings Button */}
+              <button
+                id="configure-session-timings-btn"
+                type="button"
+                onClick={() => setShowTimingsModal(true)}
+                className={`flex items-center justify-center gap-1.5 p-1.5 px-2.5 rounded-lg transition cursor-pointer shadow-2xs font-bold text-xs ${
+                  effectiveTimings.isTemporary
+                    ? 'bg-amber-500 text-white hover:bg-amber-600'
+                    : 'bg-white hover:bg-sky-50 text-slate-600 hover:text-sky-900 border border-slate-200'
+                }`}
+                title={
+                  effectiveTimings.isTemporary
+                    ? `Temporary schedule active: ${effectiveTimings.override?.reason || 'Special hours'}`
+                    : (isRTL ? 'ސެޝަން ވަގުތުތައް ބަދަލުކުރުން' : 'Configure Session Timings & Duration')
+                }
+              >
+                <Settings className={`w-3.5 h-3.5 ${effectiveTimings.isTemporary ? 'text-white' : 'text-slate-500 hover:text-sky-700'}`} />
+                <span className="hidden sm:inline">
+                  {effectiveTimings.isTemporary
+                    ? (isRTL ? 'ވަގުތީ ވަގުތު' : 'Temporary')
+                    : (isRTL ? 'ވަގުތު' : 'Timings')}
+                </span>
+                {effectiveTimings.isTemporary && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                )}
               </button>
             </div>
           </div>
@@ -762,45 +784,7 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
           </div>
         )}
 
-        {/* 2. Previous Attendance Pending Warning Box */}
-        {pendingPreviousSession && !isSchoolClosed && (
-          <div
-            id="pending-attendance-banner"
-            className="mt-4 p-4 sm:p-5 rounded-2xl bg-linear-to-r from-amber-50 via-orange-50/70 to-yellow-50 border-2 border-amber-400 text-amber-950 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4"
-          >
-            <div className="flex items-start sm:items-center gap-3.5">
-              <div className="w-11 h-11 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-md">
-                <AlertTriangle className="w-6 h-6 animate-pulse" />
-              </div>
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-black uppercase tracking-wider bg-amber-200/90 text-amber-900 px-2.5 py-0.5 rounded-full border border-amber-300">
-                    {t.pendingAttendanceAlert}
-                  </span>
-                  <span className="text-[11px] font-bold bg-white text-amber-900 px-2 py-0.5 rounded-md border border-amber-300">
-                    {pendingPreviousSession.date}
-                  </span>
-                </div>
-                <h4 className="text-sm sm:text-base font-extrabold text-amber-950 mt-1">
-                  {isRTL ? pendingPreviousSession.reasonDhivehi : pendingPreviousSession.reason}
-                </h4>
-                <p className="text-xs text-amber-800 mt-0.5">
-                  {t.pendingAttendanceModalDesc}
-                </p>
-              </div>
-            </div>
 
-            <button
-              id="open-pending-warning-btn"
-              type="button"
-              onClick={() => setShowWarningModal(true)}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition shadow-md cursor-pointer shrink-0"
-            >
-              <AlertTriangle className="w-4 h-4 text-amber-100" />
-              <span>{t.goToPendingAttendance}</span>
-            </button>
-          </div>
-        )}
 
         {/* Session Finalized & Revert Notice Banner */}
         {!isSchoolClosed && isSessionSubmitted && (
@@ -1218,7 +1202,7 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
                         )}
                         <span>{isMorning ? t.morningSessionShort : t.postBreakSessionShort}</span>
                         <span className="opacity-75 font-normal">
-                          ({isMorning ? '07:45-10:15' : '10:45-13:15'})
+                          ({isMorning ? `${effectiveTimings.morning.startTime}-${effectiveTimings.morning.endTime}` : `${effectiveTimings.afternoon.startTime}-${effectiveTimings.afternoon.endTime}`})
                         </span>
                       </span>
 
@@ -1854,6 +1838,15 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
         currentUser={currentUser}
         onConfirmRecordRevert={onRevertRecord}
         onConfirmSessionRevert={onRevertSession}
+      />
+
+      {/* Session Timings & Duration Settings Modal */}
+      <SessionTimingsModal
+        isOpen={showTimingsModal}
+        onClose={() => setShowTimingsModal(false)}
+        currentTimings={sessionTimings}
+        selectedDate={selectedDate}
+        onSave={onUpdateSessionTimings || (() => {})}
       />
     </div>
   );

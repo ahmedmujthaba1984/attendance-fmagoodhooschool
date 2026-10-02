@@ -44,6 +44,34 @@ export type LeaveReason =
 
 export type SyncStatus = 'SYNCED' | 'PENDING_OFFLINE';
 
+export interface SessionTimingConfig {
+  startTime: string; // e.g. "07:45"
+  endTime: string;   // e.g. "10:15"
+  label?: string;
+  labelDhivehi?: string;
+}
+
+export interface TemporarySessionOverride {
+  id: string;
+  date: string;          // YYYY-MM-DD
+  endDate?: string;      // optional end date
+  reason?: string;
+  reasonDhivehi?: string;
+  morning: SessionTimingConfig;
+  afternoon: SessionTimingConfig;
+  createdAt?: string;
+}
+
+export interface SchoolSessionTimings {
+  normal?: {
+    morning: SessionTimingConfig;
+    afternoon: SessionTimingConfig;
+  };
+  morning: SessionTimingConfig;
+  afternoon: SessionTimingConfig;
+  temporaryOverrides?: TemporarySessionOverride[];
+}
+
 export type GradeLevel =
   | 'LKG'
   | 'UKG'

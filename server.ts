@@ -9,8 +9,8 @@ import {
   generateAcademicCalendar,
   generatePastAttendance,
   ALL_GRADES,
-} from './server/seedData';
-import {
+} from './server/seedData.ts';
+import type {
   User,
   Student,
   AttendanceRecord,
@@ -27,9 +27,9 @@ import {
   ExtraClassAttendanceRecord,
   ExtraClassStatus,
   TermDurationConfig,
-} from './src/types';
+} from './src/types.ts';
 
-import { magoodhooSyncEngine } from './server/magoodhooSync';
+import { magoodhooSyncEngine } from './server/magoodhooSync.ts';
 
 dotenv.config();
 
@@ -74,17 +74,99 @@ magoodhooSyncEngine.onStaffUpdated((newStaff) => {
   console.log(`[server] Live staff directory updated with ${staffMembers.length} staff from remote portal.`);
 });
 
-// File persistence paths
-const CALENDAR_FILE_PATH = path.join(process.cwd(), 'server', 'calendarData.json');
-const ATTENDANCE_FILE_PATH = path.join(process.cwd(), 'server', 'attendanceData.json');
-const AUDIT_FILE_PATH = path.join(process.cwd(), 'server', 'auditLogs.json');
-const DELEGATIONS_FILE_PATH = path.join(process.cwd(), 'server', 'delegationsData.json');
-const EXTRA_CLASSES_FILE_PATH = path.join(process.cwd(), 'server', 'extraClassesData.json');
-const SESSION_FILE_PATH = path.join(process.cwd(), 'server', 'sessionData.json');
-const SUBMITTED_SESSIONS_FILE_PATH = path.join(process.cwd(), 'server', 'submittedSessionsData.json');
-const DELETED_CALENDAR_FILE_PATH = path.join(process.cwd(), 'server', 'deletedHolidaysData.json');
-const TERM_DATES_FILE_PATH = path.join(process.cwd(), 'server', 'termDates.json');
-const REPORT_CARD_OVERRIDES_FILE_PATH = path.join(process.cwd(), 'server', 'reportCardOverrides.json');
+// File persistence paths with safe fallback for serverless environments (e.g. Vercel)
+function getFilePath(filename: string): string {
+  const localSeed = path.join(process.cwd(), 'server', filename);
+  if (!process.env.VERCEL && !process.env.NOW_REGION) {
+    return localSeed;
+  }
+  const tmpPath = path.join('/tmp', 'server_data', filename);
+  try {
+    const tmpDir = path.join('/tmp', 'server_data');
+    if (!fs.existsSync(tmpDir)) {
+      fs.mkdirSync(tmpDir, { recursive: true });
+    }
+    if (!fs.existsSync(tmpPath) && fs.existsSync(localSeed)) {
+      fs.copyFileSync(localSeed, tmpPath);
+    }
+  } catch (err) {
+    console.warn(`Could not sync ${filename} to /tmp:`, err);
+  }
+  return tmpPath;
+}
+
+const CALENDAR_FILE_PATH = getFilePath('calendarData.json');
+const ATTENDANCE_FILE_PATH = getFilePath('attendanceData.json');
+const AUDIT_FILE_PATH = getFilePath('auditLogs.json');
+const DELEGATIONS_FILE_PATH = getFilePath('delegationsData.json');
+const EXTRA_CLASSES_FILE_PATH = getFilePath('extraClassesData.json');
+const SESSION_FILE_PATH = getFilePath('sessionData.json');
+const SUBMITTED_SESSIONS_FILE_PATH = getFilePath('submittedSessionsData.json');
+const DELETED_CALENDAR_FILE_PATH = getFilePath('deletedHolidaysData.json');
+const TERM_DATES_FILE_PATH = getFilePath('termDates.json');
+const REPORT_CARD_OVERRIDES_FILE_PATH = getFilePath('reportCardOverrides.json');
+const SESSION_TIMINGS_FILE_PATH = getFilePath('sessionTimings.json');
+
+const DEFAULT_SESSION_TIMINGS = {
+  normal: {
+    morning: {
+      startTime: '07:45',
+      endTime: '10:15',
+      label: 'Morning Session',
+      labelDhivehi: 'ހެނދުނުގެ ސެޝަން',
+    },
+    afternoon: {
+      startTime: '10:45',
+      endTime: '13:15',
+      label: 'Afternoon Session',
+      labelDhivehi: 'މެންދުރުފަހުގެ ސެޝަން',
+    },
+  },
+  morning: {
+    startTime: '07:45',
+    endTime: '10:15',
+    label: 'Morning Session',
+    labelDhivehi: 'ހެނދުނުގެ ސެޝަން',
+  },
+  afternoon: {
+    startTime: '10:45',
+    endTime: '13:15',
+    label: 'Afternoon Session',
+    labelDhivehi: 'މެންދުރުފަހުގެ ސެޝަން',
+  },
+  temporaryOverrides: [] as any[],
+};
+
+function loadSessionTimingsFromDisk() {
+  try {
+    if (fs.existsSync(SESSION_TIMINGS_FILE_PATH)) {
+      const raw = fs.readFileSync(SESSION_TIMINGS_FILE_PATH, 'utf-8');
+      const data = JSON.parse(raw);
+      if (data) {
+        const morning = data.normal?.morning || data.morning || DEFAULT_SESSION_TIMINGS.normal.morning;
+        const afternoon = data.normal?.afternoon || data.afternoon || DEFAULT_SESSION_TIMINGS.normal.afternoon;
+        const temporaryOverrides = Array.isArray(data.temporaryOverrides) ? data.temporaryOverrides : [];
+        return {
+          normal: { morning, afternoon },
+          morning,
+          afternoon,
+          temporaryOverrides,
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('Could not load session timings from disk:', err);
+  }
+  return DEFAULT_SESSION_TIMINGS;
+}
+
+function saveSessionTimingsToDisk(timings: any) {
+  try {
+    fs.writeFileSync(SESSION_TIMINGS_FILE_PATH, JSON.stringify(timings, null, 2), 'utf-8');
+  } catch (err) {
+    console.warn('Could not save session timings to disk:', err);
+  }
+}
 
 function loadTermDatesFromDisk(): TermDurationConfig[] {
   let list: TermDurationConfig[] = [];
@@ -695,80 +777,12 @@ function autoMarkClosedDayAttendance(dateStr: string, reason: string, reasonDv: 
   });
 }
 
-// Helper to find the earliest uncompleted previous attendance session
+// Helper to find uncompleted attendance session (previous days are ignored - start fresh from today onwards)
 function getPreviousPendingSession(
   targetDate: string,
   targetSession: SessionType
 ): PendingAttendanceSession | null {
-  // If targetDate itself is closed, manual marking is disabled anyway
-  if (checkSchoolClosed(targetDate).isClosed) {
-    return null;
-  }
-
-  // 1. Same-day check: if target is POST_BREAK, MORNING_BEFORE_BREAK must be submitted first!
-  if (targetSession === 'POST_BREAK') {
-    const morningKey = `${targetDate}_MORNING_BEFORE_BREAK`;
-    if (!submittedSessions.has(morningKey)) {
-      return {
-        date: targetDate,
-        sessionType: 'MORNING_BEFORE_BREAK',
-        gradeLevel: 'ALL',
-        sessionName: 'Morning Session (07:45 – 10:15)',
-        sessionNameDhivehi: 'ހެނދުނުގެ ސެޝަން (07:45 – 10:15)',
-        reason: `Morning session attendance for ${targetDate} has not been marked yet. You must mark morning attendance first before marking afternoon attendance.`,
-        reasonDhivehi: `މިއަދުގެ ހެނދުނުގެ ހާޒިރީ އަދި ފުރިހަމައެއް ނުވޭ. މެންދުރުފަހުގެ ހާޒިރީ ފުރުމުގެ ކުރިން ހެނދުނުގެ ހާޒިރީ ފުރަތަމަ ފުރަން ޖެހޭނެއެވެ.`,
-      };
-    }
-  }
-
-  // 2. Previous days check: look back up to 14 days before targetDate
-  const targetTime = new Date(targetDate + 'T00:00:00Z').getTime();
-  const dayMs = 24 * 60 * 60 * 1000;
-  const pendingSessionsFound: PendingAttendanceSession[] = [];
-
-  for (let i = 1; i <= 14; i++) {
-    const prevDateObj = new Date(targetTime - i * dayMs);
-    const prevDateStr = prevDateObj.toISOString().slice(0, 10);
-
-    // Skip closed days (they are auto-marked or weekends/holidays)
-    const closedStatus = checkSchoolClosed(prevDateStr);
-    if (closedStatus.isClosed) {
-      continue;
-    }
-
-    const morningKey = `${prevDateStr}_MORNING_BEFORE_BREAK`;
-    const postBreakKey = `${prevDateStr}_POST_BREAK`;
-
-    if (!submittedSessions.has(morningKey)) {
-      pendingSessionsFound.push({
-        date: prevDateStr,
-        sessionType: 'MORNING_BEFORE_BREAK',
-        gradeLevel: 'ALL',
-        sessionName: `Morning Session (${prevDateStr})`,
-        sessionNameDhivehi: `ހެނދުނުގެ ސެޝަން (${prevDateStr})`,
-        reason: `Attendance for ${prevDateStr} (Morning Session) is still pending. School attendance must be logged chronologically.`,
-        reasonDhivehi: `${prevDateStr} ގެ ހެނދުނުގެ ހާޒިރީ އަދި ފުރިހަމައެއް ނުވޭ. ހާޒިރީ ފުރަންވާނީ ތަރުތީބުންނެވެ.`,
-      });
-    }
-
-    if (!submittedSessions.has(postBreakKey)) {
-      pendingSessionsFound.push({
-        date: prevDateStr,
-        sessionType: 'POST_BREAK',
-        gradeLevel: 'ALL',
-        sessionName: `Afternoon Session (${prevDateStr})`,
-        sessionNameDhivehi: `މެންދުރުފަހުގެ ސެޝަން (${prevDateStr})`,
-        reason: `Attendance for ${prevDateStr} (Afternoon Session) is still pending. School attendance must be logged chronologically.`,
-        reasonDhivehi: `${prevDateStr} ގެ މެންދުރުފަހުގެ ހާޒިރީ އަދި ފުރިހަމައެއް ނުވޭ. ހާޒިރީ ފުރަންވާނީ ތަރުތީބުންނެވެ.`,
-      });
-    }
-  }
-
-  if (pendingSessionsFound.length > 0) {
-    // Return the earliest pending session
-    return pendingSessionsFound[pendingSessionsFound.length - 1];
-  }
-
+  // User directive: Start today onwards. Ignore previous days' pending attendance.
   return null;
 }
 
@@ -803,7 +817,7 @@ app.get(['/api/health', '/health'], (req, res) => {
 
 // 1. Auth & Staff Management with Password System
 const SUPER_ADMIN_EMAIL = 'ahmed.mujthaba@fmagoodhooschool.edu.mv';
-const PASSWORDS_FILE_PATH = path.join(process.cwd(), 'server', 'staffPasswords.json');
+const PASSWORDS_FILE_PATH = getFilePath('staffPasswords.json');
 
 interface StoredPasswordEntry {
   email: string;
@@ -2999,6 +3013,38 @@ app.put('/api/terms', (req, res) => {
   saveTermDatesToDisk(incomingTerms);
   logAudit('TERM_DATES_UPDATED', 'AcademicCalendar', `Updated school term duration dates`, req);
   res.json({ success: true, terms: incomingTerms });
+});
+
+// Session Timings Settings API
+app.get('/api/settings/session-timings', (req, res) => {
+  const timings = loadSessionTimingsFromDisk();
+  res.json({ timings });
+});
+
+app.put('/api/settings/session-timings', (req, res) => {
+  const incoming = req.body.timings;
+  if (!incoming) {
+    return res.status(400).json({ error: 'Invalid timings payload' });
+  }
+  const morning = incoming.normal?.morning || incoming.morning || DEFAULT_SESSION_TIMINGS.normal.morning;
+  const afternoon = incoming.normal?.afternoon || incoming.afternoon || DEFAULT_SESSION_TIMINGS.normal.afternoon;
+  const temporaryOverrides = Array.isArray(incoming.temporaryOverrides) ? incoming.temporaryOverrides : [];
+
+  const normalized = {
+    normal: { morning, afternoon },
+    morning,
+    afternoon,
+    temporaryOverrides,
+  };
+
+  saveSessionTimingsToDisk(normalized);
+  logAudit(
+    'SESSION_TIMINGS_UPDATED',
+    'SessionSettings',
+    `Updated school session timings: Morning (${morning.startTime} - ${morning.endTime}), Afternoon (${afternoon.startTime} - ${afternoon.endTime}), ${temporaryOverrides.length} temporary overrides active`,
+    req
+  );
+  res.json({ success: true, timings: normalized });
 });
 
 app.get('/api/reports/report-card-attendance', (req, res) => {

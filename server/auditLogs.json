@@ -1,5 +1,215 @@
 [
   {
+    "id": "audit-1790933171860-hgi88f",
+    "timestamp": "2026-10-02T09:26:11.860Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "SESSION_TIMINGS_UPDATED",
+    "entityAffected": "SessionSettings",
+    "ipAddress": "127.0.0.1",
+    "details": "Updated school session timings: Morning (07:45 - 10:15), Afternoon (10:45 - 13:15), 0 temporary overrides active"
+  },
+  {
+    "id": "audit-1790933161447-omfu7g",
+    "timestamp": "2026-10-02T09:26:01.447Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "SESSION_TIMINGS_UPDATED",
+    "entityAffected": "SessionSettings",
+    "ipAddress": "127.0.0.1",
+    "details": "Updated school session timings: Morning (07:45 - 10:15), Afternoon (10:45 - 13:15), 1 temporary overrides active"
+  },
+  {
+    "id": "audit-1790932772408-a4pq8y",
+    "timestamp": "2026-10-02T09:19:32.408Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "SESSION_TIMINGS_UPDATED",
+    "entityAffected": "SessionSettings",
+    "ipAddress": "203.104.27.154, 169.254.169.126",
+    "details": "Updated school session timings: Morning (06:40 - 09:35), Afternoon (10:10 - 12:35), 0 temporary overrides active"
+  },
+  {
+    "id": "audit-1790932758643-n7cwdy",
+    "timestamp": "2026-10-02T09:19:18.643Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "SESSION_TIMINGS_UPDATED",
+    "entityAffected": "SessionSettings",
+    "ipAddress": "203.104.27.154, 169.254.169.126",
+    "details": "Updated school session timings: Morning (06:40 - 09:35), Afternoon (10:10 - 12:35), 0 temporary overrides active"
+  },
+  {
+    "id": "audit-1790932573284-9mvjz9",
+    "timestamp": "2026-10-02T09:16:13.284Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "SESSION_TIMINGS_UPDATED",
+    "entityAffected": "SessionSettings",
+    "ipAddress": "127.0.0.1",
+    "details": "Updated school session timings: Morning (07:45 - 10:15), Afternoon (10:45 - 13:15), 0 temporary overrides active"
+  },
+  {
+    "id": "audit-1790932566407-bewpsn",
+    "timestamp": "2026-10-02T09:16:06.407Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "SESSION_TIMINGS_UPDATED",
+    "entityAffected": "SessionSettings",
+    "ipAddress": "127.0.0.1",
+    "details": "Updated school session timings: Morning (07:45 - 10:15), Afternoon (10:45 - 13:15), 1 temporary overrides active"
+  },
+  {
+    "id": "audit-1790932066682-5pjx6k",
+    "timestamp": "2026-10-02T09:07:46.682Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "SESSION_TIMINGS_UPDATED",
+    "entityAffected": "SessionSettings",
+    "ipAddress": "203.104.27.154, 169.254.169.126",
+    "details": "Updated school session timings: Morning (07:30 - 10:00), Afternoon (10:30 - 13:00)"
+  },
+  {
+    "id": "audit-1790932000011-pj9jcs",
+    "timestamp": "2026-10-02T09:06:40.011Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "SESSION_TIMINGS_UPDATED",
+    "entityAffected": "SessionSettings",
+    "ipAddress": "203.104.27.154, 169.254.169.126",
+    "details": "Updated school session timings: Morning (06:40 - 09:35), Afternoon (10:10 - 12:35)"
+  },
+  {
+    "id": "audit-1790931964249-0s67d8",
+    "timestamp": "2026-10-02T09:06:04.249Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "SESSION_TIMINGS_UPDATED",
+    "entityAffected": "SessionSettings",
+    "ipAddress": "203.104.27.154, 169.254.169.126",
+    "details": "Updated school session timings: Morning (06:40 - 09:35), Afternoon (10:10 - 12:35)"
+  },
+  {
+    "id": "audit-1790931668693-07v0uz",
+    "timestamp": "2026-10-02T09:01:08.693Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "SESSION_TIMINGS_UPDATED",
+    "entityAffected": "SessionSettings",
+    "ipAddress": "127.0.0.1",
+    "details": "Updated school session timings: Morning (07:45 - 10:15), Afternoon (10:45 - 13:15)"
+  },
+  {
+    "id": "audit-1790845390853-axwzr9",
+    "timestamp": "2026-10-01T09:03:10.853Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "SESSION_TIMINGS_UPDATED",
+    "entityAffected": "SessionSettings",
+    "ipAddress": "127.0.0.1",
+    "details": "Updated school session timings: Morning (07:45 - 10:15), Afternoon (10:45 - 13:15)"
+  },
+  {
+    "id": "audit-1790845090507-ymjvdf",
+    "timestamp": "2026-10-01T08:58:10.507Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_SESSION_FINALIZED",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "203.104.27.154, 169.254.169.126",
+    "details": "Attendance session finalized for 2026-10-01 (MORNING_BEFORE_BREAK) by Ahmed Mujthaba (Senior School Administration Officer)"
+  },
+  {
+    "id": "audit-1790845088516-fcnisx",
+    "timestamp": "2026-10-01T08:58:08.516Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "203.104.27.154, 169.254.169.126",
+    "details": "Marked Salaa Thiham Ahmed (Grade 3) as PRESENT  on 2026-10-01 by Ahmed Mujthaba (Senior School Administration Officer)"
+  },
+  {
+    "id": "audit-1790845061235-ungain",
+    "timestamp": "2026-10-01T08:57:41.235Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "203.104.27.154, 169.254.169.126",
+    "details": "Marked Waail Waseem (Grade 3) as PRESENT (SICK_LEAVE) on 2026-10-01 by Ahmed Mujthaba (Senior School Administration Officer)"
+  },
+  {
+    "id": "audit-1790845061229-exg4yy",
+    "timestamp": "2026-10-01T08:57:41.229Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "203.104.27.154, 169.254.169.126",
+    "details": "Marked Waail Waseem (Grade 3) as LEAVE (SICK_LEAVE) on 2026-10-01 by Ahmed Mujthaba (Senior School Administration Officer)"
+  },
+  {
+    "id": "audit-1790845042890-evo6vz",
+    "timestamp": "2026-10-01T08:57:22.890Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "203.104.27.154, 169.254.169.126",
+    "details": "Marked Miuwaan Bin Umar Yausan (Grade 3) as ABSENT  on 2026-10-01 by Ahmed Mujthaba (Senior School Administration Officer)"
+  },
+  {
+    "id": "audit-1790845008551-u0hjmz",
+    "timestamp": "2026-10-01T08:56:48.551Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "203.104.27.154, 169.254.169.126",
+    "details": "Marked Shiwaan Bin Mohamed Siraj (Grade 3) as PRESENT  on 2026-10-01 by Ahmed Mujthaba (Senior School Administration Officer)"
+  },
+  {
+    "id": "audit-1790845008545-tw3poa",
+    "timestamp": "2026-10-01T08:56:48.545Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "203.104.27.154, 169.254.169.126",
+    "details": "Marked Shiwaan Bin Mohamed Siraj (Grade 3) as LATE  on 2026-10-01 by Ahmed Mujthaba (Senior School Administration Officer)"
+  },
+  {
+    "id": "audit-1790844999792-axz2ap",
+    "timestamp": "2026-10-01T08:56:39.792Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "203.104.27.154, 169.254.169.126",
+    "details": "Marked Jundhullah Bin Ibrahim (Grade 3) as PRESENT  on 2026-10-01 by Ahmed Mujthaba (Senior School Administration Officer)"
+  },
+  {
+    "id": "audit-1790844999762-41nfqz",
+    "timestamp": "2026-10-01T08:56:39.762Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "203.104.27.154, 169.254.169.126",
+    "details": "Marked Jundhullah Bin Ibrahim (Grade 3) as LATE  on 2026-10-01 by Ahmed Mujthaba (Senior School Administration Officer)"
+  },
+  {
+    "id": "audit-1790844756743-qgbhlv",
+    "timestamp": "2026-10-01T08:52:36.743Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Mohamed Azaan Bin Areen (Grade 7) as PRESENT  on 2026-10-01 by Ahmed Mujthaba (Senior School Administration Officer)"
+  },
+  {
     "id": "audit-1790755364838-n67m1g",
     "timestamp": "2026-09-30T08:02:44.838Z",
     "userId": "stf-32",

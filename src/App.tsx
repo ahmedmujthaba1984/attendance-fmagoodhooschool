@@ -40,6 +40,7 @@ import {
   GradeLevel,
   SessionType,
   AcademicDayType,
+  SchoolSessionTimings,
 } from './types';
 
 function MainApp() {
@@ -135,6 +136,21 @@ function MainApp() {
     grade?: string;
   } | null>(null);
   const [isSessionSubmitted, setIsSessionSubmitted] = useState<boolean>(false);
+
+  // School Session Timings (configurable for Morning and Afternoon)
+  const [sessionTimings, setSessionTimings] = useState<SchoolSessionTimings>(() => {
+    try {
+      const cached = localStorage.getItem('school_session_timings');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.morning && parsed?.afternoon) return parsed;
+      }
+    } catch {}
+    return {
+      morning: { startTime: '07:45', endTime: '10:15', label: 'Morning Session', labelDhivehi: 'ހެނދުނުގެ ސެޝަން' },
+      afternoon: { startTime: '10:45', endTime: '13:15', label: 'Afternoon Session', labelDhivehi: 'މެންދުރުފަހުގެ ސެޝަން' },
+    };
+  });
 
   // Modals state
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
@@ -291,6 +307,20 @@ function MainApp() {
 
       // 7. Fetch Extra Classes Pending Badge
       fetchExtraClassesBadge();
+
+      // 8. Fetch Configured Session Timings
+      try {
+        const timingRes = await fetch('/api/settings/session-timings');
+        if (timingRes.ok) {
+          const timingData = await timingRes.json();
+          if (timingData.timings) {
+            setSessionTimings(timingData.timings);
+            localStorage.setItem('school_session_timings', JSON.stringify(timingData.timings));
+          }
+        }
+      } catch (err) {
+        console.warn('Could not fetch session timings', err);
+      }
     } catch (err) {
       console.warn('Network offline or backend warm-up, reading from offline cache', err);
       const cached = await offlineDb.students.toArray();
@@ -332,7 +362,7 @@ function MainApp() {
               }
             : undefined)
         );
-        setPendingPreviousSession(data.pendingPreviousSession || null);
+        setPendingPreviousSession(null);
         setIsSessionSubmitted(Boolean(data.isSessionSubmitted));
       } else {
         // Fetch from Dexie offline
@@ -738,6 +768,20 @@ function MainApp() {
     }
   };
 
+  const handleUpdateSessionTimings = async (newTimings: SchoolSessionTimings) => {
+    setSessionTimings(newTimings);
+    localStorage.setItem('school_session_timings', JSON.stringify(newTimings));
+    try {
+      await fetch('/api/settings/session-timings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ timings: newTimings }),
+      });
+    } catch (err) {
+      console.warn('Could not persist session timings to server', err);
+    }
+  };
+
   const handleDeclareSchoolClosed = async (reason: string, reasonDhivehi?: string) => {
     try {
       const res = await fetch('/api/school/close-day', {
@@ -1114,6 +1158,8 @@ function MainApp() {
             staffList={staffList}
             onSwitchStaff={handleSwitchUser}
             onOpenLoginView={() => setShowLoginView(true)}
+            sessionTimings={sessionTimings}
+            onUpdateSessionTimings={handleUpdateSessionTimings}
           />
         )}
 

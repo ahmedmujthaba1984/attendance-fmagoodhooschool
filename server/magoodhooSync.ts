@@ -40,6 +40,19 @@ const ALL_GRADES: GradeLevel[] = [
   'Grade 10',
 ];
 
+function safeWriteJsonSync(targetPath: string, data: any): void {
+  const tmpPath = `${targetPath}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`;
+  try {
+    fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2), 'utf-8');
+    fs.renameSync(tmpPath, targetPath);
+  } catch {
+    try {
+      if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
+    } catch {}
+    fs.writeFileSync(targetPath, JSON.stringify(data, null, 2), 'utf-8');
+  }
+}
+
 export class MagoodhooSyncEngine {
   private static instance: MagoodhooSyncEngine;
   private state: MagoodhooSyncState = {
@@ -409,7 +422,7 @@ export class MagoodhooSyncEngine {
       const extractedStaff = this.extractStaffFromBundle(bundleJs);
       if (extractedStaff.length > 0) {
         const staffFilePath = path.join(process.cwd(), 'server', 'magoodhooStaff.json');
-        fs.writeFileSync(staffFilePath, JSON.stringify(extractedStaff, null, 2), 'utf-8');
+        safeWriteJsonSync(staffFilePath, extractedStaff);
         this.updateStatsFromStaff(extractedStaff);
         this.notifyStaffListeners(extractedStaff);
         console.log(`[MagoodhooSync] Successfully synced ${extractedStaff.length} staff members live from portal!`);
@@ -498,7 +511,7 @@ export class MagoodhooSyncEngine {
 
         if (formattedStudents.length > 0) {
           const filePath = path.join(process.cwd(), 'server', 'magoodhooStudents.json');
-          fs.writeFileSync(filePath, JSON.stringify(formattedStudents, null, 2));
+          safeWriteJsonSync(filePath, formattedStudents);
 
           this.updateStatsFromStudents(formattedStudents, bundlePath);
           this.notifyListeners(formattedStudents);
@@ -524,7 +537,7 @@ export class MagoodhooSyncEngine {
       const liveStudents = await this.syncFromFirestore();
       if (liveStudents && liveStudents.length > 0) {
         const filePath = path.join(process.cwd(), 'server', 'magoodhooStudents.json');
-        fs.writeFileSync(filePath, JSON.stringify(liveStudents, null, 2), 'utf8');
+        safeWriteJsonSync(filePath, liveStudents);
 
         this.updateStatsFromStudents(liveStudents, 'live_firestore_edurms');
         this.notifyListeners(liveStudents);
@@ -607,7 +620,7 @@ export class MagoodhooSyncEngine {
       }));
 
       const filePath = path.join(process.cwd(), 'server', 'magoodhooStudents.json');
-      fs.writeFileSync(filePath, JSON.stringify(formatted, null, 2));
+      safeWriteJsonSync(filePath, formatted);
 
       this.updateStatsFromStudents(formatted, 'manual_imported_json');
       this.notifyListeners(formatted);
@@ -640,7 +653,7 @@ export class MagoodhooSyncEngine {
     };
     this.cachedStudents[idx] = updated;
     const filePath = path.join(process.cwd(), 'server', 'magoodhooStudents.json');
-    fs.writeFileSync(filePath, JSON.stringify(this.cachedStudents, null, 2));
+    safeWriteJsonSync(filePath, this.cachedStudents);
     this.updateStatsFromStudents(this.cachedStudents, 'local_edit');
     this.notifyListeners(this.cachedStudents);
     return { success: true, student: updated };

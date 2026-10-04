@@ -933,7 +933,7 @@ export const StudentReportView: React.FC<StudentReportViewProps> = ({
                     </span>
                     <div className="flex items-baseline gap-1 mt-1">
                       <span className="text-2xl font-black text-sky-900">
-                        {reportData.morningAttendanceRate ?? reportData.attendanceRate}%
+                        {(reportData.morningAttendanceRate ?? reportData.attendanceRate) != null ? `${reportData.morningAttendanceRate ?? reportData.attendanceRate}%` : '-'}
                       </span>
                     </div>
                     <span className="text-[10px] text-sky-600 block mt-0.5">

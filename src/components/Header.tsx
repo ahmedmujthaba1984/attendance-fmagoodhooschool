@@ -21,6 +21,7 @@ import {
   ShieldAlert,
   Mail,
   BookOpen,
+  RotateCcw,
 } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { PWAInstallButton } from './PWAInstallButton';
@@ -39,6 +40,7 @@ interface HeaderProps {
   onLogout?: () => void;
   onOpenChangePassword?: () => void;
   onOpenSuperAdminPasswords?: () => void;
+  onResetAllAttendance?: () => void;
   pendingExtraClassesCount?: number;
 }
 
@@ -54,6 +56,7 @@ export const Header: React.FC<HeaderProps> = ({
   onLogout,
   onOpenChangePassword,
   onOpenSuperAdminPasswords,
+  onResetAllAttendance,
   pendingExtraClassesCount,
 }) => {
   const { t, language, toggleLanguage, isRTL } = useLanguage();
@@ -279,6 +282,27 @@ export const Header: React.FC<HeaderProps> = ({
                         <div>{isRTL ? 'ސްޓާފް ޕާސްވޯޑް މެނޭޖްމަންޓް' : 'Staff Password Management'}</div>
                         <div className="text-[10px] text-amber-700/80 font-normal">
                           Reset all to 1234 or manage staff passwords
+                        </div>
+                      </div>
+                    </button>
+                  )}
+
+                  {/* Super Admin Reset All Attendance Option */}
+                  {((currentUser?.isSuperAdmin || currentUser?.email?.toLowerCase() === 'ahmed.mujthaba@fmagoodhooschool.edu.mv') && onResetAllAttendance) && (
+                    <button
+                      id="reset-all-attendance-header-btn"
+                      type="button"
+                      onClick={() => {
+                        setShowStaffMenu(false);
+                        onResetAllAttendance();
+                      }}
+                      className="w-full px-3 py-2 text-left rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-900 border border-rose-200/80 font-bold text-xs flex items-center gap-2.5 transition cursor-pointer"
+                    >
+                      <RotateCcw className="w-4 h-4 text-rose-600 shrink-0" />
+                      <div className="flex-1">
+                        <div>{isRTL ? 'ހުރިހާ ހާޒިރީއެއް ފޮހެލާ / ރީސެޓް' : 'Reset All Attendance'}</div>
+                        <div className="text-[10px] text-rose-700/80 font-normal">
+                          {isRTL ? 'ހުރިހާ ދަންފަޅިތަކެއްގެ ހާޒިރީ ރީސެޓްކުރުން' : 'Clear all attendance records & reset marked sessions'}
                         </div>
                       </div>
                     </button>

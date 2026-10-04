@@ -140,10 +140,10 @@ export const YearlyReportView: React.FC<YearlyReportViewProps> = ({
       { Metric: 'MoE Standard Quota', Value: `${yearlyData.moeStandardDays} Days` },
       { Metric: 'Closed / Holidays Deducted', Value: `${yearlyData.closedDaysDeducted} Days` },
       { Metric: 'Net Required Attendance Days', Value: `${yearlyData.netRequiredDays} Days` },
-      { Metric: 'Annual Average Rate', Value: `${yearlyData.annualAverageRate}%` },
+      { Metric: 'Annual Average Rate', Value: yearlyData.annualAverageRate != null ? `${yearlyData.annualAverageRate}%` : '-' },
       {
         Metric: 'Morning Annual Rate',
-        Value: `${yearlyData.morningAnnualRate ?? yearlyData.annualAverageRate}%`,
+        Value: (yearlyData.morningAnnualRate ?? yearlyData.annualAverageRate) != null ? `${yearlyData.morningAnnualRate ?? yearlyData.annualAverageRate}%` : '-',
       },
       {
         Metric: 'Afternoon Annual Rate',
@@ -159,7 +159,7 @@ export const YearlyReportView: React.FC<YearlyReportViewProps> = ({
       },
       {
         Metric: 'Combined Annual Rate',
-        Value: `${yearlyData.combinedAnnualRate ?? yearlyData.annualAverageRate}%`,
+        Value: (yearlyData.combinedAnnualRate ?? yearlyData.annualAverageRate) != null ? `${yearlyData.combinedAnnualRate ?? yearlyData.annualAverageRate}%` : '-',
       },
       { Metric: 'Total Extra Classes Held', Value: yearlyData.totalExtraClasses ?? 48 },
       { Metric: 'Total Enrolled Students', Value: yearlyData.totalEnrolled },
@@ -174,10 +174,10 @@ export const YearlyReportView: React.FC<YearlyReportViewProps> = ({
       Month: m.monthName,
       'Instructional Days': m.instructionalDays,
       'Closed Days Deducted': m.closedDays,
-      'Average Rate (%)': `${m.rate || m.averageRate}%`,
-      'Morning Rate (%)': `${m.morningRate ?? m.rate}%`,
-      'Afternoon Rate (%)': `${m.afternoonRate ?? m.rate}%`,
-      'Official Rate (%)': `${m.officialRate ?? m.rate}%`,
+      'Average Rate (%)': (m.rate || m.averageRate) != null ? `${m.rate || m.averageRate}%` : '-',
+      'Morning Rate (%)': (m.morningRate ?? m.rate) != null ? `${m.morningRate ?? m.rate}%` : '-',
+      'Afternoon Rate (%)': (m.afternoonRate ?? m.rate) != null ? `${m.afternoonRate ?? m.rate}%` : '-',
+      'Official Rate (%)': (m.officialRate ?? m.rate) != null ? `${m.officialRate ?? m.rate}%` : '-',
       'Extra Class Rate (%)': (yearlyData.totalExtraClasses ?? 0) === 0 || m.extraClassRate == null ? '-' : `${m.extraClassRate}%`,
     }));
     const wsMonths = XLSX.utils.json_to_sheet(months);
@@ -187,10 +187,10 @@ export const YearlyReportView: React.FC<YearlyReportViewProps> = ({
     const grades = (yearlyData.gradeBreakdown || []).map((g) => ({
       Grade: g.grade,
       Enrolled: g.enrolled,
-      'Annual Rate (%)': `${g.annualRate}%`,
-      'Morning Rate (%)': `${g.morningRate ?? g.annualRate}%`,
-      'Afternoon Rate (%)': `${g.afternoonRate ?? g.annualRate}%`,
-      'Official Rate (%)': `${g.officialRate ?? g.annualRate}%`,
+      'Annual Rate (%)': g.annualRate != null ? `${g.annualRate}%` : '-',
+      'Morning Rate (%)': (g.morningRate ?? g.annualRate) != null ? `${g.morningRate ?? g.annualRate}%` : '-',
+      'Afternoon Rate (%)': (g.afternoonRate ?? g.annualRate) != null ? `${g.afternoonRate ?? g.annualRate}%` : '-',
+      'Official Rate (%)': (g.officialRate ?? g.annualRate) != null ? `${g.officialRate ?? g.annualRate}%` : '-',
       'Extra Class Rate (%)': (yearlyData.totalExtraClasses ?? 0) === 0 || g.extraClassRate == null ? '-' : `${g.extraClassRate}%`,
       '100% Perfect Attendance': g.perfectAttendanceCount,
       'Chronic Truancy (<80%)': g.chronicCount,
@@ -407,7 +407,7 @@ export const YearlyReportView: React.FC<YearlyReportViewProps> = ({
                   <span>{mode}</span>
                 </span>
                 <span className="text-2xl font-black text-slate-900 block mt-1">
-                  {yearlyData.annualAverageRate}%
+                  {yearlyData.annualAverageRate != null ? `${yearlyData.annualAverageRate}%` : '-'}
                 </span>
               </div>
             </div>

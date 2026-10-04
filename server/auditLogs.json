@@ -1,5 +1,95 @@
 [
   {
+    "id": "audit-1791105378312-nu929v",
+    "timestamp": "2026-10-04T09:16:18.312Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "SUBSTITUTE_ASSIGNED",
+    "entityAffected": "ClassDelegation",
+    "ipAddress": "127.0.0.1",
+    "details": "Assigned substitute Aishath Najudha to cover Grade 4 for Ahmed Mujthaba on 2026-10-04"
+  },
+  {
+    "id": "audit-1791105378306-pgabz7",
+    "timestamp": "2026-10-04T09:16:18.306Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_RESET_ALL",
+    "entityAffected": "AttendanceRecord",
+    "ipAddress": "127.0.0.1",
+    "details": "All attendance records and submitted sessions have been reset to empty by Ahmed Mujthaba. System is ready for fresh attendance entry."
+  },
+  {
+    "id": "audit-1791105378302-o1cqfe",
+    "timestamp": "2026-10-04T09:16:18.302Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_SESSION_REVERTED_BY_SUPER_ADMIN",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Super Admin (Ahmed Mujthaba) unlocked/reopened finalized attendance session for 2026-10-04 (MORNING_BEFORE_BREAK). Reason: Teacher needed to correct entry"
+  },
+  {
+    "id": "audit-1791105378296-1yu2ij",
+    "timestamp": "2026-10-04T09:16:18.296Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_RECORD_REVERTED_BY_SUPER_ADMIN",
+    "entityAffected": "AttendanceRecord",
+    "ipAddress": "127.0.0.1",
+    "details": "Super Admin (Ahmed Mujthaba) reverted attendance for Fathimath Eenaal Mohamed Rafeeu (Grade 4) on 2026-10-04 (MORNING_BEFORE_BREAK): was PRESENT → corrected to LATE. Reason: Verified late in class"
+  },
+  {
+    "id": "audit-1791105378290-7f1bqa",
+    "timestamp": "2026-10-04T09:16:18.290Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_SESSION_FINALIZED",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Attendance session finalized for 2026-10-04 (MORNING_BEFORE_BREAK) by Ahmed Mujthaba (Senior School Administration Officer)"
+  },
+  {
+    "id": "audit-1791105378275-w39ucz",
+    "timestamp": "2026-10-04T09:16:18.275Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Fathimath Eenaal Mohamed Rafeeu (Grade 4) as PRESENT  on 2026-10-04 by Ahmed Mujthaba (Senior School Administration Officer)"
+  },
+  {
+    "id": "audit-1791098387332-tiz71t",
+    "timestamp": "2026-10-04T07:19:47.332Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_RESET_ALL",
+    "entityAffected": "AttendanceRecord",
+    "ipAddress": "127.0.0.1",
+    "details": "All attendance records and submitted sessions have been reset to empty by Ahmed Mujthaba. System is ready for fresh attendance entry."
+  },
+  {
+    "id": "audit-1791098387313-96l8bh",
+    "timestamp": "2026-10-04T07:19:47.313Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Aasha Binth Nafiz (LKG) as PRESENT  on 2026-10-04 by Ahmed Mujthaba (Senior School Administration Officer)"
+  },
+  {
+    "id": "audit-1791098377693-rl1mzp",
+    "timestamp": "2026-10-04T07:19:37.693Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_RESET_ALL",
+    "entityAffected": "AttendanceRecord",
+    "ipAddress": "127.0.0.1",
+    "details": "All attendance records and submitted sessions have been reset to empty by Ahmed Mujthaba. System is ready for fresh attendance entry."
+  },
+  {
     "id": "audit-1790933171860-hgi88f",
     "timestamp": "2026-10-02T09:26:11.860Z",
     "userId": "stf-32",

@@ -1,5 +1,14 @@
 [
   {
+    "id": "del-1791105378312",
+    "date": "2026-10-04",
+    "originalTeacherId": "stf-32",
+    "substituteTeacherId": "stf-33",
+    "gradeLevel": "Grade 4",
+    "reason": "Sick leave coverage",
+    "createdAt": "2026-10-04T09:16:18.312Z"
+  },
+  {
     "id": "del-1790588152238",
     "date": "2026-09-28",
     "originalTeacherId": "stf-15",

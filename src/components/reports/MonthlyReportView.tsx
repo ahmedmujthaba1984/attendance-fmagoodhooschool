@@ -123,26 +123,26 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
       { Metric: 'Report Mode', Value: modeLabel },
       { Metric: 'Instructional Days', Value: monthlyData.instructionalDays },
       { Metric: 'Closed / Holidays Deducted', Value: monthlyData.closedDays },
-      { Metric: 'Monthly Attendance Rate', Value: `${monthlyData.monthlyRate}%` },
+      { Metric: 'Monthly Attendance Rate', Value: monthlyData.monthlyRate != null ? `${monthlyData.monthlyRate}%` : '-' },
       {
         Metric: 'Morning Monthly Rate',
-        Value: `${monthlyData.morningMonthlyRate ?? monthlyData.monthlyRate}%`,
+        Value: (monthlyData.morningMonthlyRate ?? monthlyData.monthlyRate) != null ? `${monthlyData.morningMonthlyRate ?? monthlyData.monthlyRate}%` : '-',
       },
       {
         Metric: 'Afternoon Monthly Rate',
-        Value: `${monthlyData.afternoonMonthlyRate ?? 93}%`,
+        Value: monthlyData.afternoonMonthlyRate != null ? `${monthlyData.afternoonMonthlyRate}%` : '-',
       },
       {
         Metric: 'Official Monthly Rate',
-        Value: `${monthlyData.officialMonthlyRate ?? monthlyData.monthlyRate}%`,
+        Value: (monthlyData.officialMonthlyRate ?? monthlyData.monthlyRate) != null ? `${monthlyData.officialMonthlyRate ?? monthlyData.monthlyRate}%` : '-',
       },
       {
         Metric: 'Extra Class Monthly Rate',
-        Value: `${monthlyData.extraClassMonthlyRate ?? 100}%`,
+        Value: (monthlyData.totalExtraClasses === 0 || monthlyData.extraClassMonthlyRate == null) ? '-' : `${monthlyData.extraClassMonthlyRate}%`,
       },
       {
         Metric: 'Combined Monthly Rate',
-        Value: `${monthlyData.combinedMonthlyRate ?? monthlyData.monthlyRate}%`,
+        Value: (monthlyData.combinedMonthlyRate ?? monthlyData.monthlyRate) != null ? `${monthlyData.combinedMonthlyRate ?? monthlyData.monthlyRate}%` : '-',
       },
       { Metric: 'Total Extra Classes Held', Value: monthlyData.totalExtraClasses ?? 0 },
       { Metric: 'Enrolled Students', Value: monthlyData.enrolledStudents },
@@ -154,7 +154,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
     const weeks = (monthlyData.weeklyBreakdown || []).map((w) => ({
       Week: w.weekLabel,
       'Instructional Days': w.instructionalDays,
-      'Rate (%)': `${w.rate}%`,
+      'Rate (%)': w.rate != null ? `${w.rate}%` : '-',
     }));
     const wsWeeks = XLSX.utils.json_to_sheet(weeks);
     XLSX.utils.book_append_sheet(wb, wsWeeks, 'Weekly Progression');
@@ -163,10 +163,10 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
     const grades = (monthlyData.gradeBreakdown || []).map((g) => ({
       Grade: g.grade,
       Enrolled: g.enrolled,
-      'Monthly Rate (%)': `${g.monthlyRate}%`,
-      'Official Rate (%)': `${g.officialRate ?? g.monthlyRate}%`,
+      'Monthly Rate (%)': g.monthlyRate != null ? `${g.monthlyRate}%` : '-',
+      'Official Rate (%)': (g.officialRate ?? g.monthlyRate) != null ? `${g.officialRate ?? g.monthlyRate}%` : '-',
       'Extra Class Rate (%)': (monthlyData.totalExtraClasses ?? 0) === 0 || g.extraClassRate == null ? '-' : `${g.extraClassRate}%`,
-      'Combined Rate (%)': `${g.combinedRate ?? g.monthlyRate}%`,
+      'Combined Rate (%)': (g.combinedRate ?? g.monthlyRate) != null ? `${g.combinedRate ?? g.monthlyRate}%` : '-',
       'Chronic Count (<80%)': g.chronicCount,
     }));
     const wsGrades = XLSX.utils.json_to_sheet(grades);
@@ -391,7 +391,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
                   <span>{mode}</span>
                 </span>
                 <span className="text-2xl font-black text-slate-900 block mt-1">
-                  {monthlyData.monthlyRate}%
+                  {monthlyData.monthlyRate != null ? `${monthlyData.monthlyRate}%` : '-'}
                 </span>
               </div>
             </div>
@@ -425,8 +425,8 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
                 <div className="flex items-baseline gap-1 mt-1">
                   <span className="text-2xl font-black text-slate-900">
                     {mode === 'EXTRA_CLASS'
-                      ? ((monthlyData.totalExtraClasses ?? 0) === 0 || monthlyData.extraClassMonthlyRate == null ? '-' : `${monthlyData.monthlyRate}%`)
-                      : `${monthlyData.monthlyRate}%`}
+                      ? ((monthlyData.totalExtraClasses ?? 0) === 0 || monthlyData.extraClassMonthlyRate == null ? '-' : (monthlyData.monthlyRate != null ? `${monthlyData.monthlyRate}%` : '-'))
+                      : (monthlyData.monthlyRate != null ? `${monthlyData.monthlyRate}%` : '-')}
                   </span>
                 </div>
                 <span className="text-[10px] text-slate-500 block mt-0.5">
@@ -550,7 +550,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
                         {mode === 'BOTH' ? (
                           <>
                             <td className="py-2.5 px-3 text-center font-mono font-bold text-sky-900">
-                              {gb.officialRate ?? gb.monthlyRate}%
+                              {(gb.officialRate ?? gb.monthlyRate) != null ? `${gb.officialRate ?? gb.monthlyRate}%` : '-'}
                             </td>
                             <td className="py-2.5 px-3 text-center font-mono font-bold text-purple-900">
                               {(monthlyData.totalExtraClasses ?? 0) === 0 || gb.extraClassRate == null ? '-' : `${gb.extraClassRate}%`}
@@ -558,14 +558,16 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
                             <td className="py-2.5 px-3 text-center font-mono font-black text-emerald-950">
                               <span
                                 className={`px-2.5 py-0.5 rounded-full ${
-                                  (gb.combinedRate ?? gb.monthlyRate) >= 90
-                                    ? 'bg-emerald-100 text-emerald-800 font-black'
-                                    : (gb.combinedRate ?? gb.monthlyRate) >= 80
-                                    ? 'bg-sky-100 text-sky-800 font-bold'
-                                    : 'bg-rose-100 text-rose-800 font-black'
+                                  (gb.combinedRate ?? gb.monthlyRate) != null
+                                    ? (gb.combinedRate ?? gb.monthlyRate)! >= 90
+                                      ? 'bg-emerald-100 text-emerald-800 font-black'
+                                      : (gb.combinedRate ?? gb.monthlyRate)! >= 80
+                                      ? 'bg-sky-100 text-sky-800 font-bold'
+                                      : 'bg-rose-100 text-rose-800 font-black'
+                                    : 'text-slate-500 font-normal'
                                 }`}
                               >
-                                {gb.combinedRate ?? gb.monthlyRate}%
+                                {(gb.combinedRate ?? gb.monthlyRate) != null ? `${gb.combinedRate ?? gb.monthlyRate}%` : '-'}
                               </span>
                             </td>
                           </>
@@ -573,14 +575,16 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
                           <td className="py-2.5 px-3 text-center font-mono font-black text-slate-900">
                             <span
                               className={`px-2.5 py-0.5 rounded-full ${
-                                gb.monthlyRate >= 90
-                                  ? 'bg-emerald-100 text-emerald-800 font-black'
-                                  : gb.monthlyRate >= 80
-                                  ? 'bg-sky-100 text-sky-800 font-bold'
-                                  : 'bg-rose-100 text-rose-800 font-black'
+                                gb.monthlyRate != null
+                                  ? gb.monthlyRate >= 90
+                                    ? 'bg-emerald-100 text-emerald-800 font-black'
+                                    : gb.monthlyRate >= 80
+                                    ? 'bg-sky-100 text-sky-800 font-bold'
+                                    : 'bg-rose-100 text-rose-800 font-black'
+                                  : 'text-slate-500 font-normal'
                               }`}
                             >
-                              {mode === 'EXTRA_CLASS' && ((monthlyData.totalExtraClasses ?? 0) === 0 || gb.extraClassRate == null) ? '-' : `${gb.monthlyRate}%`}
+                              {mode === 'EXTRA_CLASS' && ((monthlyData.totalExtraClasses ?? 0) === 0 || gb.extraClassRate == null) ? '-' : (gb.monthlyRate != null ? `${gb.monthlyRate}%` : '-')}
                             </span>
                           </td>
                         )}
@@ -595,7 +599,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
                         </td>
                         <td className="py-2.5 px-3 text-center">
                           <span className="text-[11px] font-semibold text-emerald-700">
-                            {gb.monthlyRate >= 80 ? '✓ Compliant' : '⚠ Non-compliant'}
+                            {gb.monthlyRate != null ? (gb.monthlyRate >= 80 ? '✓ Compliant' : '⚠ Non-compliant') : '-'}
                           </span>
                         </td>
                       </tr>

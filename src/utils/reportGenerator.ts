@@ -205,12 +205,11 @@ export function generateClientStudentReport({
     const mRec = studentRecsMap.get(`${d}_MORNING_BEFORE_BREAK`);
     const pRec = studentRecsMap.get(`${d}_POST_BREAK`);
 
-    const deterministic = (!mRec && d <= '2026-10-03') ? getDeterministicStudentAttendance(student, d) : null;
-    const finalMStatus = mRec?.status || deterministic?.status;
-    const finalPStatus = pRec?.status || deterministic?.postBreakStatus;
-    const finalMLeave = mRec?.leaveReason || deterministic?.leaveReason || 'NONE';
-    const finalPLeave = pRec?.leaveReason || deterministic?.leaveReason || 'NONE';
-    const finalArrival = mRec?.arrivalTime || deterministic?.arrivalTime;
+    const finalMStatus = mRec?.status;
+    const finalPStatus = pRec?.status;
+    const finalMLeave = mRec?.leaveReason || 'NONE';
+    const finalPLeave = pRec?.leaveReason || 'NONE';
+    const finalArrival = mRec?.arrivalTime;
 
     if (finalMStatus) {
       morningRecordedCount++;
@@ -553,36 +552,18 @@ export function generateClientReportCardData({
       }
     });
 
-    // 3. Compute baseline realistic attendance figures for the full term
-    // F. Magoodhoo School typical attendance rate is 92% - 98%
-    const admNum = parseInt(st.admissionNumber.replace(/\D/g, ''), 10) || (sIdx + 1) * 37;
-    const seed = admNum % 100;
+    // 3. Compute attendance figures for the term based on actual records
+    const hasAnyRecords = records.length > 0;
+    let baseAttended = 0;
+    let baseLate = 0;
+    let baseLeave = 0;
+    let baseAbsent = 0;
 
-    let baseRate = 95;
-    if (seed < 65) {
-      baseRate = 96 + (seed % 4); // 96% - 99%
-    } else if (seed < 88) {
-      baseRate = 92 + (seed % 4); // 92% - 95%
-    } else {
-      baseRate = 85 + (seed % 6); // 85% - 90%
-    }
-
-    let baseAttended = Math.min(totalInstructionalDays, Math.round((totalInstructionalDays * baseRate) / 100));
-    let baseLate = (seed % 4 === 0) ? 1 : (seed % 9 === 0) ? 2 : 0;
-    let baseLeave = (seed % 5 === 0) ? 2 : (seed % 3 === 0) ? 1 : 0;
-    let baseAbsent = Math.max(0, totalInstructionalDays - baseAttended - baseLeave);
-
-    // Apply any explicit records recorded in active applet sessions
-    if (recAbsent > 0) {
-      baseAbsent = Math.max(baseAbsent, recAbsent);
-      baseAttended = Math.max(0, totalInstructionalDays - baseAbsent - baseLeave);
-    }
-    if (recLate > 0) {
-      baseLate = Math.max(baseLate, recLate);
-    }
-    if (recLeave > 0) {
-      baseLeave = Math.max(baseLeave, recLeave);
-      baseAttended = Math.max(0, totalInstructionalDays - baseAbsent - baseLeave);
+    if (hasAnyRecords) {
+      baseAttended = recPresent + recLate;
+      baseLate = recLate;
+      baseLeave = recLeave;
+      baseAbsent = recAbsent;
     }
 
     // Apply manual override if present
@@ -724,18 +705,9 @@ export function generateClientWeeklyReport({
         else if (r.status === 'LEAVE') leave++;
         else if (r.status === 'ABSENT') abs++;
       });
-    } else if (dateStr <= '2026-10-03') {
-      students.forEach((st) => {
-        recs++;
-        const att = getDeterministicStudentAttendance(st, dateStr);
-        if (att.status === 'PRESENT') pres++;
-        else if (att.status === 'LATE') { pres++; late++; }
-        else if (att.status === 'LEAVE') leave++;
-        else if (att.status === 'ABSENT') abs++;
-      });
     }
 
-    const dayRate = recs > 0 ? Math.round(((pres + late) / recs) * 100) : 95;
+    const dayRate = recs > 0 ? Math.round(((pres + late) / recs) * 100) : null;
     totalPresentCount += pres + late;
     totalSessionCount += recs;
 
@@ -879,22 +851,10 @@ export function generateClientMonthlyReport({
     const stIds = new Set(gradeStudents.map((s) => s.id));
     const recs = monthRecords.filter((r) => stIds.has(r.studentId));
 
-    let rate = 95;
+    let rate: number | null = null;
     if (recs.length > 0) {
       const p = recs.filter((r) => r.status === 'PRESENT' || r.status === 'LATE').length;
       rate = Math.round((p / recs.length) * 100);
-    } else if (month <= 10) {
-      let p = 0;
-      let total = 0;
-      const validDates = schoolDates.filter(d => d <= '2026-10-03');
-      gradeStudents.forEach(st => {
-        validDates.forEach(d => {
-          total++;
-          const att = getDeterministicStudentAttendance(st, d);
-          if (att.status === 'PRESENT' || att.status === 'LATE') p++;
-        });
-      });
-      rate = total > 0 ? Math.round((p / total) * 100) : 95;
     }
 
     return {
@@ -914,9 +874,10 @@ export function generateClientMonthlyReport({
     enrolled: g.enrolled,
   }));
 
-  const overallRate = gradeBreakdown.length > 0
-    ? Math.round(gradeBreakdown.reduce((a, b) => a + b.monthlyRate, 0) / gradeBreakdown.length)
-    : 95;
+  const gradesWithRate = gradeBreakdown.filter((g) => g.monthlyRate != null);
+  const overallRate = gradesWithRate.length > 0
+    ? Math.round(gradesWithRate.reduce((a, b) => a + (b.monthlyRate || 0), 0) / gradesWithRate.length)
+    : null;
 
   // Weekly breakdown
   const weeksInMonth = ALL_ACADEMIC_WEEKS_2026.filter((w) => w.monthName === monthName);
@@ -940,17 +901,10 @@ export function generateClientMonthlyReport({
     const calDay = calendarDays.find((cd) => cd.date === dateStr);
     const isClosed = calDay ? ['PUBLIC_HOLIDAY', 'TERM_BREAK', 'SCHOOL_CLOSED', 'SCHOOL_CLOSED_WEATHER', 'NON_TEACHING_DAY'].includes(calDay.dayType) : false;
     const dayRecs = monthRecords.filter((r) => r.date === dateStr);
-    let r = 95;
+    let r: number | null = null;
     if (dayRecs.length > 0) {
       const p = dayRecs.filter((x) => x.status === 'PRESENT' || x.status === 'LATE').length;
       r = Math.round((p / dayRecs.length) * 100);
-    } else if (dateStr <= '2026-10-03') {
-      let p = 0;
-      students.forEach(st => {
-        const att = getDeterministicStudentAttendance(st, dateStr);
-        if (att.status === 'PRESENT' || att.status === 'LATE') p++;
-      });
-      r = students.length > 0 ? Math.round((p / students.length) * 100) : 95;
     }
     return {
       date: dateStr,
@@ -1041,10 +995,12 @@ export function generateClientYearlyReport({
     const stIds = new Set(gradeStudents.map((s) => s.id));
     const recs = records.filter((r) => stIds.has(r.studentId));
 
-    let annualRate = 100;
+    let annualRate: number | null = null;
+    let perfectCount = 0;
     if (recs.length > 0) {
       const p = recs.filter((r) => r.status === 'PRESENT' || r.status === 'LATE').length;
       annualRate = Math.round((p / recs.length) * 100);
+      if (annualRate >= 100) perfectCount = gradeStudents.length;
     }
 
     return {
@@ -1053,16 +1009,20 @@ export function generateClientYearlyReport({
       annualRate,
       officialRate: annualRate,
       extraClassRate: undefined,
-      chronicCount: annualRate < 80 ? Math.max(1, Math.round(gradeStudents.length * 0.1)) : 0,
-      perfectAttendanceCount: Math.round(gradeStudents.length * 0.4),
-      perfectCount: Math.round(gradeStudents.length * 0.4),
+      chronicCount: annualRate !== null && annualRate < 80 ? Math.max(1, Math.round(gradeStudents.length * 0.1)) : 0,
+      perfectAttendanceCount: perfectCount,
+      perfectCount,
     };
   });
 
   const baseQuota = 200;
   const closedDaysDeducted = 9;
   const netRequiredDays = 191;
-  const overallRate = 100;
+
+  const validGrades = gradeBreakdown.filter((g) => g.annualRate !== null);
+  const overallRate = validGrades.length > 0
+    ? Math.round(validGrades.reduce((a, b) => a + (b.annualRate || 0), 0) / validGrades.length)
+    : null;
 
   return {
     academicYear,
@@ -1082,7 +1042,7 @@ export function generateClientYearlyReport({
     totalExtraClasses: 0,
     totalEnrolled: students.length,
     chronicAbsenteesCount: 0,
-    perfectAttendanceCount: Math.round(students.length * 0.4),
+    perfectAttendanceCount: 0,
     monthlyBreakdown,
     gradeBreakdown,
     gradeYearlyRates: gradeBreakdown,

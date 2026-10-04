@@ -125,19 +125,19 @@ export const WeeklyReportView: React.FC<WeeklyReportViewProps> = ({
       { Metric: 'Date Range', Value: `${weeklyData.startDate} to ${weeklyData.endDate} (Sun - Thu)` },
       {
         Metric: 'Weekly Average Rate',
-        Value: `${weeklyData.weeklyAverageRate}%`,
+        Value: weeklyData.weeklyAverageRate != null ? `${weeklyData.weeklyAverageRate}%` : '-',
       },
       {
         Metric: 'Morning Weekly Rate',
-        Value: `${weeklyData.morningWeeklyRate ?? weeklyData.weeklyAverageRate}%`,
+        Value: (weeklyData.morningWeeklyRate ?? weeklyData.weeklyAverageRate) != null ? `${weeklyData.morningWeeklyRate ?? weeklyData.weeklyAverageRate}%` : '-',
       },
       {
         Metric: 'Afternoon Weekly Rate',
-        Value: `${weeklyData.afternoonWeeklyRate ?? 94}%`,
+        Value: weeklyData.afternoonWeeklyRate != null ? `${weeklyData.afternoonWeeklyRate}%` : '-',
       },
       {
         Metric: 'Official Weekly Rate',
-        Value: `${weeklyData.officialWeeklyRate ?? weeklyData.weeklyAverageRate}%`,
+        Value: (weeklyData.officialWeeklyRate ?? weeklyData.weeklyAverageRate) != null ? `${weeklyData.officialWeeklyRate ?? weeklyData.weeklyAverageRate}%` : '-',
       },
       {
         Metric: 'Extra Class Weekly Rate',
@@ -145,7 +145,7 @@ export const WeeklyReportView: React.FC<WeeklyReportViewProps> = ({
       },
       {
         Metric: 'Combined Weekly Rate',
-        Value: `${weeklyData.combinedWeeklyRate ?? weeklyData.weeklyAverageRate}%`,
+        Value: (weeklyData.combinedWeeklyRate ?? weeklyData.weeklyAverageRate) != null ? `${weeklyData.combinedWeeklyRate ?? weeklyData.weeklyAverageRate}%` : '-',
       },
       { Metric: 'Total School Days', Value: weeklyData.totalSchoolDays },
       { Metric: 'Instructional Days', Value: weeklyData.instructionalDays },
@@ -396,7 +396,7 @@ export const WeeklyReportView: React.FC<WeeklyReportViewProps> = ({
                   <span>{mode}</span>
                 </span>
                 <span className="text-2xl font-black text-slate-900 block mt-1">
-                  {weeklyData.weeklyAverageRate}%
+                  {weeklyData.weeklyAverageRate != null ? `${weeklyData.weeklyAverageRate}%` : '-'}
                 </span>
               </div>
             </div>

@@ -297,21 +297,29 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
     let absent = 0;
     let late = 0;
     let leave = 0;
+    let unmarked = 0;
 
     rosterStudents.forEach((st) => {
       const rec = recordsMap.get(st.id);
-      const status = rec?.status || 'PRESENT';
-      if (status === 'PRESENT') present++;
-      else if (status === 'ABSENT') absent++;
-      else if (status === 'LATE') late++;
-      else if (status === 'LEAVE') leave++;
+      if (!rec || !rec.status) {
+        unmarked++;
+      } else {
+        const status = rec.status;
+        if (status === 'PRESENT') present++;
+        else if (status === 'ABSENT') absent++;
+        else if (status === 'LATE') late++;
+        else if (status === 'LEAVE') leave++;
+      }
     });
 
-    return { present, absent, late, leave, total: rosterStudents.length };
+    return { present, absent, late, leave, unmarked, total: rosterStudents.length };
   }, [rosterStudents, recordsMap]);
 
   const markedStudentsCount = useMemo(() => {
-    return rosterStudents.filter((st) => recordsMap.has(st.id)).length;
+    return rosterStudents.filter((st) => {
+      const rec = recordsMap.get(st.id);
+      return rec && rec.status;
+    }).length;
   }, [rosterStudents, recordsMap]);
 
   // Students displayed (supporting instant status filter clicks e.g. "Absent (1)")
@@ -319,8 +327,10 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
     if (statusFilter === 'ALL') return rosterStudents;
     return rosterStudents.filter((st) => {
       const rec = recordsMap.get(st.id);
-      const stStatus = rec?.status || 'PRESENT';
-      return stStatus === statusFilter;
+      if (statusFilter === 'UNMARKED') {
+        return !rec || !rec.status;
+      }
+      return rec?.status === statusFilter;
     });
   }, [rosterStudents, statusFilter, recordsMap]);
 
@@ -374,12 +384,18 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
       return;
     }
     const existing = recordsMap.get(studentId);
-    if (!existing) return;
+    const activeUserId = currentUser?.id || 'staff-1';
+    const activeUserName = currentUser?.fullName;
     const updated: AttendanceRecord = {
-      ...existing,
+      id: existing?.id || `att-${studentId}-${selectedDate}-${selectedSession}`,
+      studentId,
+      date: selectedDate,
+      sessionType: selectedSession,
+      status: existing?.status || 'LEAVE',
       leaveReason: reason,
-      markedByUserId: currentUser?.id || existing.markedByUserId || 'staff-1',
-      markedByUserName: currentUser?.fullName || existing.markedByUserName,
+      arrivalTime: existing?.arrivalTime,
+      markedByUserId: activeUserId,
+      markedByUserName: activeUserName,
       syncStatus: 'PENDING_OFFLINE',
       updatedAt: new Date().toISOString(),
     };
@@ -393,12 +409,18 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
       return;
     }
     const existing = recordsMap.get(studentId);
-    if (!existing) return;
+    const activeUserId = currentUser?.id || 'staff-1';
+    const activeUserName = currentUser?.fullName;
     const updated: AttendanceRecord = {
-      ...existing,
+      id: existing?.id || `att-${studentId}-${selectedDate}-${selectedSession}`,
+      studentId,
+      date: selectedDate,
+      sessionType: selectedSession,
+      status: existing?.status || 'LATE',
+      leaveReason: existing?.leaveReason || 'NONE',
       arrivalTime: time,
-      markedByUserId: currentUser?.id || existing.markedByUserId || 'staff-1',
-      markedByUserName: currentUser?.fullName || existing.markedByUserName,
+      markedByUserId: activeUserId,
+      markedByUserName: activeUserName,
       syncStatus: 'PENDING_OFFLINE',
       updatedAt: new Date().toISOString(),
     };
@@ -1094,6 +1116,19 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
               >
                 {t.absent}: {currentCounters.absent}
               </button>
+              {currentCounters.unmarked > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter(statusFilter === 'UNMARKED' ? 'ALL' : 'UNMARKED')}
+                  className={`px-2.5 py-1 sm:py-0.5 rounded-full text-xs font-bold transition cursor-pointer border min-h-[30px] flex items-center ${
+                    statusFilter === 'UNMARKED'
+                      ? 'bg-slate-800 text-white border-slate-800 shadow-xs'
+                      : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'
+                  }`}
+                >
+                  {isRTL ? 'ފުރިހަމަނުކުރާ' : 'Unmarked'}: {currentCounters.unmarked}
+                </button>
+              )}
             </>
           )}
         </div>
@@ -1113,11 +1148,13 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
             const rec = recordsMap.get(student.id);
             const counterpartRec = counterpartMap.get(student.id);
             const isClosed = isSchoolClosed || rec?.status === 'SCHOOL_CLOSED';
-            const status = isClosed ? 'SCHOOL_CLOSED' : (rec?.status || 'PRESENT');
+            const isMarked = Boolean(rec && rec.status);
+            const status = isClosed ? 'SCHOOL_CLOSED' : rec?.status;
             const leaveReason = isClosed ? 'OFFICIAL_DUTY' : (rec?.leaveReason || 'NONE');
             const isLate = !isClosed && status === 'LATE';
             const isLeave = !isClosed && status === 'LEAVE';
             const isAbsent = !isClosed && status === 'ABSENT';
+            const isPresent = !isClosed && status === 'PRESENT';
 
             const isMorning = selectedSession === 'MORNING_BEFORE_BREAK';
             const counterpartStatus = isClosed ? 'SCHOOL_CLOSED' : counterpartRec?.status;
@@ -1149,6 +1186,8 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
                     ? 'border-indigo-200 bg-indigo-50/20'
                     : isLate
                     ? 'border-amber-200 bg-amber-50/20'
+                    : isPresent
+                    ? 'border-emerald-200 bg-emerald-50/20'
                     : isMorning
                     ? 'border-slate-200 hover:border-amber-200'
                     : 'border-slate-200 hover:border-teal-200'
@@ -1219,8 +1258,16 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
                         </span>
                       </span>
 
+                      {/* Unmarked Badge if not yet marked */}
+                      {!isMarked && !isClosed && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                          <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                          <span>{isRTL ? 'ފުރިހަމަނުކުރާ' : 'Unmarked'}</span>
+                        </span>
+                      )}
+
                       {/* Counterpart Session Status Peek */}
-                      {counterpartRec && (
+                      {counterpartRec && counterpartRec.status && (
                         <span
                           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] border ${
                             counterpartStatus === 'SCHOOL_CLOSED' || isClosed

@@ -370,36 +370,15 @@ function loadAttendanceFromDisk(studentsList: Student[], staffList: User[]): Map
     if (fs.existsSync(ATTENDANCE_FILE_PATH)) {
       const raw = fs.readFileSync(ATTENDANCE_FILE_PATH, 'utf-8');
       const data = JSON.parse(raw);
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         data.forEach((rec: AttendanceRecord) => {
           store.set(`${rec.studentId}_${rec.date}_${rec.sessionType}`, rec);
         });
-        // If submittedSessions had not been populated yet, mark past historical dates as submitted
-        if (submittedSessions.size === 0) {
-          data.forEach((rec: AttendanceRecord) => {
-            submittedSessions.add(`${rec.date}_${rec.sessionType}`);
-          });
-          saveSubmittedSessionsToDisk(submittedSessions);
-        }
         return store;
       }
     }
   } catch (err) {
     console.warn('Could not load attendance from disk:', err);
-  }
-
-  // If no attendance file exists on disk, pre-seed with realistic past attendance so reports are fully populated
-  try {
-    const pastRecords = generatePastAttendance(studentsList, staffList);
-    pastRecords.forEach((rec) => {
-      store.set(`${rec.studentId}_${rec.date}_${rec.sessionType}`, rec);
-      submittedSessions.add(`${rec.date}_${rec.sessionType}`);
-    });
-    saveAttendanceToDisk(store);
-    saveSubmittedSessionsToDisk(submittedSessions);
-  } catch (err) {
-    console.warn('Could not generate seed past attendance:', err);
-    saveAttendanceToDisk(store);
   }
   return store;
 }
@@ -1407,17 +1386,16 @@ app.get('/api/attendance', (req, res) => {
 
     if (existing && (!closedInfo.isClosed || existing.status === 'SCHOOL_CLOSED')) {
       records.push(existing);
-    } else {
-      const defaultStatus = closedInfo.isClosed ? 'SCHOOL_CLOSED' : (existing?.status || 'PRESENT');
+    } else if (closedInfo.isClosed) {
       const rec: AttendanceRecord = {
-        id: existing?.id || `att-${st.id}-${targetDate}-${targetSession}`,
+        id: `att-${st.id}-${targetDate}-${targetSession}`,
         studentId: st.id,
         date: targetDate,
         sessionType: targetSession,
-        status: defaultStatus,
-        leaveReason: closedInfo.isClosed ? 'OFFICIAL_DUTY' : (existing?.leaveReason || 'NONE'),
-        remarks: closedInfo.isClosed ? formattedClosureLabel : existing?.remarks,
-        markedByUserId: closedInfo.isClosed ? 'SYSTEM_AUTO' : (existing?.markedByUserId || currentActiveUserId),
+        status: 'SCHOOL_CLOSED',
+        leaveReason: 'OFFICIAL_DUTY',
+        remarks: formattedClosureLabel,
+        markedByUserId: 'SYSTEM_AUTO',
         syncStatus: 'SYNCED',
         updatedAt: new Date().toISOString(),
       };
@@ -1434,17 +1412,16 @@ app.get('/api/attendance', (req, res) => {
 
     if (counterpartExisting && (!closedInfo.isClosed || counterpartExisting.status === 'SCHOOL_CLOSED')) {
       counterpartRecords.push(counterpartExisting);
-    } else {
-      const defaultStatus = closedInfo.isClosed ? 'SCHOOL_CLOSED' : (counterpartExisting?.status || 'PRESENT');
+    } else if (closedInfo.isClosed) {
       const counterpartRec: AttendanceRecord = {
-        id: counterpartExisting?.id || `att-${st.id}-${targetDate}-${counterpartSession}`,
+        id: `att-${st.id}-${targetDate}-${counterpartSession}`,
         studentId: st.id,
         date: targetDate,
         sessionType: counterpartSession,
-        status: defaultStatus,
-        leaveReason: closedInfo.isClosed ? 'OFFICIAL_DUTY' : (counterpartExisting?.leaveReason || 'NONE'),
-        remarks: closedInfo.isClosed ? formattedClosureLabel : counterpartExisting?.remarks,
-        markedByUserId: closedInfo.isClosed ? 'SYSTEM_AUTO' : (counterpartExisting?.markedByUserId || currentActiveUserId),
+        status: 'SCHOOL_CLOSED',
+        leaveReason: 'OFFICIAL_DUTY',
+        remarks: formattedClosureLabel,
+        markedByUserId: 'SYSTEM_AUTO',
         syncStatus: 'SYNCED',
         updatedAt: new Date().toISOString(),
       };
@@ -1744,12 +1721,30 @@ app.post('/api/attendance/revert-record', (req, res) => {
 
 // Wipes all historical attendance records to start clean for staff rollout
 app.post('/api/attendance/reset-all', (req, res) => {
+  const actor = staffMembers.find((s) => s.id === currentActiveUserId || s.isSuperAdmin) || staffMembers[0];
   attendanceStore.clear();
   submittedSessions.clear();
   saveAttendanceToDisk(attendanceStore);
   saveSubmittedSessionsToDisk(submittedSessions);
+  try {
+    saveReportCardOverridesToDisk({});
+  } catch (e) {}
+
+  logAudit(
+    'ATTENDANCE_RESET_ALL',
+    'AttendanceRecord',
+    `All attendance records and submitted sessions have been reset to empty by ${actor.fullName}. System is ready for fresh attendance entry.`,
+    req,
+    actor.id
+  );
+
   console.log('[server] All past attendance records and submitted sessions have been reset to empty.');
-  res.json({ success: true, message: 'All attendance records wiped clean. System is fresh for staff rollout.' });
+  res.json({
+    success: true,
+    message: 'All attendance records wiped clean and marked attendance reset. System is fresh for staff rollout.',
+    recordsCount: 0,
+    submittedSessionsCount: 0,
+  });
 });
 
 // Declare School Closure (Emergency, Bad Weather, Special)
@@ -1909,7 +1904,7 @@ app.post('/api/attendance/sync-queue', (req, res) => {
 });
 
 // 5. Substitutions / Class Delegation API
-app.get('/api/substitutions', (req, res) => {
+app.get(['/api/substitutions', '/api/delegations', '/api/attendance/delegations'], (req, res) => {
   res.json({ delegations });
 });
 
@@ -3084,32 +3079,16 @@ function resolveStudentAttendance(student: Student, dateStr: string) {
     };
   }
 
-  const today = '2026-10-03';
-  if (dateStr > today) {
-    return {
-      status: undefined,
-      postBreakStatus: undefined,
-      leaveReason: 'NONE' as LeaveReason,
-      isClosed: false,
-      closureReason: undefined,
-      arrivalTime: undefined,
-      isRecorded: false,
-      isMorningRecorded: false,
-      isAfternoonRecorded: false,
-    };
-  }
-
-  const deterministic = getDeterministicStudentAttendance(student, dateStr);
   return {
-    status: deterministic.status,
-    postBreakStatus: deterministic.postBreakStatus,
-    leaveReason: deterministic.leaveReason,
+    status: undefined,
+    postBreakStatus: undefined,
+    leaveReason: 'NONE' as LeaveReason,
     isClosed: false,
     closureReason: undefined,
-    arrivalTime: deterministic.arrivalTime,
-    isRecorded: true,
-    isMorningRecorded: true,
-    isAfternoonRecorded: true,
+    arrivalTime: undefined,
+    isRecorded: false,
+    isMorningRecorded: false,
+    isAfternoonRecorded: false,
   };
 }
 
@@ -3230,45 +3209,10 @@ app.get('/api/reports/report-card-attendance', (req, res) => {
       }
     });
 
-    // Realistic baseline for Maldivian school attendance (92% - 98%)
-    const admNum = parseInt(st.admissionNumber.replace(/\D/g, ''), 10) || (sIdx + 1) * 37;
-    const seed = admNum % 100;
-
-    let baseRate = 95;
-    if (seed < 65) {
-      baseRate = 96 + (seed % 4); // 96% - 99%
-    } else if (seed < 88) {
-      baseRate = 92 + (seed % 4); // 92% - 95%
-    } else {
-      baseRate = 85 + (seed % 6); // 85% - 90%
-    }
-
-    let computedDaysAttended = Math.min(totalInstructionalDays, Math.round((totalInstructionalDays * baseRate) / 100));
-    let computedDaysLate = (seed % 4 === 0) ? 1 : (seed % 9 === 0) ? 2 : 0;
-    let computedDaysLeave = (seed % 5 === 0) ? 2 : (seed % 3 === 0) ? 1 : 0;
-    let computedDaysAbsent = Math.max(0, totalInstructionalDays - computedDaysAttended - computedDaysLeave);
-
-    // If recorded sessions exist, factor them in
-    if (recordedDaysCount > 0) {
-      if (recordedDaysCount >= totalInstructionalDays) {
-        computedDaysAttended = daysAttended;
-        computedDaysLate = daysLate;
-        computedDaysLeave = daysLeave;
-        computedDaysAbsent = daysAbsent;
-      } else {
-        if (daysAbsent > 0) {
-          computedDaysAbsent = Math.max(computedDaysAbsent, daysAbsent);
-          computedDaysAttended = Math.max(0, totalInstructionalDays - computedDaysAbsent - computedDaysLeave);
-        }
-        if (daysLate > 0) {
-          computedDaysLate = Math.max(computedDaysLate, daysLate);
-        }
-        if (daysLeave > 0) {
-          computedDaysLeave = Math.max(computedDaysLeave, daysLeave);
-          computedDaysAttended = Math.max(0, totalInstructionalDays - computedDaysAbsent - computedDaysLeave);
-        }
-      }
-    }
+    let computedDaysAttended = daysAttended;
+    let computedDaysLate = daysLate;
+    let computedDaysLeave = daysLeave;
+    let computedDaysAbsent = daysAbsent;
 
     const finalDaysToBeAttended = studentOverride?.daysToBeAttended !== undefined
       ? Number(studentOverride.daysToBeAttended)
@@ -3290,9 +3234,9 @@ app.get('/api/reports/report-card-attendance', (req, res) => {
       ? Number(studentOverride.daysLeave)
       : computedDaysLeave;
 
-    const rate = finalDaysToBeAttended > 0
+    const rate = (recordedDaysCount > 0 || studentOverride) && finalDaysToBeAttended > 0
       ? Math.min(100, Math.round((finalDaysAttended / finalDaysToBeAttended) * 100))
-      : 100;
+      : (recordedDaysCount === 0 && !studentOverride ? 0 : 100);
 
     return {
       studentId: st.id,
@@ -3312,7 +3256,7 @@ app.get('/api/reports/report-card-attendance', (req, res) => {
   });
 
   const totalRate = studentResults.reduce((acc, curr) => acc + curr.attendanceRate, 0);
-  const averageRate = studentResults.length > 0 ? Math.round(totalRate / studentResults.length) : 95;
+  const averageRate = studentResults.length > 0 ? Math.round(totalRate / studentResults.length) : 0;
 
   res.json({
     term: termParam,
@@ -4247,7 +4191,7 @@ app.get('/api/reports/analytics', (req, res) => {
     const dailyBreakdown = weekDates.map((dStr) => {
       const dayIdx = new Date(dStr + 'T00:00:00Z').getUTCDay();
       const closed = checkSchoolClosed(dStr);
-      const hasDayRecords = dStr <= '2026-10-03' || Array.from(attendanceStore.values()).some((r) => r.date === dStr);
+      const hasDayRecords = Array.from(attendanceStore.values()).some((r) => r.date === dStr);
 
       if (!closed.isClosed && !hasDayRecords) {
         const dayClasses = extraClassesInWeek.filter((c) => c.date === dStr);
@@ -4384,7 +4328,7 @@ app.get('/api/reports/analytics', (req, res) => {
     });
 
     const hasAnyRecordsInWeek = weekDates.some((dStr) =>
-      dStr <= '2026-10-03' || Array.from(attendanceStore.values()).some((r) => r.date === dStr)
+      Array.from(attendanceStore.values()).some((r) => r.date === dStr)
     );
 
     const morningWeeklyRate = hasAnyRecordsInWeek && weeklyEnrolledTotal > 0
@@ -4426,7 +4370,7 @@ app.get('/api/reports/analytics', (req, res) => {
 
       weekDates.forEach((dStr) => {
         const closed = checkSchoolClosed(dStr);
-        const hasDayRec = dStr <= '2026-10-03' || Array.from(attendanceStore.values()).some((r) => r.date === dStr);
+        const hasDayRec = Array.from(attendanceStore.values()).some((r) => r.date === dStr);
         if (closed.isClosed) {
           rates[dStr] = reportMode === 'EXTRA_CLASS' ? null : 100;
         } else if (!hasDayRec) {
@@ -4594,7 +4538,7 @@ app.get('/api/reports/analytics', (req, res) => {
         return { date: dStr, rate: null, morningRate: null, afternoonRate: null, isClosed: true };
       }
 
-      const hasDayRecords = dStr <= '2026-10-03' || Array.from(attendanceStore.values()).some((r) => r.date === dStr);
+      const hasDayRecords = Array.from(attendanceStore.values()).some((r) => r.date === dStr);
       let dayExPres = 0;
       let dayExTotal = 0;
       const dayClasses = monthlyExtraClasses.filter((c) => c.date === dStr);
@@ -4793,7 +4737,7 @@ app.get('/api/reports/analytics', (req, res) => {
 
   const activeExtraYearlyCount = extraClasses.filter((c) => c.status !== 'REJECTED' && c.status !== 'CANCELLED').length;
 
-  const yearSchoolDates = getSchoolDatesBetween(`${academicYear}-01-11`, '2026-10-03').filter(
+  const yearSchoolDates = getSchoolDatesBetween(`${academicYear}-01-11`, `${academicYear}-12-31`).filter(
     (d) => !checkSchoolClosed(d).isClosed
   );
 
@@ -4811,22 +4755,26 @@ app.get('/api/reports/analytics', (req, res) => {
     let l = 0;
     let pp = 0;
     let pl = 0;
+    let mRec = 0;
+    let pRec = 0;
     yearSchoolDates.forEach((d) => {
       const att = resolveStudentAttendance(st, d);
       if (att.isMorningRecorded && att.status) {
+        mRec++;
         if (att.status === 'PRESENT') p++;
         else if (att.status === 'LATE') { p++; l++; }
       }
       if (att.isAfternoonRecorded && att.postBreakStatus) {
+        pRec++;
         if (att.postBreakStatus === 'PRESENT') pp++;
         else if (att.postBreakStatus === 'LATE') { pp++; pl++; }
       }
     });
-    studentYearlyMap.set(st.id, { pres: p, late: l, total: yearSchoolDates.length, postPres: pp, postLate: pl });
+    studentYearlyMap.set(st.id, { pres: p, late: l, total: mRec, postPres: pp, postLate: pl });
     yearlyMorningPres += p;
-    yearlyMorningRec += yearSchoolDates.length;
+    yearlyMorningRec += mRec;
     yearlyAfternoonPres += pp;
-    yearlyAfternoonRec += yearSchoolDates.length;
+    yearlyAfternoonRec += pRec;
   });
 
   extraClasses.forEach((c) => {
@@ -4840,8 +4788,8 @@ app.get('/api/reports/analytics', (req, res) => {
     }
   });
 
-  const morningAnnualRate = yearlyMorningRec > 0 ? Math.round((yearlyMorningPres / yearlyMorningRec) * 100) : 95;
-  const afternoonAnnualRate = yearlyAfternoonRec > 0 ? Math.round((yearlyAfternoonPres / yearlyAfternoonRec) * 100) : 93;
+  const morningAnnualRate = yearlyMorningRec > 0 ? Math.round((yearlyMorningPres / yearlyMorningRec) * 100) : null;
+  const afternoonAnnualRate = yearlyAfternoonRec > 0 ? Math.round((yearlyAfternoonPres / yearlyAfternoonRec) * 100) : null;
   const officialAnnualRate = (morningAnnualRate != null && afternoonAnnualRate != null)
     ? Math.round((morningAnnualRate + afternoonAnnualRate) / 2)
     : (morningAnnualRate ?? afternoonAnnualRate);
@@ -4887,9 +4835,8 @@ app.get('/api/reports/analytics', (req, res) => {
 
     const isPastOrCurrent = item.m <= 10;
     if (isPastOrCurrent && monthSchoolDates.length > 0) {
-      const activeDates = monthSchoolDates.filter(d => d <= '2026-10-03');
       students.forEach((st) => {
-        activeDates.forEach((d) => {
+        monthSchoolDates.forEach((d) => {
           const att = resolveStudentAttendance(st, d);
           if (att.isMorningRecorded && att.status) {
             mMornRec++;

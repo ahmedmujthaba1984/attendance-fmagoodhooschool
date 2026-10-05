@@ -92,24 +92,24 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
     };
   }, [selectedDate]);
 
-  // Fallback Trend Data if API is pending or offline
+  // Fallback Trend Data if API is pending or offline (Maldives Academic School Week: Sunday to Thursday)
   const fallbackTrendMonth: DashboardTrendPoint[] = useMemo(
     () => [
-      { date: 'Aug 24 (Sun)', fullDate: '2026-08-24', morning: 95.8, postBreak: 94.2, officialRate: 95.0, extraClassRate: 92.4, extraClassesCount: 1, combinedRate: 94.1, baseline: 90 },
-      { date: 'Aug 25 (Mon)', fullDate: '2026-08-25', morning: 96.2, postBreak: 95.0, officialRate: 95.6, extraClassRate: 93.1, extraClassesCount: 2, combinedRate: 94.8, baseline: 90 },
-      { date: 'Aug 26 (Tue)', fullDate: '2026-08-26', morning: 94.4, postBreak: 93.1, officialRate: 93.8, extraClassRate: 91.8, extraClassesCount: 1, combinedRate: 93.1, baseline: 90 },
-      { date: 'Aug 27 (Wed)', fullDate: '2026-08-27', morning: 93.8, postBreak: 92.5, officialRate: 93.2, extraClassRate: 92.0, extraClassesCount: 2, combinedRate: 92.8, baseline: 90 },
-      { date: 'Aug 28 (Thu)', fullDate: '2026-08-28', morning: 92.1, postBreak: 90.4, officialRate: 91.3, extraClassRate: 89.5, extraClassesCount: 1, combinedRate: 90.7, baseline: 90 },
-      { date: 'Aug 31 (Sun)', fullDate: '2026-08-31', morning: 94.9, postBreak: 93.8, officialRate: 94.4, extraClassRate: 93.5, extraClassesCount: 1, combinedRate: 94.1, baseline: 90 },
-      { date: 'Sep 01 (Mon)', fullDate: '2026-09-01', morning: 95.3, postBreak: 94.1, officialRate: 94.7, extraClassRate: 94.2, extraClassesCount: 2, combinedRate: 94.5, baseline: 90 },
-      { date: 'Sep 02 (Tue)', fullDate: '2026-09-02', morning: 96.0, postBreak: 95.2, officialRate: 95.6, extraClassRate: 94.8, extraClassesCount: 2, combinedRate: 95.3, baseline: 90 },
-      { date: 'Sep 03 (Wed)', fullDate: '2026-09-03', morning: 94.7, postBreak: 93.9, officialRate: 94.3, extraClassRate: 93.0, extraClassesCount: 1, combinedRate: 93.9, baseline: 90 },
-      { date: 'Sep 04 (Thu)', fullDate: '2026-09-04', morning: 93.2, postBreak: 91.8, officialRate: 92.5, extraClassRate: 91.5, extraClassesCount: 1, combinedRate: 92.2, baseline: 90 },
-      { date: 'Sep 07 (Mon)', fullDate: '2026-09-07', morning: 95.1, postBreak: 94.0, officialRate: 94.6, extraClassRate: 93.4, extraClassesCount: 2, combinedRate: 94.2, baseline: 90 },
-      { date: 'Sep 08 (Tue)', fullDate: '2026-09-08', morning: 95.8, postBreak: 94.5, officialRate: 95.2, extraClassRate: 94.0, extraClassesCount: 2, combinedRate: 94.8, baseline: 90 },
-      { date: 'Sep 09 (Wed)', fullDate: '2026-09-09', morning: 94.2, postBreak: 93.4, officialRate: 93.8, extraClassRate: 92.6, extraClassesCount: 1, combinedRate: 93.4, baseline: 90 },
-      { date: 'Sep 10 (Thu)', fullDate: '2026-09-10', morning: 95.0, postBreak: 94.1, officialRate: 94.6, extraClassRate: 93.8, extraClassesCount: 2, combinedRate: 94.3, baseline: 90 },
-      { date: 'Sep 11 (Thu)', fullDate: '2026-09-11', morning: 95.4, postBreak: 94.6, officialRate: 95.0, extraClassRate: 94.2, extraClassesCount: 2, combinedRate: 94.7, baseline: 90 },
+      { date: 'Aug 23 (Sun)', fullDate: '2026-08-23', morning: 95.8, postBreak: 94.2, officialRate: 95.0, extraClassRate: 92.4, extraClassesCount: 1, combinedRate: 94.1, baseline: 90 },
+      { date: 'Aug 24 (Mon)', fullDate: '2026-08-24', morning: 96.2, postBreak: 95.0, officialRate: 95.6, extraClassRate: 93.1, extraClassesCount: 2, combinedRate: 94.8, baseline: 90 },
+      { date: 'Aug 25 (Tue)', fullDate: '2026-08-25', morning: 94.4, postBreak: 93.1, officialRate: 93.8, extraClassRate: 91.8, extraClassesCount: 1, combinedRate: 93.1, baseline: 90 },
+      { date: 'Aug 26 (Wed)', fullDate: '2026-08-26', morning: 93.8, postBreak: 92.5, officialRate: 93.2, extraClassRate: 92.0, extraClassesCount: 2, combinedRate: 92.8, baseline: 90 },
+      { date: 'Aug 27 (Thu)', fullDate: '2026-08-27', morning: 92.1, postBreak: 90.4, officialRate: 91.3, extraClassRate: 89.5, extraClassesCount: 1, combinedRate: 90.7, baseline: 90 },
+      { date: 'Aug 30 (Sun)', fullDate: '2026-08-30', morning: 94.9, postBreak: 93.8, officialRate: 94.4, extraClassRate: 93.5, extraClassesCount: 1, combinedRate: 94.1, baseline: 90 },
+      { date: 'Aug 31 (Mon)', fullDate: '2026-08-31', morning: 95.3, postBreak: 94.1, officialRate: 94.7, extraClassRate: 94.2, extraClassesCount: 2, combinedRate: 94.5, baseline: 90 },
+      { date: 'Sep 01 (Tue)', fullDate: '2026-09-01', morning: 96.0, postBreak: 95.2, officialRate: 95.6, extraClassRate: 94.8, extraClassesCount: 2, combinedRate: 95.3, baseline: 90 },
+      { date: 'Sep 02 (Wed)', fullDate: '2026-09-02', morning: 94.7, postBreak: 93.9, officialRate: 94.3, extraClassRate: 93.0, extraClassesCount: 1, combinedRate: 93.9, baseline: 90 },
+      { date: 'Sep 03 (Thu)', fullDate: '2026-09-03', morning: 93.2, postBreak: 91.8, officialRate: 92.5, extraClassRate: 91.5, extraClassesCount: 1, combinedRate: 92.2, baseline: 90 },
+      { date: 'Sep 06 (Sun)', fullDate: '2026-09-06', morning: 95.1, postBreak: 94.0, officialRate: 94.6, extraClassRate: 93.4, extraClassesCount: 2, combinedRate: 94.2, baseline: 90 },
+      { date: 'Sep 07 (Mon)', fullDate: '2026-09-07', morning: 95.8, postBreak: 94.5, officialRate: 95.2, extraClassRate: 94.0, extraClassesCount: 2, combinedRate: 94.8, baseline: 90 },
+      { date: 'Sep 08 (Tue)', fullDate: '2026-09-08', morning: 94.2, postBreak: 93.4, officialRate: 93.8, extraClassRate: 92.6, extraClassesCount: 1, combinedRate: 93.4, baseline: 90 },
+      { date: 'Sep 09 (Wed)', fullDate: '2026-09-09', morning: 95.0, postBreak: 94.1, officialRate: 94.6, extraClassRate: 93.8, extraClassesCount: 2, combinedRate: 94.3, baseline: 90 },
+      { date: 'Sep 10 (Thu)', fullDate: '2026-09-10', morning: 95.4, postBreak: 94.6, officialRate: 95.0, extraClassRate: 94.2, extraClassesCount: 2, combinedRate: 94.7, baseline: 90 },
     ],
     []
   );
@@ -122,7 +122,10 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
   // Active trend series based on timeframe selection
   const activeTrendData = useMemo(() => {
     if (dashboardData) {
-      return timeframe === 'week' ? dashboardData.trendDataWeek : dashboardData.trendDataMonth;
+      const live = timeframe === 'week' ? dashboardData.trendDataWeek : dashboardData.trendDataMonth;
+      if (live && live.some((p) => p.officialRate != null || p.combinedRate != null)) {
+        return live;
+      }
     }
     return timeframe === 'week' ? fallbackTrendWeek : fallbackTrendMonth;
   }, [dashboardData, timeframe, fallbackTrendWeek, fallbackTrendMonth]);

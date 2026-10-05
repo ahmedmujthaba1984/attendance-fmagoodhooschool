@@ -3383,7 +3383,7 @@ app.get('/api/analytics/dashboard', (req, res) => {
   const targetDate = ((req.query.date as string) || (req.query.targetDate as string) || new Date().toISOString().slice(0, 10)).trim();
   
   // Historical instructional school days (Sundays to Thursdays) up to targetDate
-  const monthStart = '2026-08-24';
+  const monthStart = '2026-08-23';
   const schoolDates = getSchoolDatesBetween(monthStart, targetDate > '2026-09-24' ? targetDate : '2026-09-24');
   const monthDates = schoolDates.slice(-15);
   const weekDates = schoolDates.slice(-5);

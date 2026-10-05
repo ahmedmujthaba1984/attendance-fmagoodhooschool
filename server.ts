@@ -1350,9 +1350,90 @@ app.post('/api/magoodhoo/toggle-autosync', (req, res) => {
   res.json({ success: true, autoSyncEnabled: state.autoSyncEnabled });
 });
 
+function checkSessionStartEligibility(
+  targetDate: string,
+  sessionType: SessionType,
+  clientTime?: string,
+  clientDate?: string
+): {
+  allowed: boolean;
+  error?: string;
+  message?: string;
+  messageDhivehi?: string;
+  startTime?: string;
+  currentTime?: string;
+  currentDate?: string;
+} {
+  const now = new Date();
+  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+  // Maldives local time (UTC+5, no DST)
+  const maldivesDate = new Date(utc + 5 * 3600000);
+  const year = maldivesDate.getUTCFullYear();
+  const month = String(maldivesDate.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(maldivesDate.getUTCDate()).padStart(2, '0');
+  const serverDateStr = `${year}-${month}-${day}`;
+  const curHours = String(maldivesDate.getUTCHours()).padStart(2, '0');
+  const curMins = String(maldivesDate.getUTCMinutes()).padStart(2, '0');
+  const serverTimeStr = `${curHours}:${curMins}`;
+
+  const curDateStr = clientDate && clientDate <= serverDateStr ? clientDate : serverDateStr;
+  const curTimeStr = serverTimeStr;
+
+  // 1. Future date check: cannot mark attendance before the date arrives
+  if (targetDate > curDateStr) {
+    return {
+      allowed: false,
+      error: 'FUTURE_DATE_NOT_ALLOWED',
+      message: `Cannot mark attendance for a future date (${targetDate}). Today is ${curDateStr}. Attendance can only be recorded once the scheduled date arrives and the session starts.`,
+      messageDhivehi: `ކުރިއަށް އޮތް ތާރީޚަކަށް (${targetDate}) ހާޒިރީއެއް ނުޖެހޭނެއެވެ. މިއަދަކީ ${curDateStr} އެވެ. ހާޒިރީ ޖެހޭނީ އެ ދުވަހަކު ސެޝަން ފެށުމަށްފަހުގައެވެ.`,
+      currentDate: curDateStr,
+      currentTime: curTimeStr,
+    };
+  }
+
+  // 2. Today: check if session start time has passed
+  if (targetDate === curDateStr) {
+    const timings = loadSessionTimingsFromDisk();
+    const morningStart = timings.normal?.morning?.startTime || timings.morning?.startTime || '07:45';
+    const afternoonStart = timings.normal?.afternoon?.startTime || timings.afternoon?.startTime || '10:45';
+
+    let sessionStart = sessionType === 'MORNING_BEFORE_BREAK' ? morningStart : afternoonStart;
+    if (timings.temporaryOverrides && Array.isArray(timings.temporaryOverrides)) {
+      const match = timings.temporaryOverrides.find((ov: any) => {
+        if (ov.endDate) return targetDate >= ov.date && targetDate <= ov.endDate;
+        return ov.date === targetDate;
+      });
+      if (match) {
+        if (sessionType === 'MORNING_BEFORE_BREAK' && match.morning?.startTime) {
+          sessionStart = match.morning.startTime;
+        } else if (sessionType === 'POST_BREAK' && match.afternoon?.startTime) {
+          sessionStart = match.afternoon.startTime;
+        }
+      }
+    }
+
+    if (curTimeStr < sessionStart) {
+      const isMorning = sessionType === 'MORNING_BEFORE_BREAK';
+      const sessionLabel = isMorning ? 'Morning Session (Before Break)' : 'Afternoon Session (Post-Break)';
+      const sessionLabelDv = isMorning ? 'ހެނދުނުގެ ސެޝަން' : 'މެންދުރުފަހުގެ ސެޝަން';
+      return {
+        allowed: false,
+        error: 'SESSION_NOT_STARTED',
+        message: `${sessionLabel} roll call has not started yet. Attendance can only be recorded once the session starts at ${sessionStart}. (Current Maldives time: ${curTimeStr})`,
+        messageDhivehi: `${sessionLabelDv} އަދި ނުފެށެއެވެ. ހާޒިރީ ޖެހޭނީ ސެޝަން ފެށޭ ގަޑި (${sessionStart}) އަށްފަހުގައެވެ. (މިހާރުގެ ވަގުތު: ${curTimeStr})`,
+        startTime: sessionStart,
+        currentTime: curTimeStr,
+        currentDate: curDateStr,
+      };
+    }
+  }
+
+  return { allowed: true, currentDate: curDateStr, currentTime: curTimeStr };
+}
+
 // 3. Attendance API
 app.get('/api/attendance', (req, res) => {
-  const { date, grade, session } = req.query;
+  const { date, grade, session, clientTime, clientDate } = req.query;
   const targetDate = (date as string) || new Date().toISOString().slice(0, 10);
   const targetSession = (session as SessionType) || 'MORNING_BEFORE_BREAK';
 
@@ -1360,6 +1441,14 @@ app.get('/api/attendance', (req, res) => {
   const closedInfo = checkSchoolClosed(targetDate);
   const formattedClosureLabel = formatSchoolClosedReason(closedInfo.reason);
   const formattedClosureLabelDhivehi = formatSchoolClosedReasonDhivehi(closedInfo.reasonDhivehi, closedInfo.reason);
+
+  // Check if date or session has arrived / started
+  const sessionStartInfo = checkSessionStartEligibility(
+    targetDate,
+    targetSession,
+    clientTime as string | undefined,
+    clientDate as string | undefined
+  );
 
   // Check if a previous attendance session is pending
   const pendingSession = getPreviousPendingSession(targetDate, targetSession);
@@ -1449,7 +1538,14 @@ app.get('/api/attendance', (req, res) => {
           dayType: closedInfo.dayType,
         }
       : undefined,
-    isManualMarkDisabled: closedInfo.isClosed,
+    isManualMarkDisabled: closedInfo.isClosed || !sessionStartInfo.allowed,
+    isSessionStarted: sessionStartInfo.allowed,
+    sessionStartError: sessionStartInfo.error,
+    sessionStartMessage: sessionStartInfo.message,
+    sessionStartMessageDhivehi: sessionStartInfo.messageDhivehi,
+    sessionStartTime: sessionStartInfo.startTime,
+    serverCurrentTime: sessionStartInfo.currentTime,
+    serverCurrentDate: sessionStartInfo.currentDate,
     pendingPreviousSession: pendingSession,
     isSessionSubmitted: isCurrentSessionSubmitted,
   });
@@ -1457,7 +1553,7 @@ app.get('/api/attendance', (req, res) => {
 
 // Bulk mark / Save Attendance
 app.post('/api/attendance/bulk', (req, res) => {
-  const { records } = req.body as { records: AttendanceRecord[] };
+  const { records, clientTime, clientDate } = req.body as { records: AttendanceRecord[]; clientTime?: string; clientDate?: string };
   if (!Array.isArray(records) || records.length === 0) {
     return res.status(400).json({ error: 'Records must be a non-empty array' });
   }
@@ -1474,10 +1570,22 @@ app.post('/api/attendance/bulk', (req, res) => {
     });
   }
 
-  // 2. Check if previous session is pending (informational warning, do not block marking)
+  // 2. Validate session has started / date has arrived
+  const sessionStartInfo = checkSessionStartEligibility(targetDate, targetSession, clientTime, clientDate);
+  if (!sessionStartInfo.allowed) {
+    return res.status(400).json({
+      error: sessionStartInfo.error,
+      message: sessionStartInfo.message,
+      messageDhivehi: sessionStartInfo.messageDhivehi,
+      startTime: sessionStartInfo.startTime,
+      currentTime: sessionStartInfo.currentTime,
+    });
+  }
+
+  // 3. Check if previous session is pending (informational warning, do not block marking)
   const pending = getPreviousPendingSession(targetDate, targetSession);
 
-  // 3. Check if session is already finalized/submitted
+  // 4. Check if session is already finalized/submitted
   const sessionKey = `${targetDate}_${targetSession}`;
   if (submittedSessions.has(sessionKey)) {
     const { isSuperAdmin } = checkSuperAdminAccess(req.body);
@@ -1544,10 +1652,27 @@ const handleSingleAttendance = (req: express.Request, res: express.Response) => 
     });
   }
 
-  // 2. Check if previous session is pending (informational warning, do not block marking)
+  // 2. Validate session has started / date has arrived
+  const sessionStartInfo = checkSessionStartEligibility(
+    normalizedRecord.date,
+    normalizedRecord.sessionType,
+    req.body.clientTime,
+    req.body.clientDate
+  );
+  if (!sessionStartInfo.allowed) {
+    return res.status(400).json({
+      error: sessionStartInfo.error,
+      message: sessionStartInfo.message,
+      messageDhivehi: sessionStartInfo.messageDhivehi,
+      startTime: sessionStartInfo.startTime,
+      currentTime: sessionStartInfo.currentTime,
+    });
+  }
+
+  // 3. Check if previous session is pending (informational warning, do not block marking)
   const pending = getPreviousPendingSession(normalizedRecord.date, normalizedRecord.sessionType);
 
-  // 3. If session is already finalized, only Super Admin can edit
+  // 4. If session is already finalized, only Super Admin can edit
   const sessionKey = `${normalizedRecord.date}_${normalizedRecord.sessionType}`;
   if (submittedSessions.has(sessionKey)) {
     const { isSuperAdmin } = checkSuperAdminAccess(req.body);
@@ -1593,7 +1718,7 @@ app.post('/api/attendance/single', handleSingleAttendance);
 
 // Finalize / Submit Attendance Session
 app.post('/api/attendance/submit-session', (req, res) => {
-  const { date, session, submittedByUserId } = req.body;
+  const { date, session, submittedByUserId, clientTime, clientDate } = req.body;
   const targetDate = (date as string) || new Date().toISOString().slice(0, 10);
   const targetSession = (session as SessionType) || 'MORNING_BEFORE_BREAK';
 
@@ -1602,6 +1727,18 @@ app.post('/api/attendance/submit-session', (req, res) => {
     return res.status(400).json({
       error: 'MANUAL_MARK_DISABLED',
       message: `School is closed on this day. Attendance was marked automatically.`,
+    });
+  }
+
+  // Validate session has started / date has arrived
+  const sessionStartInfo = checkSessionStartEligibility(targetDate, targetSession, clientTime, clientDate);
+  if (!sessionStartInfo.allowed) {
+    return res.status(400).json({
+      error: sessionStartInfo.error,
+      message: sessionStartInfo.message,
+      messageDhivehi: sessionStartInfo.messageDhivehi,
+      startTime: sessionStartInfo.startTime,
+      currentTime: sessionStartInfo.currentTime,
     });
   }
 
@@ -1864,9 +2001,24 @@ app.post('/api/attendance/sync-queue', (req, res) => {
 
   let conflictsResolved = 0;
   let syncedCount = 0;
+  let rejectedCount = 0;
   const now = new Date().toISOString();
 
   items.forEach((item) => {
+    // 1. Never accept records for future dates or sessions not yet started
+    const eligibility = checkSessionStartEligibility(item.date, item.sessionType);
+    if (!eligibility.allowed) {
+      rejectedCount++;
+      return;
+    }
+
+    // 2. Never accept records on school closed days
+    const closed = checkSchoolClosed(item.date);
+    if (closed.isClosed) {
+      rejectedCount++;
+      return;
+    }
+
     const key = `${item.studentId}_${item.date}_${item.sessionType}`;
     const existing = attendanceStore.get(key);
 

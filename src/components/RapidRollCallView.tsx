@@ -23,6 +23,7 @@ import {
   CheckCheck,
   ChevronDown,
   Info,
+  Lock,
 } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import {
@@ -34,7 +35,11 @@ import {
   LeaveReason,
   SchoolSessionTimings,
 } from '../types';
-import { getEffectiveSessionTimings } from '../utils/sessionTimingsHelper';
+import {
+  getEffectiveSessionTimings,
+  checkSessionMarkingEligibility,
+  getMaldivesNow,
+} from '../utils/sessionTimingsHelper';
 
 const ALL_GRADES_LIST: (GradeLevel | 'ALL')[] = [
   'ALL',
@@ -120,6 +125,14 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
   const effectiveTimings = getEffectiveSessionTimings(sessionTimings, selectedDate);
   const isMorning = selectedSession === 'MORNING_BEFORE_BREAK';
   const activeSessionTiming = isMorning ? effectiveTimings.morning : effectiveTimings.afternoon;
+
+  // Session marking eligibility: cannot mark future dates or session before start time
+  const sessionEligibility = useMemo(() => {
+    return checkSessionMarkingEligibility(selectedDate, selectedSession, sessionTimings);
+  }, [selectedDate, selectedSession, sessionTimings]);
+
+  const isMarkingAllowed = sessionEligibility.allowed && !isSchoolClosed && !isSessionSubmitted;
+  const maldivesToday = getMaldivesNow().dateStr;
 
   // Filter students based on local search if present
   const displayStudents = useMemo(() => {
@@ -210,6 +223,7 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
 
   // Handle Mark Present & Auto Advance (in card mode)
   const handleMarkPresent = (studentId?: string, autoNext = true) => {
+    if (!sessionEligibility.allowed || isSchoolClosed) return;
     const targetId = studentId || currentStudent?.id;
     if (!targetId) return;
     triggerHaptic(20);
@@ -226,6 +240,7 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
 
   // Handle Mark Absent & Auto Advance (in card mode)
   const handleMarkAbsent = (studentId?: string, autoNext = true) => {
+    if (!sessionEligibility.allowed || isSchoolClosed) return;
     const targetId = studentId || currentStudent?.id;
     if (!targetId) return;
     triggerHaptic(35);
@@ -242,6 +257,7 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
 
   // Handle Late with preset time & Auto Advance
   const handleMarkLateWithTime = (time: string, studentId?: string, autoNext = true) => {
+    if (!sessionEligibility.allowed || isSchoolClosed) return;
     const targetId = studentId || currentStudent?.id;
     if (!targetId) return;
     triggerHaptic(25);
@@ -257,6 +273,7 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
 
   // Handle Leave with preset reason & Auto Advance
   const handleMarkLeaveWithReason = (reason: LeaveReason, studentId?: string, autoNext = true) => {
+    if (!sessionEligibility.allowed || isSchoolClosed) return;
     const targetId = studentId || currentStudent?.id;
     if (!targetId) return;
     triggerHaptic(25);
@@ -274,6 +291,7 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (templateMode !== 'card') return;
+      if (!sessionEligibility.allowed || isSchoolClosed) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
       if (e.key === '1') {
@@ -487,6 +505,56 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
           </div>
         </div>
 
+        {/* Timing / Future Date Lock Banner */}
+        {!isSchoolClosed && !sessionEligibility.allowed && (
+          <div
+            className={`p-3.5 rounded-2xl border-2 shadow-xs flex items-center justify-between gap-3 text-xs ${
+              sessionEligibility.reason === 'FUTURE_DATE'
+                ? 'bg-amber-50 border-amber-300 text-amber-950'
+                : 'bg-sky-50 border-sky-300 text-sky-950'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <div
+                className={`w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0 shadow-xs ${
+                  sessionEligibility.reason === 'FUTURE_DATE' ? 'bg-amber-600' : 'bg-sky-600'
+                }`}
+              >
+                <Lock className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2 font-extrabold">
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                      sessionEligibility.reason === 'FUTURE_DATE' ? 'bg-amber-200 text-amber-900' : 'bg-sky-200 text-sky-900'
+                    }`}
+                  >
+                    {sessionEligibility.reason === 'FUTURE_DATE'
+                      ? (isRTL ? 'ކުރިއަށް އޮތް ތާރީޚެއް • ހާޒިރީ ބަންދު' : 'Future Date • Roll Call Locked')
+                      : (isRTL ? 'ސެޝަން އަދި ނުފެށޭ • ހާޒިރީ ބަންދު' : 'Session Not Started • Roll Call Locked')}
+                  </span>
+                  <span className="font-mono text-slate-600 text-[11px]">
+                    {sessionEligibility.reason === 'FUTURE_DATE' ? selectedDate : `Starts ${sessionEligibility.startTime}`}
+                  </span>
+                </div>
+                <p className="text-[11px] mt-0.5 opacity-90">
+                  {isRTL ? sessionEligibility.messageDhivehi : sessionEligibility.message}
+                </p>
+              </div>
+            </div>
+
+            {sessionEligibility.reason === 'FUTURE_DATE' && onSelectDate && (
+              <button
+                type="button"
+                onClick={() => onSelectDate(getMaldivesNow().dateStr)}
+                className="px-3 py-1.5 rounded-xl bg-white border-2 border-amber-300 text-amber-900 font-extrabold hover:bg-amber-100 transition shrink-0 cursor-pointer shadow-2xs"
+              >
+                {isRTL ? 'މިއަދަށް ދިއުމަށް' : 'Go to Today'}
+              </button>
+            )}
+          </div>
+        )}
+
         {/* 3. SESSION, DATE & SUMMARY COUNTERS */}
         <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-slate-100 text-xs">
           {/* Active Session & Date */}
@@ -532,6 +600,7 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                 <input
                   type="date"
                   value={selectedDate}
+                  max={maldivesToday}
                   onChange={(e) => onSelectDate(e.target.value)}
                   aria-label={isRTL ? 'ތާރީޚް ޚިޔާރުކުރައްވާ' : 'Select Date'}
                   className="bg-transparent text-xs font-mono font-bold text-slate-900 focus:outline-none cursor-pointer"
@@ -557,7 +626,7 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
               </span>
             </div>
 
-            {counts.unmarked > 0 && !isSchoolClosed && (
+            {counts.unmarked > 0 && !isSchoolClosed && isMarkingAllowed && (
               <button
                 type="button"
                 onClick={() => {
@@ -597,6 +666,73 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
             {counts.marked}/{counts.total} {isRTL ? 'ފުރިފައި' : 'Marked'}
           </span>
         </div>
+
+        {/* Timing / Future Date Lock Banner */}
+        {!isSchoolClosed && !sessionEligibility.allowed && (
+          <div
+            id="rapid-session-time-lock-banner"
+            className={`p-4 rounded-2xl border-2 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+              sessionEligibility.reason === 'FUTURE_DATE'
+                ? 'bg-linear-to-r from-amber-50 via-orange-50/80 to-amber-100/50 border-amber-300 text-amber-950'
+                : 'bg-linear-to-r from-sky-50 via-indigo-50/70 to-blue-50 border-sky-300 text-sky-950'
+            }`}
+          >
+            <div className="flex items-start sm:items-center gap-3.5">
+              <div
+                className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-md ${
+                  sessionEligibility.reason === 'FUTURE_DATE'
+                    ? 'bg-amber-600 text-white'
+                    : 'bg-sky-600 text-white'
+                }`}
+              >
+                <Lock className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className={`text-xs font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${
+                      sessionEligibility.reason === 'FUTURE_DATE'
+                        ? 'bg-amber-200 text-amber-900 border-amber-300'
+                        : 'bg-sky-200 text-sky-900 border-sky-300'
+                    }`}
+                  >
+                    {sessionEligibility.reason === 'FUTURE_DATE'
+                      ? (isRTL ? 'ކުރިއަށް އޮތް ތާރީޚެއް • ހާޒިރީ ބަންދު' : 'Future Date • Attendance Locked')
+                      : (isRTL ? 'ސެޝަން އަދި ނުފެށޭ • ހާޒިރީ ބަންދު' : 'Session Not Started • Attendance Locked')}
+                  </span>
+                  <span className="text-[11px] font-bold bg-white text-slate-700 px-2 py-0.5 rounded-md border border-slate-200">
+                    {selectedDate}
+                  </span>
+                  <span className="text-[11px] font-bold bg-white text-slate-600 px-2 py-0.5 rounded-md border border-slate-200">
+                    {sessionEligibility.currentTime}
+                  </span>
+                </div>
+                <h4 className="text-sm font-extrabold mt-1">
+                  {sessionEligibility.reason === 'FUTURE_DATE'
+                    ? (isRTL
+                        ? `ކުރިއަށް އޮތް ތާރީޚަކަށް (${selectedDate}) ހާޒިރީއެއް ނުޖެހޭނެއެވެ`
+                        : `Cannot mark attendance before date arrives (${selectedDate})`)
+                    : (isRTL
+                        ? `ސެޝަން އަދި ނުފެށެއެވެ (${sessionEligibility.startTime})`
+                        : `Session roll call only opens after start time (${sessionEligibility.startTime})`)}
+                </h4>
+                <p className="text-xs mt-0.5 leading-relaxed opacity-90">
+                  {isRTL ? sessionEligibility.messageDhivehi : sessionEligibility.message}
+                </p>
+              </div>
+            </div>
+            {sessionEligibility.reason === 'FUTURE_DATE' && onSelectDate && selectedDate !== maldivesToday && (
+              <button
+                type="button"
+                onClick={() => onSelectDate(maldivesToday)}
+                className="inline-flex items-center justify-center gap-2 px-3 py-1.5 rounded-xl bg-white hover:bg-amber-100 text-amber-900 border-2 border-amber-300 text-xs font-bold transition shadow-xs cursor-pointer shrink-0"
+              >
+                <Calendar className="w-3.5 h-3.5 text-amber-700" />
+                <span>{isRTL ? `މިއަދަށް ދިއުމަށް (${maldivesToday})` : `Go to Today (${maldivesToday})`}</span>
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ============================================================== */}
@@ -768,12 +904,16 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                   {/* PRESENT */}
                   <button
                     type="button"
+                    disabled={!isMarkingAllowed}
                     onClick={() => handleMarkPresent()}
-                    className={`h-16 sm:h-20 rounded-2xl flex flex-col items-center justify-center gap-1 font-black text-sm sm:text-base transition cursor-pointer active:scale-95 touch-manipulation shadow-md ${
+                    className={`h-16 sm:h-20 rounded-2xl flex flex-col items-center justify-center gap-1 font-black text-sm sm:text-base transition touch-manipulation shadow-md ${
+                      !isMarkingAllowed ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer active:scale-95'
+                    } ${
                       isCurrentPresent
                         ? 'bg-emerald-600 text-white ring-4 ring-emerald-500/40'
                         : 'bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white'
                     }`}
+                    title={!isMarkingAllowed ? sessionEligibility.message : undefined}
                   >
                     <CheckCircle className="w-6 h-6 shrink-0" />
                     <span>{isRTL ? 'ޙާޟިރު (Present)' : 'Present'}</span>
@@ -783,16 +923,21 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                   {/* LATE */}
                   <button
                     type="button"
+                    disabled={!isMarkingAllowed}
                     onClick={() => {
+                      if (!isMarkingAllowed) return;
                       triggerHaptic(20);
                       setShowLateOptions(!showLateOptions);
                       setShowLeaveOptions(false);
                     }}
-                    className={`h-16 sm:h-20 rounded-2xl flex flex-col items-center justify-center gap-1 font-black text-sm sm:text-base transition cursor-pointer active:scale-95 touch-manipulation shadow-md ${
+                    className={`h-16 sm:h-20 rounded-2xl flex flex-col items-center justify-center gap-1 font-black text-sm sm:text-base transition touch-manipulation shadow-md ${
+                      !isMarkingAllowed ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer active:scale-95'
+                    } ${
                       isCurrentLate
                         ? 'bg-amber-500 text-white ring-4 ring-amber-400/40'
                         : 'bg-amber-400 hover:bg-amber-500 active:bg-amber-600 text-slate-950'
                     }`}
+                    title={!isMarkingAllowed ? sessionEligibility.message : undefined}
                   >
                     <Clock className="w-6 h-6 shrink-0" />
                     <span>{isRTL ? 'ލަސް (Late)' : 'Late'}</span>
@@ -802,16 +947,21 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                   {/* ON LEAVE */}
                   <button
                     type="button"
+                    disabled={!isMarkingAllowed}
                     onClick={() => {
+                      if (!isMarkingAllowed) return;
                       triggerHaptic(20);
                       setShowLeaveOptions(!showLeaveOptions);
                       setShowLateOptions(false);
                     }}
-                    className={`h-16 sm:h-20 rounded-2xl flex flex-col items-center justify-center gap-1 font-black text-sm sm:text-base transition cursor-pointer active:scale-95 touch-manipulation shadow-md ${
+                    className={`h-16 sm:h-20 rounded-2xl flex flex-col items-center justify-center gap-1 font-black text-sm sm:text-base transition touch-manipulation shadow-md ${
+                      !isMarkingAllowed ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer active:scale-95'
+                    } ${
                       isCurrentLeave
                         ? 'bg-indigo-600 text-white ring-4 ring-indigo-500/40'
                         : 'bg-indigo-500 hover:bg-indigo-600 active:bg-indigo-700 text-white'
                     }`}
+                    title={!isMarkingAllowed ? sessionEligibility.message : undefined}
                   >
                     <AlertCircle className="w-6 h-6 shrink-0" />
                     <span>{isRTL ? 'ސަލާމް / ޗުއްޓީ (On Leave)' : 'On Leave'}</span>
@@ -821,12 +971,16 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                   {/* ABSENT */}
                   <button
                     type="button"
+                    disabled={!isMarkingAllowed}
                     onClick={() => handleMarkAbsent()}
-                    className={`h-16 sm:h-20 rounded-2xl flex flex-col items-center justify-center gap-1 font-black text-sm sm:text-base transition cursor-pointer active:scale-95 touch-manipulation shadow-md ${
+                    className={`h-16 sm:h-20 rounded-2xl flex flex-col items-center justify-center gap-1 font-black text-sm sm:text-base transition touch-manipulation shadow-md ${
+                      !isMarkingAllowed ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer active:scale-95'
+                    } ${
                       isCurrentAbsent
                         ? 'bg-rose-600 text-white ring-4 ring-rose-500/40'
                         : 'bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-white'
                     }`}
+                    title={!isMarkingAllowed ? sessionEligibility.message : undefined}
                   >
                     <XCircle className="w-6 h-6 shrink-0" />
                     <span>{isRTL ? 'ޣައިރުޙާޟިރު (Absent)' : 'Absent'}</span>
@@ -1064,12 +1218,16 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                       {/* PRESENT */}
                       <button
                         type="button"
+                        disabled={!isMarkingAllowed}
                         onClick={() => handleMarkPresent(student.id, false)}
-                        className={`px-3 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center gap-1 min-h-[38px] ${
+                        className={`px-3 py-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 min-h-[38px] ${
+                          !isMarkingAllowed ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                        } ${
                           isPresent
                             ? 'bg-emerald-600 text-white shadow-xs ring-2 ring-emerald-500/40'
                             : 'bg-white hover:bg-emerald-50 text-slate-700 border border-slate-200 hover:border-emerald-300'
                         }`}
+                        title={!isMarkingAllowed ? sessionEligibility.message : undefined}
                       >
                         <Check className="w-3.5 h-3.5" />
                         <span>{t.present}</span>
@@ -1078,16 +1236,21 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                       {/* LATE */}
                       <button
                         type="button"
+                        disabled={!isMarkingAllowed}
                         onClick={() => {
+                          if (!isMarkingAllowed) return;
                           triggerHaptic(20);
                           setActiveLateStudentId(isShowingLatePills ? null : student.id);
                           setActiveLeaveStudentId(null);
                         }}
-                        className={`px-3 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center gap-1 min-h-[38px] ${
+                        className={`px-3 py-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 min-h-[38px] ${
+                          !isMarkingAllowed ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                        } ${
                           isLate
                             ? 'bg-amber-500 text-white shadow-xs ring-2 ring-amber-400/40'
                             : 'bg-white hover:bg-amber-50 text-slate-700 border border-slate-200 hover:border-amber-300'
                         }`}
+                        title={!isMarkingAllowed ? sessionEligibility.message : undefined}
                       >
                         <Clock className="w-3.5 h-3.5" />
                         <span>{t.late}</span>
@@ -1096,16 +1259,21 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                       {/* LEAVE */}
                       <button
                         type="button"
+                        disabled={!isMarkingAllowed}
                         onClick={() => {
+                          if (!isMarkingAllowed) return;
                           triggerHaptic(20);
                           setActiveLeaveStudentId(isShowingLeavePills ? null : student.id);
                           setActiveLateStudentId(null);
                         }}
-                        className={`px-3 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center gap-1 min-h-[38px] ${
+                        className={`px-3 py-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 min-h-[38px] ${
+                          !isMarkingAllowed ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                        } ${
                           isLeave
                             ? 'bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-500/40'
                             : 'bg-white hover:bg-indigo-50 text-slate-700 border border-slate-200 hover:border-indigo-300'
                         }`}
+                        title={!isMarkingAllowed ? sessionEligibility.message : undefined}
                       >
                         <AlertCircle className="w-3.5 h-3.5" />
                         <span>{t.leave}</span>
@@ -1114,12 +1282,16 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                       {/* ABSENT */}
                       <button
                         type="button"
+                        disabled={!isMarkingAllowed}
                         onClick={() => handleMarkAbsent(student.id, false)}
-                        className={`px-3 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center gap-1 min-h-[38px] ${
+                        className={`px-3 py-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 min-h-[38px] ${
+                          !isMarkingAllowed ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                        } ${
                           isAbsent
                             ? 'bg-rose-600 text-white shadow-xs ring-2 ring-rose-500/40'
                             : 'bg-white hover:bg-rose-50 text-slate-700 border border-slate-200 hover:border-rose-300'
                         }`}
+                        title={!isMarkingAllowed ? sessionEligibility.message : undefined}
                       >
                         <XCircle className="w-3.5 h-3.5" />
                         <span>{t.absent}</span>
@@ -1282,12 +1454,16 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                       {/* PRESENT */}
                       <button
                         type="button"
+                        disabled={!isMarkingAllowed}
                         onClick={() => handleMarkPresent(student.id, false)}
-                        className={`py-2 rounded-xl text-[11px] font-black transition cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
+                        className={`py-2 rounded-xl text-[11px] font-black transition flex flex-col items-center justify-center gap-0.5 ${
+                          !isMarkingAllowed ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                        } ${
                           isPresent
                             ? 'bg-emerald-600 text-white shadow-xs ring-2 ring-emerald-400'
                             : 'bg-slate-50 hover:bg-emerald-50 text-slate-700 border border-slate-200'
                         }`}
+                        title={!isMarkingAllowed ? sessionEligibility.message : undefined}
                       >
                         <Check className="w-3.5 h-3.5" />
                         <span>{t.present}</span>
@@ -1296,16 +1472,21 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                       {/* LATE */}
                       <button
                         type="button"
+                        disabled={!isMarkingAllowed}
                         onClick={() => {
+                          if (!isMarkingAllowed) return;
                           triggerHaptic(20);
                           setActiveLateStudentId(isShowingLatePills ? null : student.id);
                           setActiveLeaveStudentId(null);
                         }}
-                        className={`py-2 rounded-xl text-[11px] font-black transition cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
+                        className={`py-2 rounded-xl text-[11px] font-black transition flex flex-col items-center justify-center gap-0.5 ${
+                          !isMarkingAllowed ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                        } ${
                           isLate
                             ? 'bg-amber-500 text-white shadow-xs ring-2 ring-amber-400'
                             : 'bg-slate-50 hover:bg-amber-50 text-slate-700 border border-slate-200'
                         }`}
+                        title={!isMarkingAllowed ? sessionEligibility.message : undefined}
                       >
                         <Clock className="w-3.5 h-3.5" />
                         <span>{t.late}</span>
@@ -1314,16 +1495,21 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                       {/* LEAVE */}
                       <button
                         type="button"
+                        disabled={!isMarkingAllowed}
                         onClick={() => {
+                          if (!isMarkingAllowed) return;
                           triggerHaptic(20);
                           setActiveLeaveStudentId(isShowingLeavePills ? null : student.id);
                           setActiveLateStudentId(null);
                         }}
-                        className={`py-2 rounded-xl text-[11px] font-black transition cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
+                        className={`py-2 rounded-xl text-[11px] font-black transition flex flex-col items-center justify-center gap-0.5 ${
+                          !isMarkingAllowed ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                        } ${
                           isLeave
                             ? 'bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-400'
                             : 'bg-slate-50 hover:bg-indigo-50 text-slate-700 border border-slate-200'
                         }`}
+                        title={!isMarkingAllowed ? sessionEligibility.message : undefined}
                       >
                         <AlertCircle className="w-3.5 h-3.5" />
                         <span>{t.leave}</span>
@@ -1332,12 +1518,16 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                       {/* ABSENT */}
                       <button
                         type="button"
+                        disabled={!isMarkingAllowed}
                         onClick={() => handleMarkAbsent(student.id, false)}
-                        className={`py-2 rounded-xl text-[11px] font-black transition cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
+                        className={`py-2 rounded-xl text-[11px] font-black transition flex flex-col items-center justify-center gap-0.5 ${
+                          !isMarkingAllowed ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                        } ${
                           isAbsent
                             ? 'bg-rose-600 text-white shadow-xs ring-2 ring-rose-400'
                             : 'bg-slate-50 hover:bg-rose-50 text-slate-700 border border-slate-200'
                         }`}
+                        title={!isMarkingAllowed ? sessionEligibility.message : undefined}
                       >
                         <XCircle className="w-3.5 h-3.5" />
                         <span>{t.absent}</span>

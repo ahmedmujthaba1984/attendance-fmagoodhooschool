@@ -23,6 +23,7 @@ import { MobileMenuDrawer } from './components/MobileMenuDrawer';
 import { ExtraClassesModule } from './components/ExtraClassesModule';
 import { syncEngine } from './lib/syncEngine';
 import { offlineDb } from './lib/db';
+import { checkSessionMarkingEligibility, getMaldivesNow } from './utils/sessionTimingsHelper';
 import {
   DEFAULT_STAFF,
   DEFAULT_STUDENTS,
@@ -86,11 +87,7 @@ function MainApp() {
 
   // Selection state
   const [selectedDate, setSelectedDate] = useState<string>(() => {
-    const d = new Date();
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    return getMaldivesNow().dateStr;
   });
   const [selectedGrade, setSelectedGrade] = useState<GradeLevel | 'ALL'>('Grade 4');
   const [selectedSession, setSelectedSession] = useState<SessionType>('MORNING_BEFORE_BREAK');
@@ -412,6 +409,14 @@ function MainApp() {
 
   // Handlers for Mutations
   const handleUpdateRecord = async (record: AttendanceRecord) => {
+    // 0. Validate eligibility: Cannot mark future date or session before start time
+    const eligibility = checkSessionMarkingEligibility(record.date, record.sessionType, sessionTimings);
+    if (!eligibility.allowed) {
+      alert(eligibility.message);
+      return;
+    }
+
+    const previousRecords = attendanceRecords;
     const enrichedRecord: AttendanceRecord = {
       ...record,
       markedByUserId: record.markedByUserId || currentUser?.id || 'staff-1',
@@ -441,6 +446,18 @@ function MainApp() {
         const savedRec = resData.record || enrichedRecord;
         await offlineDb.attendance.put({ ...savedRec, syncStatus: 'SYNCED' });
       } else {
+        const errData = await res.json().catch(() => ({}));
+        if (
+          errData.error === 'FUTURE_DATE_NOT_ALLOWED' ||
+          errData.error === 'SESSION_NOT_STARTED' ||
+          errData.error === 'MANUAL_MARK_DISABLED' ||
+          errData.error === 'SESSION_LOCKED'
+        ) {
+          // Revert optimistic update
+          setAttendanceRecords(previousRecords);
+          alert(errData.message || 'Cannot mark attendance.');
+          return;
+        }
         await syncEngine.recordAttendance(enrichedRecord);
       }
     } catch {
@@ -453,6 +470,14 @@ function MainApp() {
   };
 
   const handleBulkMarkPresent = async (onlyUnmarked: boolean = false) => {
+    // 0. Validate eligibility
+    const eligibility = checkSessionMarkingEligibility(selectedDate, selectedSession, sessionTimings);
+    if (!eligibility.allowed) {
+      alert(eligibility.message);
+      return;
+    }
+
+    const previousRecords = attendanceRecords;
     const relevantStudents =
       selectedGrade === 'ALL'
         ? students
@@ -505,6 +530,17 @@ function MainApp() {
           setIsSessionSubmitted(true);
         }
       } else {
+        const errData = await res.json().catch(() => ({}));
+        if (
+          errData.error === 'FUTURE_DATE_NOT_ALLOWED' ||
+          errData.error === 'SESSION_NOT_STARTED' ||
+          errData.error === 'MANUAL_MARK_DISABLED' ||
+          errData.error === 'SESSION_LOCKED'
+        ) {
+          setAttendanceRecords(previousRecords);
+          alert(errData.message || 'Cannot mark attendance.');
+          return;
+        }
         await syncEngine.bulkRecordAttendance(updatedRecords);
       }
     } catch {
@@ -853,6 +889,11 @@ function MainApp() {
   };
 
   const handleSubmitSession = async () => {
+    const eligibility = checkSessionMarkingEligibility(selectedDate, selectedSession, sessionTimings);
+    if (!eligibility.allowed) {
+      alert(eligibility.message);
+      return;
+    }
     try {
       const res = await fetch('/api/attendance/submit-session', {
         method: 'POST',
@@ -869,6 +910,9 @@ function MainApp() {
         await fetchAttendance();
         await fetchMoEStats();
         await fetchAuditLogs();
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        alert(errData.message || 'Failed to submit session.');
       }
     } catch (err) {
       console.error('Failed to submit session:', err);
@@ -1043,6 +1087,12 @@ function MainApp() {
       arrivalTime?: string;
     }>
   ) => {
+    const eligibility = checkSessionMarkingEligibility(selectedDate, selectedSession, sessionTimings);
+    if (!eligibility.allowed) {
+      alert(eligibility.message);
+      return;
+    }
+
     const updatedRecords = [...attendanceRecords];
 
     for (const match of matches) {

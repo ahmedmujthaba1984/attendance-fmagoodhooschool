@@ -54,7 +54,11 @@ import { PendingAttendanceWarningModal } from './PendingAttendanceWarningModal';
 import { SuperAdminRevertModal } from './SuperAdminRevertModal';
 import { RapidRollCallView } from './RapidRollCallView';
 import { SessionTimingsModal } from './SessionTimingsModal';
-import { getEffectiveSessionTimings } from '../utils/sessionTimingsHelper';
+import {
+  getEffectiveSessionTimings,
+  checkSessionMarkingEligibility,
+  getMaldivesNow,
+} from '../utils/sessionTimingsHelper';
 
 interface AttendanceMatrixProps {
   students: Student[];
@@ -174,6 +178,24 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
   // Compute effective session timing (normal or temporary override for selected date)
   const effectiveTimings = getEffectiveSessionTimings(sessionTimings, selectedDate);
 
+  const maldivesToday = getMaldivesNow().dateStr;
+
+  // Session marking eligibility: cannot mark future dates or session before start time
+  const sessionEligibility = useMemo(() => {
+    return checkSessionMarkingEligibility(selectedDate, selectedSession, sessionTimings);
+  }, [selectedDate, selectedSession, sessionTimings]);
+
+  const morningEligibility = useMemo(() => {
+    return checkSessionMarkingEligibility(selectedDate, 'MORNING_BEFORE_BREAK', sessionTimings);
+  }, [selectedDate, sessionTimings]);
+
+  const afternoonEligibility = useMemo(() => {
+    return checkSessionMarkingEligibility(selectedDate, 'POST_BREAK', sessionTimings);
+  }, [selectedDate, sessionTimings]);
+
+  const isMarkingAllowed = sessionEligibility.allowed && !isSchoolClosed;
+  const [showEligibilityNoticeModal, setShowEligibilityNoticeModal] = useState(false);
+
   const handlePrevDay = () => {
     try {
       const d = new Date(selectedDate + 'T00:00:00Z');
@@ -186,12 +208,16 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
     try {
       const d = new Date(selectedDate + 'T00:00:00Z');
       d.setUTCDate(d.getUTCDate() + 1);
-      setSelectedDate(d.toISOString().slice(0, 10));
+      const nextDateStr = d.toISOString().slice(0, 10);
+      if (nextDateStr > maldivesToday) {
+        return;
+      }
+      setSelectedDate(nextDateStr);
     } catch {}
   };
 
   const handleToday = () => {
-    setSelectedDate(new Date().toISOString().slice(0, 10));
+    setSelectedDate(maldivesToday);
   };
   const [revertModalState, setRevertModalState] = useState<{
     isOpen: boolean;
@@ -342,6 +368,10 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
     if (isSchoolClosed) {
       return;
     }
+    if (!sessionEligibility.allowed) {
+      setShowEligibilityNoticeModal(true);
+      return;
+    }
     if (isSessionSubmitted) {
       if (!isSuperAdmin) {
         setShowLockedNoticeModal(true);
@@ -379,6 +409,10 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
 
   const handleReasonChange = (studentId: string, reason: LeaveReason) => {
     if (isSchoolClosed) return;
+    if (!sessionEligibility.allowed) {
+      setShowEligibilityNoticeModal(true);
+      return;
+    }
     if (isSessionSubmitted && !isSuperAdmin) {
       setShowLockedNoticeModal(true);
       return;
@@ -404,6 +438,10 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
 
   const handleArrivalTimeChange = (studentId: string, time: string) => {
     if (isSchoolClosed) return;
+    if (!sessionEligibility.allowed) {
+      setShowEligibilityNoticeModal(true);
+      return;
+    }
     if (isSessionSubmitted && !isSuperAdmin) {
       setShowLockedNoticeModal(true);
       return;
@@ -429,6 +467,10 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
 
   const handleBulkMarkPresentClicked = (onlyUnmarked: boolean = false) => {
     if (isSchoolClosed) return;
+    if (!sessionEligibility.allowed) {
+      setShowEligibilityNoticeModal(true);
+      return;
+    }
     if (isSessionSubmitted && !isSuperAdmin) {
       setShowLockedNoticeModal(true);
       return;
@@ -438,6 +480,10 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
 
   const handleVoiceModalClicked = () => {
     if (isSchoolClosed) return;
+    if (!sessionEligibility.allowed) {
+      setShowEligibilityNoticeModal(true);
+      return;
+    }
     if (isSessionSubmitted && !isSuperAdmin) {
       setShowLockedNoticeModal(true);
       return;
@@ -576,21 +622,37 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
                   id="attendance-date-picker"
                   type="date"
                   value={selectedDate}
+                  max={maldivesToday}
                   onChange={(e) => setSelectedDate(e.target.value)}
                   className="bg-transparent text-xs sm:text-xs font-semibold text-slate-900 focus:outline-none cursor-pointer w-full"
                 />
+                {selectedDate > maldivesToday && (
+                  <span className="text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
+                    <Lock className="w-3 h-3" />
+                    <span>{isRTL ? 'ކުރި' : 'Future'}</span>
+                  </span>
+                )}
               </div>
 
               <button
                 type="button"
                 onClick={handleNextDay}
-                className="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 active:bg-slate-200 border border-slate-200 text-slate-700 cursor-pointer min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center transition active:scale-95 touch-manipulation"
-                title={isRTL ? 'އަނެއް ދުވަސް' : 'Next day'}
+                disabled={selectedDate >= maldivesToday}
+                className={`p-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center transition touch-manipulation ${
+                  selectedDate >= maldivesToday
+                    ? 'opacity-40 cursor-not-allowed'
+                    : 'hover:bg-slate-100 active:bg-slate-200 cursor-pointer active:scale-95'
+                }`}
+                title={
+                  selectedDate >= maldivesToday
+                    ? (isRTL ? 'ކުރިއަށް އޮތް ދުވަސްތަކަށް ނުދެވޭނެ' : 'Cannot advance to future dates')
+                    : (isRTL ? 'އަނެއް ދުވަސް' : 'Next day')
+                }
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
 
-              {selectedDate !== new Date().toISOString().slice(0, 10) && (
+              {selectedDate !== maldivesToday && (
                 <button
                   type="button"
                   onClick={handleToday}
@@ -615,6 +677,7 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
                     ? 'bg-linear-to-r from-amber-500 to-amber-600 text-white shadow-sm ring-2 ring-amber-400/40'
                     : 'bg-white text-slate-700 hover:text-amber-800 hover:bg-amber-50/70 border border-slate-200'
                 }`}
+                title={!morningEligibility.allowed ? morningEligibility.message : undefined}
               >
                 <Sunrise
                   className={`w-4 h-4 shrink-0 ${
@@ -622,6 +685,13 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
                   }`}
                 />
                 <span>{t.morningSessionShort}</span>
+                {!morningEligibility.allowed && (
+                  <span className={`inline-flex items-center gap-0.5 px-1 py-0.2 rounded-full text-[9px] font-bold ${
+                    selectedSession === 'MORNING_BEFORE_BREAK' ? 'bg-amber-900/30 text-amber-100' : 'bg-amber-100 text-amber-800'
+                  }`}>
+                    <Lock className="w-2.5 h-2.5" />
+                  </span>
+                )}
                 <span
                   className={`text-[9px] px-1.5 py-0.5 rounded-full font-mono font-bold hidden sm:inline ${
                     selectedSession === 'MORNING_BEFORE_BREAK'
@@ -641,6 +711,7 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
                     ? 'bg-linear-to-r from-teal-600 to-emerald-600 text-white shadow-sm ring-2 ring-teal-400/40'
                     : 'bg-white text-slate-700 hover:text-teal-800 hover:bg-teal-50/70 border border-slate-200'
                 }`}
+                title={!afternoonEligibility.allowed ? afternoonEligibility.message : undefined}
               >
                 <Sunset
                   className={`w-4 h-4 shrink-0 ${
@@ -648,6 +719,13 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
                   }`}
                 />
                 <span>{t.postBreakSessionShort}</span>
+                {!afternoonEligibility.allowed && (
+                  <span className={`inline-flex items-center gap-0.5 px-1 py-0.2 rounded-full text-[9px] font-bold ${
+                    selectedSession === 'POST_BREAK' ? 'bg-teal-900/30 text-teal-100' : 'bg-teal-100 text-teal-800'
+                  }`}>
+                    <Lock className="w-2.5 h-2.5" />
+                  </span>
+                )}
                 <span
                   className={`text-[9px] px-1.5 py-0.5 rounded-full font-mono font-bold hidden sm:inline ${
                     selectedSession === 'POST_BREAK'
@@ -709,12 +787,13 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
               id="voice-dictate-btn"
               type="button"
               onClick={handleVoiceModalClicked}
-              disabled={isSchoolClosed}
+              disabled={isSchoolClosed || !sessionEligibility.allowed}
               className={`inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-xs min-h-[44px] sm:min-h-0 ${
-                isSchoolClosed
+                isSchoolClosed || !sessionEligibility.allowed
                   ? 'bg-slate-100 text-slate-400 border border-slate-200 opacity-50 cursor-not-allowed'
                   : 'bg-indigo-50 hover:bg-indigo-100 active:bg-indigo-200 text-indigo-700 border border-indigo-200 cursor-pointer'
               }`}
+              title={!sessionEligibility.allowed ? sessionEligibility.message : undefined}
             >
               <Mic className="w-4 h-4 text-indigo-600 shrink-0" />
               <span>{t.voiceInputButton}</span>
@@ -726,12 +805,13 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
               id="bulk-mark-present-btn"
               type="button"
               onClick={handleBulkMarkPresentClicked}
-              disabled={isSchoolClosed}
+              disabled={isSchoolClosed || !sessionEligibility.allowed}
               className={`inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition shadow-xs min-h-[44px] sm:min-h-0 ${
-                isSchoolClosed
+                isSchoolClosed || !sessionEligibility.allowed
                   ? 'bg-slate-200 text-slate-400 opacity-50 cursor-not-allowed'
                   : 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white cursor-pointer'
               }`}
+              title={!sessionEligibility.allowed ? sessionEligibility.message : undefined}
             >
               <CheckCheck className="w-4 h-4 shrink-0" />
               <span>{t.markAllPresent}</span>
@@ -743,13 +823,22 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
                 <button
                   id="submit-session-btn"
                   type="button"
-                  onClick={isSessionSubmitted ? undefined : onSubmitSession}
-                  disabled={isSessionSubmitted}
+                  onClick={
+                    !sessionEligibility.allowed
+                      ? () => setShowEligibilityNoticeModal(true)
+                      : isSessionSubmitted
+                      ? undefined
+                      : onSubmitSession
+                  }
+                  disabled={isSessionSubmitted || !sessionEligibility.allowed}
                   className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-xs min-h-[44px] sm:min-h-0 ${
-                    isSessionSubmitted
+                    !sessionEligibility.allowed
+                      ? 'bg-slate-100 text-slate-400 border border-slate-200 opacity-60 cursor-not-allowed'
+                      : isSessionSubmitted
                       ? 'bg-sky-50 text-sky-800 border border-sky-300 cursor-default'
                       : 'bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white cursor-pointer'
                   }`}
+                  title={!sessionEligibility.allowed ? sessionEligibility.message : undefined}
                 >
                   {isSessionSubmitted ? (
                     <>
@@ -834,6 +923,78 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
               >
                 <RefreshCw className="w-4 h-4 text-rose-600" />
                 <span>{t.reopenSchool}</span>
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* 2. Timing / Future Date Lock Banner */}
+        {!isSchoolClosed && !sessionEligibility.allowed && (
+          <div
+            id="session-time-lock-banner"
+            className={`mt-4 p-4 sm:p-5 rounded-2xl border-2 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+              sessionEligibility.reason === 'FUTURE_DATE'
+                ? 'bg-linear-to-r from-amber-50 via-orange-50/80 to-amber-100/50 border-amber-300 text-amber-950'
+                : 'bg-linear-to-r from-sky-50 via-indigo-50/70 to-blue-50 border-sky-300 text-sky-950'
+            }`}
+          >
+            <div className="flex items-start sm:items-center gap-3.5">
+              <div
+                className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-md ${
+                  sessionEligibility.reason === 'FUTURE_DATE'
+                    ? 'bg-amber-600 text-white'
+                    : 'bg-sky-600 text-white'
+                }`}
+              >
+                {sessionEligibility.reason === 'FUTURE_DATE' ? (
+                  <CalendarIcon className="w-6 h-6" />
+                ) : (
+                  <Clock className="w-6 h-6" />
+                )}
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className={`text-xs font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${
+                      sessionEligibility.reason === 'FUTURE_DATE'
+                        ? 'bg-amber-200 text-amber-900 border-amber-300'
+                        : 'bg-sky-200 text-sky-900 border-sky-300'
+                    }`}
+                  >
+                    {sessionEligibility.reason === 'FUTURE_DATE'
+                      ? (isRTL ? 'ކުރިއަށް އޮތް ތާރީޚެއް • ހާޒިރީ ބަންދު' : 'Future Date • Attendance Locked')
+                      : (isRTL ? 'ސެޝަން އަދި ނުފެށޭ • ހާޒިރީ ބަންދު' : 'Session Not Started • Attendance Locked')}
+                  </span>
+                  <span className="text-[11px] font-bold bg-white text-slate-700 px-2 py-0.5 rounded-md border border-slate-200">
+                    {selectedDate} ({selectedSession === 'MORNING_BEFORE_BREAK' ? (isRTL ? 'ހެނދުނުގެ ސެޝަން' : 'Morning Session') : (isRTL ? 'މެންދުރުފަހުގެ ސެޝަން' : 'Afternoon Session')})
+                  </span>
+                  <span className="text-[11px] font-bold bg-white text-slate-600 px-2 py-0.5 rounded-md border border-slate-200">
+                    {isRTL ? `މިހާރުގެ ވަގުތު: ${sessionEligibility.currentTime}` : `Maldives Time: ${sessionEligibility.currentTime}`}
+                  </span>
+                </div>
+                <h4 className="text-sm sm:text-base font-extrabold mt-1">
+                  {sessionEligibility.reason === 'FUTURE_DATE'
+                    ? (isRTL
+                        ? `ކުރިއަށް އޮތް ތާރީޚަކަށް (${selectedDate}) ހާޒިރީއެއް ނުޖެހޭނެއެވެ`
+                        : `Cannot mark attendance before date arrives (${selectedDate})`)
+                    : (isRTL
+                        ? `${selectedSession === 'MORNING_BEFORE_BREAK' ? 'ހެނދުނުގެ ސެޝަން' : 'މެންދުރުފަހުގެ ސެޝަން'} އަދި ނުފެށެއެވެ (${sessionEligibility.startTime})`
+                        : `${selectedSession === 'MORNING_BEFORE_BREAK' ? 'Morning' : 'Afternoon'} session roll call only opens after start time (${sessionEligibility.startTime})`)}
+                </h4>
+                <p className="text-xs mt-0.5 leading-relaxed max-w-2xl opacity-90">
+                  {isRTL ? sessionEligibility.messageDhivehi : sessionEligibility.message}
+                </p>
+              </div>
+            </div>
+
+            {sessionEligibility.reason === 'FUTURE_DATE' && selectedDate !== sessionEligibility.currentDate && (
+              <button
+                type="button"
+                onClick={handleToday}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white hover:bg-amber-100 text-amber-900 border-2 border-amber-300 text-xs font-bold transition shadow-xs cursor-pointer shrink-0"
+              >
+                <CalendarIcon className="w-4 h-4 text-amber-700" />
+                <span>{isRTL ? `މިއަދަށް ދިއުމަށް (${sessionEligibility.currentDate})` : `Go to Today (${sessionEligibility.currentDate})`}</span>
               </button>
             )}
           </div>
@@ -1393,12 +1554,16 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
                       {/* Present */}
                       <button
                         type="button"
+                        disabled={isSchoolClosed || !isMarkingAllowed}
                         onClick={() => handleStatusChange(student.id, 'PRESENT')}
-                        className={`flex items-center justify-center gap-1 px-2 py-2 sm:px-3 sm:py-1.5 rounded-xl text-xs font-bold transition cursor-pointer min-h-[44px] md:min-h-[38px] active:scale-95 touch-manipulation ${
+                        className={`flex items-center justify-center gap-1 px-2 py-2 sm:px-3 sm:py-1.5 rounded-xl text-xs font-bold transition min-h-[44px] md:min-h-[38px] active:scale-95 touch-manipulation ${
+                          isSchoolClosed || !isMarkingAllowed ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                        } ${
                           status === 'PRESENT'
                             ? 'bg-emerald-600 text-white shadow-xs'
                             : 'bg-slate-50 text-slate-700 hover:bg-slate-100 active:bg-slate-200 border border-slate-200'
                         }`}
+                        title={!isMarkingAllowed && !sessionEligibility.allowed ? sessionEligibility.message : undefined}
                       >
                         <CheckCircle className="w-4 h-4 shrink-0" />
                         <span>{t.present}</span>
@@ -1407,12 +1572,16 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
                       {/* Late */}
                       <button
                         type="button"
+                        disabled={isSchoolClosed || !isMarkingAllowed}
                         onClick={() => handleStatusChange(student.id, 'LATE')}
-                        className={`flex items-center justify-center gap-1 px-2 py-2 sm:px-3 sm:py-1.5 rounded-xl text-xs font-bold transition cursor-pointer min-h-[44px] md:min-h-[38px] active:scale-95 touch-manipulation ${
+                        className={`flex items-center justify-center gap-1 px-2 py-2 sm:px-3 sm:py-1.5 rounded-xl text-xs font-bold transition min-h-[44px] md:min-h-[38px] active:scale-95 touch-manipulation ${
+                          isSchoolClosed || !isMarkingAllowed ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                        } ${
                           status === 'LATE'
                             ? 'bg-amber-500 text-white shadow-xs'
                             : 'bg-slate-50 text-slate-700 hover:bg-slate-100 active:bg-slate-200 border border-slate-200'
                         }`}
+                        title={!isMarkingAllowed && !sessionEligibility.allowed ? sessionEligibility.message : undefined}
                       >
                         <Clock className="w-4 h-4 shrink-0" />
                         <span>{t.late}</span>
@@ -1421,12 +1590,16 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
                       {/* Leave */}
                       <button
                         type="button"
+                        disabled={isSchoolClosed || !isMarkingAllowed}
                         onClick={() => handleStatusChange(student.id, 'LEAVE')}
-                        className={`flex items-center justify-center gap-1 px-2 py-2 sm:px-3 sm:py-1.5 rounded-xl text-xs font-bold transition cursor-pointer min-h-[44px] md:min-h-[38px] active:scale-95 touch-manipulation ${
+                        className={`flex items-center justify-center gap-1 px-2 py-2 sm:px-3 sm:py-1.5 rounded-xl text-xs font-bold transition min-h-[44px] md:min-h-[38px] active:scale-95 touch-manipulation ${
+                          isSchoolClosed || !isMarkingAllowed ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                        } ${
                           status === 'LEAVE'
                             ? 'bg-indigo-600 text-white shadow-xs'
                             : 'bg-slate-50 text-slate-700 hover:bg-slate-100 active:bg-slate-200 border border-slate-200'
                         }`}
+                        title={!isMarkingAllowed && !sessionEligibility.allowed ? sessionEligibility.message : undefined}
                       >
                         <AlertCircle className="w-4 h-4 shrink-0" />
                         <span>{t.leave}</span>
@@ -1435,12 +1608,16 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
                       {/* Absent */}
                       <button
                         type="button"
+                        disabled={isSchoolClosed || !isMarkingAllowed}
                         onClick={() => handleStatusChange(student.id, 'ABSENT')}
-                        className={`flex items-center justify-center gap-1 px-2 py-2 sm:px-3 sm:py-1.5 rounded-xl text-xs font-bold transition cursor-pointer min-h-[44px] md:min-h-[38px] active:scale-95 touch-manipulation ${
+                        className={`flex items-center justify-center gap-1 px-2 py-2 sm:px-3 sm:py-1.5 rounded-xl text-xs font-bold transition min-h-[44px] md:min-h-[38px] active:scale-95 touch-manipulation ${
+                          isSchoolClosed || !isMarkingAllowed ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                        } ${
                           status === 'ABSENT'
                             ? 'bg-rose-600 text-white shadow-xs'
                             : 'bg-slate-50 text-slate-700 hover:bg-slate-100 active:bg-slate-200 border border-slate-200'
                         }`}
+                        title={!isMarkingAllowed && !sessionEligibility.allowed ? sessionEligibility.message : undefined}
                       >
                         <XCircle className="w-4 h-4 shrink-0" />
                         <span>{t.absent}</span>
@@ -1585,13 +1762,22 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
           {onSubmitSession && !isSchoolClosed && (
             <button
               type="button"
-              onClick={isSessionSubmitted ? undefined : onSubmitSession}
-              disabled={isSessionSubmitted}
+              onClick={
+                !sessionEligibility.allowed
+                  ? () => setShowEligibilityNoticeModal(true)
+                  : isSessionSubmitted
+                  ? undefined
+                  : onSubmitSession
+              }
+              disabled={isSessionSubmitted || !sessionEligibility.allowed}
               className={`inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold transition shadow-xs min-h-[40px] ${
-                isSessionSubmitted
+                !sessionEligibility.allowed
+                  ? 'bg-slate-100 text-slate-400 border border-slate-200 opacity-60 cursor-not-allowed'
+                  : isSessionSubmitted
                   ? 'bg-sky-50 text-sky-800 border border-sky-300 cursor-default'
                   : 'bg-sky-600 hover:bg-sky-700 text-white cursor-pointer'
               }`}
+              title={!sessionEligibility.allowed ? sessionEligibility.message : undefined}
             >
               {isSessionSubmitted ? (
                 <>
@@ -1877,6 +2063,98 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
               >
                 {isRTL ? 'ރަނގަޅު' : 'Understood'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Attendance Timing / Future Date Eligibility Modal */}
+      {showEligibilityNoticeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden">
+            <div className={`p-5 text-white ${
+              sessionEligibility.reason === 'FUTURE_DATE'
+                ? 'bg-linear-to-r from-amber-600 to-orange-600'
+                : 'bg-linear-to-r from-sky-600 to-indigo-600'
+            }`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                    <Lock className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-base">
+                      {sessionEligibility.reason === 'FUTURE_DATE'
+                        ? (isRTL ? 'ކުރިއަށް އޮތް ތާރީޚަކަށް ހާޒިރީ ނުޖެހޭނެ' : 'Future Date Locked')
+                        : (isRTL ? 'ސެޝަން ފެށުމުގެ ކުރިން ހާޒިރީ ނުޖެހޭނެ' : 'Session Not Started')}
+                    </h3>
+                    <p className="text-xs text-white/80 mt-0.5">
+                      {isRTL ? 'ފ. މަގޫދޫ ސްކޫލް ހާޒިރީ ނިޒާމު' : 'F. Magoodhoo School Attendance System'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowEligibilityNoticeModal(false)}
+                  className="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/10"
+                >
+                  <XCircle className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-5 space-y-3.5 text-xs text-slate-700 leading-relaxed">
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
+                <div className="flex justify-between items-center text-slate-500 font-medium">
+                  <span>{isRTL ? 'ތާރީޚް:' : 'Target Date:'}</span>
+                  <span className="font-bold text-slate-900">{selectedDate}</span>
+                </div>
+                <div className="flex justify-between items-center text-slate-500 font-medium">
+                  <span>{isRTL ? 'މިއަދުގެ ތާރީޚް:' : 'Current Date:'}</span>
+                  <span className="font-bold text-slate-900">{sessionEligibility.currentDate}</span>
+                </div>
+                <div className="flex justify-between items-center text-slate-500 font-medium">
+                  <span>{isRTL ? 'މިހާރުގެ ވަގުތު:' : 'Current Time:'}</span>
+                  <span className="font-bold text-slate-900 font-mono">{sessionEligibility.currentTime}</span>
+                </div>
+                {sessionEligibility.startTime && (
+                  <div className="flex justify-between items-center text-slate-500 font-medium">
+                    <span>{isRTL ? 'ސެޝަން ފެށޭ ގަޑި:' : 'Session Starts At:'}</span>
+                    <span className="font-bold text-sky-700 font-mono">{sessionEligibility.startTime}</span>
+                  </div>
+                )}
+              </div>
+
+              <p className="font-medium text-slate-800">
+                {sessionEligibility.message}
+              </p>
+              <p className="font-medium text-slate-600 text-right dir-rtl leading-normal">
+                {sessionEligibility.messageDhivehi}
+              </p>
+
+              <div className="pt-2 flex gap-2">
+                {sessionEligibility.reason === 'FUTURE_DATE' && selectedDate !== sessionEligibility.currentDate && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleToday();
+                      setShowEligibilityNoticeModal(false);
+                    }}
+                    className="flex-1 py-2.5 px-4 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-center cursor-pointer transition shadow-xs"
+                  >
+                    {isRTL ? `މިއަދަށް ބަދަލުކުރޭ (${sessionEligibility.currentDate})` : `Switch to Today (${sessionEligibility.currentDate})`}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setShowEligibilityNoticeModal(false)}
+                  className={`py-2.5 px-4 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold transition cursor-pointer ${
+                    sessionEligibility.reason === 'FUTURE_DATE' && selectedDate !== sessionEligibility.currentDate ? '' : 'w-full bg-sky-600 text-white hover:bg-sky-700 border-transparent'
+                  }`}
+                >
+                  {isRTL ? 'ރަނގަޅު' : 'Understood'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

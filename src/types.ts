@@ -446,12 +446,12 @@ export interface WeeklyDailyStat {
 
 export interface WeeklyGradeRow {
   grade: GradeLevel | string;
-  sundayRate: number;
-  mondayRate: number;
-  tuesdayRate: number;
-  wednesdayRate: number;
-  thursdayRate: number;
-  weeklyAverageRate: number;
+  sundayRate: number | null;
+  mondayRate: number | null;
+  tuesdayRate: number | null;
+  wednesdayRate: number | null;
+  thursdayRate: number | null;
+  weeklyAverageRate: number | null;
 }
 
 export interface WeeklyAttendanceReport {
@@ -460,8 +460,8 @@ export interface WeeklyAttendanceReport {
   reportMode?: AttendanceReportMode;
   startDate: string; // Sunday
   endDate: string;   // Thursday
-  overallRate: number;
-  weeklyAverageRate: number;
+  overallRate: number | null;
+  weeklyAverageRate: number | null;
   morningWeeklyRate?: number;
   afternoonWeeklyRate?: number;
   officialWeeklyRate?: number;
@@ -503,8 +503,8 @@ export interface MonthlyAttendanceReport {
   totalSchoolDays: number;
   instructionalDays: number;
   closedDays: number;
-  overallRate: number;
-  monthlyRate: number;
+  overallRate: number | null;
+  monthlyRate: number | null;
   morningMonthlyRate?: number;
   afternoonMonthlyRate?: number;
   officialMonthlyRate?: number;

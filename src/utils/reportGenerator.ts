@@ -730,7 +730,7 @@ export function generateClientWeeklyReport({
   const instructionalDays = Math.max(1, totalSchoolDays - closedDays);
   const overallRate = totalSessionCount > 0
     ? Math.round((totalPresentCount / totalSessionCount) * 100)
-    : 100;
+    : null;
 
   // Grade matrix for the 5 days (Sun to Thu)
   const gradeMatrix = ALL_GRADES_LIST.map((grade) => {
@@ -739,22 +739,23 @@ export function generateClientWeeklyReport({
 
     const dayRates = schoolDates.map((dateStr) => {
       const recs = records.filter((r) => r.date === dateStr && stIds.has(r.studentId));
-      if (recs.length === 0) return 100;
+      if (recs.length === 0) return null;
       const p = recs.filter((r) => r.status === 'PRESENT' || r.status === 'LATE').length;
       return Math.round((p / recs.length) * 100);
     });
 
-    const avg = dayRates.length > 0
-      ? Math.round(dayRates.reduce((a, b) => a + b, 0) / dayRates.length)
-      : 100;
+    const validRates = dayRates.filter((r): r is number => r !== null);
+    const avg = validRates.length > 0
+      ? Math.round(validRates.reduce((a, b) => a + b, 0) / validRates.length)
+      : null;
 
     return {
       grade,
-      sundayRate: dayRates[0] ?? 100,
-      mondayRate: dayRates[1] ?? 100,
-      tuesdayRate: dayRates[2] ?? 100,
-      wednesdayRate: dayRates[3] ?? 100,
-      thursdayRate: dayRates[4] ?? 100,
+      sundayRate: dayRates[0] ?? null,
+      mondayRate: dayRates[1] ?? null,
+      tuesdayRate: dayRates[2] ?? null,
+      wednesdayRate: dayRates[3] ?? null,
+      thursdayRate: dayRates[4] ?? null,
       weeklyAverageRate: avg,
     };
   });
@@ -762,19 +763,19 @@ export function generateClientWeeklyReport({
   const gradeRates = gradeMatrix.map((gm) => ({
     grade: gm.grade as GradeLevel,
     rates: {
-      Sunday: gm.sundayRate,
-      Monday: gm.mondayRate,
-      Tuesday: gm.tuesdayRate,
-      Wednesday: gm.wednesdayRate,
-      Thursday: gm.thursdayRate,
+      Sunday: gm.sundayRate ?? 0,
+      Monday: gm.mondayRate ?? 0,
+      Tuesday: gm.tuesdayRate ?? 0,
+      Wednesday: gm.wednesdayRate ?? 0,
+      Thursday: gm.thursdayRate ?? 0,
     },
-    weeklyAverage: gm.weeklyAverageRate,
-    officialRate: gm.weeklyAverageRate,
+    weeklyAverage: gm.weeklyAverageRate ?? 0,
+    officialRate: gm.weeklyAverageRate ?? 0,
     extraClassRate: undefined,
   }));
 
-  const sortedGrades = [...gradeMatrix].sort((a, b) => b.weeklyAverageRate - a.weeklyAverageRate);
-  const bestClass = sortedGrades[0]?.grade || 'Grade 10';
+  const sortedGrades = [...gradeMatrix].sort((a, b) => (b.weeklyAverageRate ?? 0) - (a.weeklyAverageRate ?? 0));
+  const bestClass = sortedGrades[0]?.weeklyAverageRate != null ? sortedGrades[0].grade : undefined;
 
   return {
     weekNumber: currentWeek.weekNumber,

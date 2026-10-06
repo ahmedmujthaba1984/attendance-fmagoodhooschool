@@ -194,6 +194,62 @@ function MainApp() {
     }
   }, [activeTab]);
 
+  const fetchSessionTimings = async () => {
+    try {
+      const timingRes = await fetch('/api/settings/session-timings');
+      if (timingRes.ok) {
+        const timingData = await timingRes.json();
+        if (timingData.timings) {
+          setSessionTimings(timingData.timings);
+          try {
+            localStorage.setItem('school_session_timings', JSON.stringify(timingData.timings));
+          } catch {}
+        }
+      }
+    } catch (err) {
+      console.warn('Could not fetch session timings', err);
+    }
+  };
+
+  // 3. Real-time sync for session timings across multiple browsers, tabs, and incognito windows
+  useEffect(() => {
+    let channel: BroadcastChannel | null = null;
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        channel = new BroadcastChannel('school_portal_sync');
+        channel.onmessage = (event) => {
+          if (event.data?.type === 'SESSION_TIMINGS_UPDATED' && event.data.timings) {
+            setSessionTimings(event.data.timings);
+          }
+        };
+      }
+    } catch {}
+
+    // Poll every 10 seconds to pick up changes from other browsers (e.g. Incognito vs Normal window)
+    const interval = setInterval(() => {
+      fetchSessionTimings();
+    }, 10000);
+
+    const handleFocus = () => {
+      fetchSessionTimings();
+    };
+    window.addEventListener('focus', handleFocus);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchSessionTimings();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      channel?.close();
+    };
+  }, []);
+
   const initData = async () => {
     try {
       // 1. Fetch Staff
@@ -307,18 +363,7 @@ function MainApp() {
       fetchExtraClassesBadge();
 
       // 8. Fetch Configured Session Timings
-      try {
-        const timingRes = await fetch('/api/settings/session-timings');
-        if (timingRes.ok) {
-          const timingData = await timingRes.json();
-          if (timingData.timings) {
-            setSessionTimings(timingData.timings);
-            localStorage.setItem('school_session_timings', JSON.stringify(timingData.timings));
-          }
-        }
-      } catch (err) {
-        console.warn('Could not fetch session timings', err);
-      }
+      await fetchSessionTimings();
     } catch (err) {
       console.warn('Network offline or backend warm-up, reading from offline cache', err);
       const cached = await offlineDb.students.toArray();
@@ -807,7 +852,16 @@ function MainApp() {
 
   const handleUpdateSessionTimings = async (newTimings: SchoolSessionTimings) => {
     setSessionTimings(newTimings);
-    localStorage.setItem('school_session_timings', JSON.stringify(newTimings));
+    try {
+      localStorage.setItem('school_session_timings', JSON.stringify(newTimings));
+    } catch {}
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        const channel = new BroadcastChannel('school_portal_sync');
+        channel.postMessage({ type: 'SESSION_TIMINGS_UPDATED', timings: newTimings });
+        channel.close();
+      }
+    } catch {}
     try {
       await fetch('/api/settings/session-timings', {
         method: 'PUT',

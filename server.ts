@@ -1,6 +1,7 @@
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
+import https from 'https';
 import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
 import {
@@ -146,7 +147,14 @@ const DEFAULT_SESSION_TIMINGS = {
   temporaryOverrides: [] as any[],
 };
 
+const FIRESTORE_SETTINGS_URL = `https://firestore.googleapis.com/v1/projects/industrial-heaven-2j4jh/databases/ai-studio-magoodhooschoole-128d6f0a-ac98-471b-97a7-60f7b0b880b4/documents/school_settings/session_timings?key=AIzaSyAfYbbnjncIlteLWYG9ZIpRRa8lq_QZvR8`;
+
+let cachedSessionTimings: any = null;
+
 function loadSessionTimingsFromDisk() {
+  if (cachedSessionTimings) {
+    return cachedSessionTimings;
+  }
   try {
     if (fs.existsSync(SESSION_TIMINGS_FILE_PATH)) {
       const raw = fs.readFileSync(SESSION_TIMINGS_FILE_PATH, 'utf-8');
@@ -155,12 +163,13 @@ function loadSessionTimingsFromDisk() {
         const morning = data.normal?.morning || data.morning || DEFAULT_SESSION_TIMINGS.normal.morning;
         const afternoon = data.normal?.afternoon || data.afternoon || DEFAULT_SESSION_TIMINGS.normal.afternoon;
         const temporaryOverrides = Array.isArray(data.temporaryOverrides) ? data.temporaryOverrides : [];
-        return {
+        cachedSessionTimings = {
           normal: { morning, afternoon },
           morning,
           afternoon,
           temporaryOverrides,
         };
+        return cachedSessionTimings;
       }
     }
   } catch (err) {
@@ -170,12 +179,77 @@ function loadSessionTimingsFromDisk() {
 }
 
 function saveSessionTimingsToDisk(timings: any) {
+  cachedSessionTimings = timings;
   try {
     fs.writeFileSync(SESSION_TIMINGS_FILE_PATH, JSON.stringify(timings, null, 2), 'utf-8');
   } catch (err) {
     console.warn('Could not save session timings to disk:', err);
   }
 }
+
+function fetchTimingsFromFirestore(): Promise<any | null> {
+  return new Promise((resolve) => {
+    https
+      .get(FIRESTORE_SETTINGS_URL, (res) => {
+        if (res.statusCode !== 200) return resolve(null);
+        let body = '';
+        res.on('data', (c) => (body += c));
+        res.on('end', () => {
+          try {
+            const doc = JSON.parse(body);
+            if (doc.fields?.timingsJson?.stringValue) {
+              const parsed = JSON.parse(doc.fields.timingsJson.stringValue);
+              resolve(parsed);
+            } else {
+              resolve(null);
+            }
+          } catch {
+            resolve(null);
+          }
+        });
+      })
+      .on('error', () => resolve(null));
+  });
+}
+
+function saveTimingsToFirestore(timings: any): Promise<boolean> {
+  return new Promise((resolve) => {
+    const payload = JSON.stringify({
+      fields: {
+        timingsJson: { stringValue: JSON.stringify(timings) },
+        updatedAt: { stringValue: new Date().toISOString() },
+      },
+    });
+
+    const req = https.request(
+      FIRESTORE_SETTINGS_URL,
+      {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(payload),
+        },
+      },
+      (res) => {
+        resolve(res.statusCode === 200);
+      }
+    );
+    req.on('error', () => resolve(false));
+    req.write(payload);
+    req.end();
+  });
+}
+
+// Initial remote fetch on boot
+fetchTimingsFromFirestore()
+  .then((remote) => {
+    if (remote) {
+      cachedSessionTimings = remote;
+      saveSessionTimingsToDisk(remote);
+      console.log('[SessionTimings] Synced latest timings from Firestore database:', remote.morning?.startTime, remote.afternoon?.startTime);
+    }
+  })
+  .catch(() => {});
 
 function loadTermDatesFromDisk(): TermDurationConfig[] {
   let list: TermDurationConfig[] = [];
@@ -3289,12 +3363,20 @@ app.put('/api/terms', (req, res) => {
 });
 
 // Session Timings Settings API
-app.get(['/api/settings/session-timings', '/api/session-timings'], (req, res) => {
+app.get(['/api/settings/session-timings', '/api/session-timings'], async (req, res) => {
+  try {
+    const remote = await fetchTimingsFromFirestore();
+    if (remote) {
+      cachedSessionTimings = remote;
+      saveSessionTimingsToDisk(remote);
+      return res.json({ timings: remote });
+    }
+  } catch {}
   const timings = loadSessionTimingsFromDisk();
   res.json({ timings });
 });
 
-app.put(['/api/settings/session-timings', '/api/session-timings'], (req, res) => {
+app.put(['/api/settings/session-timings', '/api/session-timings'], async (req, res) => {
   const incoming = req.body.timings;
   if (!incoming) {
     return res.status(400).json({ error: 'Invalid timings payload' });
@@ -3311,6 +3393,8 @@ app.put(['/api/settings/session-timings', '/api/session-timings'], (req, res) =>
   };
 
   saveSessionTimingsToDisk(normalized);
+  await saveTimingsToFirestore(normalized).catch(() => {});
+
   logAudit(
     'SESSION_TIMINGS_UPDATED',
     'SessionSettings',

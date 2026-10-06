@@ -73,16 +73,42 @@ export interface SessionMarkingEligibility {
 export function getMaldivesNow(): { dateStr: string; timeStr: string; now: Date } {
   // Maldives local time is UTC+5 (no Daylight Saving Time)
   const now = new Date();
-  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-  const maldivesDate = new Date(utc + 5 * 3600000);
-  const year = maldivesDate.getUTCFullYear();
-  const month = String(maldivesDate.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(maldivesDate.getUTCDate()).padStart(2, '0');
-  const dateStr = `${year}-${month}-${day}`;
-  const hours = String(maldivesDate.getUTCHours()).padStart(2, '0');
-  const minutes = String(maldivesDate.getUTCMinutes()).padStart(2, '0');
-  const timeStr = `${hours}:${minutes}`;
-  return { dateStr, timeStr, now: maldivesDate };
+  try {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Indian/Maldives',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+
+    const parts = formatter.formatToParts(now);
+    const map: Record<string, string> = {};
+    for (const p of parts) {
+      map[p.type] = p.value;
+    }
+
+    const dateStr = `${map.year}-${map.month}-${map.day}`;
+    let h = map.hour === '24' ? '00' : map.hour;
+    const timeStr = `${h.padStart(2, '0')}:${map.minute.padStart(2, '0')}`;
+    const maldivesDate = new Date(now.getTime() + 5 * 3600000);
+
+    return { dateStr, timeStr, now: maldivesDate };
+  } catch {
+    // Fallback: Date.now() is always UTC epoch milliseconds, shift by +5 hours
+    const maldivesEpoch = now.getTime() + 5 * 3600000;
+    const d = new Date(maldivesEpoch);
+    const year = d.getUTCFullYear();
+    const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    const hours = String(d.getUTCHours()).padStart(2, '0');
+    const minutes = String(d.getUTCMinutes()).padStart(2, '0');
+    const timeStr = `${hours}:${minutes}`;
+    return { dateStr, timeStr, now: d };
+  }
 }
 
 export function checkSessionMarkingEligibility(

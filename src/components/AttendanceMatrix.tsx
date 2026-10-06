@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   CheckCircle,
   XCircle,
@@ -178,20 +178,29 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
   // Compute effective session timing (normal or temporary override for selected date)
   const effectiveTimings = getEffectiveSessionTimings(sessionTimings, selectedDate);
 
+  // Auto-refresh clock tick every 30 seconds so eligibility updates as Maldives time passes
+  const [currentMinuteTick, setCurrentMinuteTick] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentMinuteTick((t) => t + 1);
+    }, 30000);
+    return () => clearInterval(timer);
+  }, []);
+
   const maldivesToday = getMaldivesNow().dateStr;
 
   // Session marking eligibility: cannot mark future dates or session before start time
   const sessionEligibility = useMemo(() => {
     return checkSessionMarkingEligibility(selectedDate, selectedSession, sessionTimings);
-  }, [selectedDate, selectedSession, sessionTimings]);
+  }, [selectedDate, selectedSession, sessionTimings, currentMinuteTick]);
 
   const morningEligibility = useMemo(() => {
     return checkSessionMarkingEligibility(selectedDate, 'MORNING_BEFORE_BREAK', sessionTimings);
-  }, [selectedDate, sessionTimings]);
+  }, [selectedDate, sessionTimings, currentMinuteTick]);
 
   const afternoonEligibility = useMemo(() => {
     return checkSessionMarkingEligibility(selectedDate, 'POST_BREAK', sessionTimings);
-  }, [selectedDate, sessionTimings]);
+  }, [selectedDate, sessionTimings, currentMinuteTick]);
 
   const isMarkingAllowed = sessionEligibility.allowed && !isSchoolClosed;
   const [showEligibilityNoticeModal, setShowEligibilityNoticeModal] = useState(false);

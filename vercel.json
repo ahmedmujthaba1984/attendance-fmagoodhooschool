@@ -1,9 +1,14 @@
 {
   "version": 2,
+  "functions": {
+    "api/**": {
+      "includeFiles": "server/**"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/api/index"
+      "destination": "/api/$1"
     },
     {
       "source": "/(.*)",

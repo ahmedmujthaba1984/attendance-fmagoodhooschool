@@ -38,6 +38,15 @@ const PORT = 3000;
 
 app.use(express.json({ limit: '10mb' }));
 
+// Normalize incoming request URLs across Vercel serverless rewrites and reverse proxies
+app.use((req, res, next) => {
+  const matchedPath = (req.headers['x-matched-path'] || req.headers['x-now-route-matches']) as string;
+  if (matchedPath && matchedPath.startsWith('/api') && (req.url === '/api' || req.url === '/api/index' || !req.url.startsWith('/api'))) {
+    req.url = matchedPath;
+  }
+  next();
+});
+
 // Shared Gemini AI client
 const geminiApiKey = process.env.GEMINI_API_KEY;
 const ai = geminiApiKey
@@ -1365,16 +1374,35 @@ function checkSessionStartEligibility(
   currentDate?: string;
 } {
   const now = new Date();
-  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-  // Maldives local time (UTC+5, no DST)
-  const maldivesDate = new Date(utc + 5 * 3600000);
-  const year = maldivesDate.getUTCFullYear();
-  const month = String(maldivesDate.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(maldivesDate.getUTCDate()).padStart(2, '0');
-  const serverDateStr = `${year}-${month}-${day}`;
-  const curHours = String(maldivesDate.getUTCHours()).padStart(2, '0');
-  const curMins = String(maldivesDate.getUTCMinutes()).padStart(2, '0');
-  const serverTimeStr = `${curHours}:${curMins}`;
+  let serverDateStr: string;
+  let serverTimeStr: string;
+
+  try {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Indian/Maldives',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+    const parts = formatter.formatToParts(now);
+    const map: Record<string, string> = {};
+    for (const p of parts) map[p.type] = p.value;
+    serverDateStr = `${map.year}-${map.month}-${map.day}`;
+    let h = map.hour === '24' ? '00' : map.hour;
+    serverTimeStr = `${h.padStart(2, '0')}:${map.minute.padStart(2, '0')}`;
+  } catch {
+    const maldivesDate = new Date(now.getTime() + 5 * 3600000);
+    const year = maldivesDate.getUTCFullYear();
+    const month = String(maldivesDate.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(maldivesDate.getUTCDate()).padStart(2, '0');
+    serverDateStr = `${year}-${month}-${day}`;
+    const curHours = String(maldivesDate.getUTCHours()).padStart(2, '0');
+    const curMins = String(maldivesDate.getUTCMinutes()).padStart(2, '0');
+    serverTimeStr = `${curHours}:${curMins}`;
+  }
 
   const curDateStr = clientDate && clientDate <= serverDateStr ? clientDate : serverDateStr;
   const curTimeStr = serverTimeStr;
@@ -3261,12 +3289,12 @@ app.put('/api/terms', (req, res) => {
 });
 
 // Session Timings Settings API
-app.get('/api/settings/session-timings', (req, res) => {
+app.get(['/api/settings/session-timings', '/api/session-timings'], (req, res) => {
   const timings = loadSessionTimingsFromDisk();
   res.json({ timings });
 });
 
-app.put('/api/settings/session-timings', (req, res) => {
+app.put(['/api/settings/session-timings', '/api/session-timings'], (req, res) => {
   const incoming = req.body.timings;
   if (!incoming) {
     return res.status(400).json({ error: 'Invalid timings payload' });
@@ -5718,7 +5746,16 @@ async function startServer() {
   });
 }
 
-if (!process.env.VERCEL && !process.env.NOW_REGION) {
+const isServerless = Boolean(
+  process.env.VERCEL ||
+  process.env.VERCEL_ENV ||
+  process.env.NOW_REGION ||
+  process.env.AWS_LAMBDA_FUNCTION_NAME ||
+  process.env.LAMBDA_TASK_ROOT ||
+  process.env.FUNCTION_NAME
+);
+
+if (!isServerless) {
   startServer();
 }
 

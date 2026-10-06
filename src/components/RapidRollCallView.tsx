@@ -126,10 +126,19 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
   const isMorning = selectedSession === 'MORNING_BEFORE_BREAK';
   const activeSessionTiming = isMorning ? effectiveTimings.morning : effectiveTimings.afternoon;
 
+  // Auto-refresh clock tick every 30 seconds so eligibility updates as Maldives time passes
+  const [currentMinuteTick, setCurrentMinuteTick] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentMinuteTick((t) => t + 1);
+    }, 30000);
+    return () => clearInterval(timer);
+  }, []);
+
   // Session marking eligibility: cannot mark future dates or session before start time
   const sessionEligibility = useMemo(() => {
     return checkSessionMarkingEligibility(selectedDate, selectedSession, sessionTimings);
-  }, [selectedDate, selectedSession, sessionTimings]);
+  }, [selectedDate, selectedSession, sessionTimings, currentMinuteTick]);
 
   const isMarkingAllowed = sessionEligibility.allowed && !isSchoolClosed && !isSessionSubmitted;
   const maldivesToday = getMaldivesNow().dateStr;

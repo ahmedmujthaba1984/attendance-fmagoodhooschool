@@ -274,7 +274,7 @@ function MainApp() {
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 8000);
           const firestoreRes = await fetch(
-            `https://firestore.googleapis.com/v1/projects/industrial-heaven-2j4jh/databases/ai-studio-magoodhooschoole-128d6f0a-ac98-471b-97a7-60f7b0b880b4/documents/school_settings/session_timings?key=AIzaSyAfYbbnjncIlteLWYG9ZIpRRa8lq_QZvR8&_t=${Date.now()}`,
+            `https://firestore.googleapis.com/v1/projects/industrial-heaven-2j4jh/databases/ai-studio-magoodhooschoole-128d6f0a-ac98-471b-97a7-60f7b0b880b4/documents/school_settings/session_timings?key=AIzaSyAfYbbnjncIlteLWYG9ZIpRRa8lq_QZvR8`,
             { cache: 'no-store', signal: controller.signal }
           );
           clearTimeout(timeoutId);

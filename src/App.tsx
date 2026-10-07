@@ -234,51 +234,64 @@ function MainApp() {
     setLastSyncTime(new Date());
   };
 
+  const isFetchingTimingsRef = useRef<boolean>(false);
+
   const fetchSessionTimings = async () => {
-    // 1. Primary: Server endpoint with no-cache headers & timestamp query param (Fast <1ms)
+    if (isFetchingTimingsRef.current) return;
+    isFetchingTimingsRef.current = true;
+
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2000);
-      const timingRes = await fetch(`/api/settings/session-timings?_t=${Date.now()}`, {
-        cache: 'no-store',
-        headers: { 'Cache-Control': 'no-cache, no-store', 'Pragma': 'no-cache' },
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-      if (timingRes.ok) {
-        const cType = timingRes.headers.get('content-type') || '';
-        if (cType.includes('application/json')) {
-          const timingData = await timingRes.json();
-          if (timingData.timings) {
-            applyUpdatedTimings(timingData.timings);
-            setIsLiveSyncActive(true);
-            return;
+      let gotTimings = false;
+
+      // 1. Primary: Server endpoint with no-cache headers & timestamp query param (Fast <1ms)
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+        const timingRes = await fetch(`/api/settings/session-timings?_t=${Date.now()}`, {
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache, no-store', 'Pragma': 'no-cache' },
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        if (timingRes.ok) {
+          const cType = timingRes.headers.get('content-type') || '';
+          if (cType.includes('application/json')) {
+            const timingData = await timingRes.json();
+            if (timingData.timings) {
+              applyUpdatedTimings(timingData.timings);
+              setIsLiveSyncActive(true);
+              gotTimings = true;
+            }
           }
         }
+      } catch (err) {
+        // Server timed out or network offline, try direct Firestore fallback
       }
-    } catch (err) {
-      // Server timed out or network offline, try direct Firestore fallback
-    }
 
-    // 2. Direct Firestore fallback (guarantees real-time cross-browser sync on any hosting or proxy)
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2500);
-      const firestoreRes = await fetch(
-        `https://firestore.googleapis.com/v1/projects/industrial-heaven-2j4jh/databases/ai-studio-magoodhooschoole-128d6f0a-ac98-471b-97a7-60f7b0b880b4/documents/school_settings/session_timings?key=AIzaSyAfYbbnjncIlteLWYG9ZIpRRa8lq_QZvR8&_t=${Date.now()}`,
-        { cache: 'no-store', signal: controller.signal }
-      );
-      clearTimeout(timeoutId);
-      if (firestoreRes.ok) {
-        const doc = await firestoreRes.json();
-        if (doc.fields?.timingsJson?.stringValue) {
-          const parsed = JSON.parse(doc.fields.timingsJson.stringValue);
-          applyUpdatedTimings(parsed);
-          setIsLiveSyncActive(true);
+      // 2. Direct Firestore fallback (guarantees real-time cross-browser sync on any hosting, Vercel, or proxy)
+      if (!gotTimings) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 8000);
+          const firestoreRes = await fetch(
+            `https://firestore.googleapis.com/v1/projects/industrial-heaven-2j4jh/databases/ai-studio-magoodhooschoole-128d6f0a-ac98-471b-97a7-60f7b0b880b4/documents/school_settings/session_timings?key=AIzaSyAfYbbnjncIlteLWYG9ZIpRRa8lq_QZvR8&_t=${Date.now()}`,
+            { cache: 'no-store', signal: controller.signal }
+          );
+          clearTimeout(timeoutId);
+          if (firestoreRes.ok) {
+            const doc = await firestoreRes.json();
+            if (doc.fields?.timingsJson?.stringValue) {
+              const parsed = JSON.parse(doc.fields.timingsJson.stringValue);
+              applyUpdatedTimings(parsed);
+              setIsLiveSyncActive(true);
+            }
+          }
+        } catch (err) {
+          // Silent catch for background polling
         }
       }
-    } catch (err) {
-      // Silent error handling for background polling
+    } finally {
+      isFetchingTimingsRef.current = false;
     }
   };
 
@@ -1124,7 +1137,7 @@ function MainApp() {
         },
       });
       fetch(
-        `https://firestore.googleapis.com/v1/projects/industrial-heaven-2j4jh/databases/ai-studio-magoodhooschoole-128d6f0a-ac98-471b-97a7-60f7b0b880b4/documents/school_settings/session_timings?key=AIzaSyAfYbbnjncIlteLWYG9ZIpRRa8lq_QZvR8`,
+        `https://firestore.googleapis.com/v1/projects/industrial-heaven-2j4jh/databases/ai-studio-magoodhooschoole-128d6f0a-ac98-471b-97a7-60f7b0b880b4/documents/school_settings/session_timings?key=AIzaSyAfYbbnjncIlteLWYG9ZIpRRa8lq_QZvR8&updateMask.fieldPaths=timingsJson&updateMask.fieldPaths=updatedAt`,
         {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },

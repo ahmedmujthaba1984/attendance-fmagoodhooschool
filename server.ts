@@ -296,24 +296,26 @@ fetchTimingsFromFirestore()
   })
   .catch(() => {});
 
-// Background periodic sync with Firestore every 20s to catch external updates
-setInterval(() => {
-  fetchTimingsFromFirestore().then((remote) => {
-    if (remote) {
-      const current = cachedSessionTimings || loadSessionTimingsFromDisk();
-      if (
-        current?.morning?.startTime !== remote.morning?.startTime ||
-        current?.morning?.endTime !== remote.morning?.endTime ||
-        current?.afternoon?.startTime !== remote.afternoon?.startTime ||
-        current?.afternoon?.endTime !== remote.afternoon?.endTime
-      ) {
-        cachedSessionTimings = remote;
-        saveSessionTimingsToDisk(remote);
-        broadcastLiveSync({ type: 'SESSION_TIMINGS_UPDATED', timings: remote });
+// Background periodic sync with Firestore every 20s to catch external updates (only on persistent Node server)
+if (!process.env.VERCEL && !process.env.NOW_REGION) {
+  setInterval(() => {
+    fetchTimingsFromFirestore().then((remote) => {
+      if (remote) {
+        const current = cachedSessionTimings || loadSessionTimingsFromDisk();
+        if (
+          current?.morning?.startTime !== remote.morning?.startTime ||
+          current?.morning?.endTime !== remote.morning?.endTime ||
+          current?.afternoon?.startTime !== remote.afternoon?.startTime ||
+          current?.afternoon?.endTime !== remote.afternoon?.endTime
+        ) {
+          cachedSessionTimings = remote;
+          saveSessionTimingsToDisk(remote);
+          broadcastLiveSync({ type: 'SESSION_TIMINGS_UPDATED', timings: remote });
+        }
       }
-    }
-  }).catch(() => {});
-}, 20000);
+    }).catch(() => {});
+  }, 20000);
+}
 
 function loadTermDatesFromDisk(): TermDurationConfig[] {
   let list: TermDurationConfig[] = [];

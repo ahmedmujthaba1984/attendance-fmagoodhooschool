@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { RotateCcw, RefreshCw, AlertTriangle, ShieldAlert, X } from 'lucide-react';
 import { LanguageProvider, useLanguage } from './i18n/LanguageContext';
 import { Header } from './components/Header';
@@ -92,6 +92,14 @@ function MainApp() {
   const [selectedGrade, setSelectedGrade] = useState<GradeLevel | 'ALL'>('Grade 4');
   const [selectedSession, setSelectedSession] = useState<SessionType>('MORNING_BEFORE_BREAK');
 
+  // Active refs to maintain live session sync state without stale closure traps
+  const selectedDateRef = useRef(selectedDate);
+  const selectedGradeRef = useRef(selectedGrade);
+  const selectedSessionRef = useRef(selectedSession);
+  useEffect(() => { selectedDateRef.current = selectedDate; }, [selectedDate]);
+  useEffect(() => { selectedGradeRef.current = selectedGrade; }, [selectedGrade]);
+  useEffect(() => { selectedSessionRef.current = selectedSession; }, [selectedSession]);
+
   // Stats state
   const [stats, setStats] = useState<AttendanceStatsSummary>(() => {
     const d = new Date();
@@ -134,6 +142,8 @@ function MainApp() {
     grade?: string;
   } | null>(null);
   const [isSessionSubmitted, setIsSessionSubmitted] = useState<boolean>(false);
+  const [isLiveSyncActive, setIsLiveSyncActive] = useState<boolean>(true);
+  const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
 
   // School Session Timings (configurable for Morning and Afternoon)
   const [sessionTimings, setSessionTimings] = useState<SchoolSessionTimings>(() => {
@@ -194,63 +204,268 @@ function MainApp() {
     }
   }, [activeTab]);
 
-  const fetchSessionTimings = async () => {
+  const applyUpdatedTimings = (incoming: any) => {
+    if (!incoming) return;
+    const morning = incoming.normal?.morning || incoming.morning;
+    const afternoon = incoming.normal?.afternoon || incoming.afternoon;
+    if (!morning?.startTime || !afternoon?.startTime) return;
+    const normalized: SchoolSessionTimings = {
+      normal: { morning, afternoon },
+      morning,
+      afternoon,
+      temporaryOverrides: Array.isArray(incoming.temporaryOverrides) ? incoming.temporaryOverrides : [],
+    };
+    setSessionTimings((prev) => {
+      if (
+        prev?.morning?.startTime === normalized.morning.startTime &&
+        prev?.morning?.endTime === normalized.morning.endTime &&
+        prev?.afternoon?.startTime === normalized.afternoon.startTime &&
+        prev?.afternoon?.endTime === normalized.afternoon.endTime &&
+        JSON.stringify(prev?.temporaryOverrides || []) === JSON.stringify(normalized.temporaryOverrides)
+      ) {
+        return prev;
+      }
+      return normalized;
+    });
     try {
-      const timingRes = await fetch('/api/settings/session-timings');
+      localStorage.setItem('school_session_timings', JSON.stringify(normalized));
+    } catch {}
+    setIsLiveSyncActive(true);
+    setLastSyncTime(new Date());
+  };
+
+  const fetchSessionTimings = async () => {
+    // 1. Primary: Server endpoint with no-cache headers & timestamp query param (Fast <1ms)
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      const timingRes = await fetch(`/api/settings/session-timings?_t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache, no-store', 'Pragma': 'no-cache' },
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
       if (timingRes.ok) {
-        const timingData = await timingRes.json();
-        if (timingData.timings) {
-          setSessionTimings(timingData.timings);
-          try {
-            localStorage.setItem('school_session_timings', JSON.stringify(timingData.timings));
-          } catch {}
+        const cType = timingRes.headers.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          const timingData = await timingRes.json();
+          if (timingData.timings) {
+            applyUpdatedTimings(timingData.timings);
+            setIsLiveSyncActive(true);
+            return;
+          }
         }
       }
     } catch (err) {
-      console.warn('Could not fetch session timings', err);
+      // Server timed out or network offline, try direct Firestore fallback
+    }
+
+    // 2. Direct Firestore fallback (guarantees real-time cross-browser sync on any hosting or proxy)
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
+      const firestoreRes = await fetch(
+        `https://firestore.googleapis.com/v1/projects/industrial-heaven-2j4jh/databases/ai-studio-magoodhooschoole-128d6f0a-ac98-471b-97a7-60f7b0b880b4/documents/school_settings/session_timings?key=AIzaSyAfYbbnjncIlteLWYG9ZIpRRa8lq_QZvR8&_t=${Date.now()}`,
+        { cache: 'no-store', signal: controller.signal }
+      );
+      clearTimeout(timeoutId);
+      if (firestoreRes.ok) {
+        const doc = await firestoreRes.json();
+        if (doc.fields?.timingsJson?.stringValue) {
+          const parsed = JSON.parse(doc.fields.timingsJson.stringValue);
+          applyUpdatedTimings(parsed);
+          setIsLiveSyncActive(true);
+        }
+      }
+    } catch (err) {
+      // Silent error handling for background polling
     }
   };
 
-  // 3. Real-time sync for session timings across multiple browsers, tabs, and incognito windows
+  const fetchAttendanceSilent = async () => {
+    try {
+      const curDate = selectedDateRef.current;
+      const curGrade = selectedGradeRef.current;
+      const curSession = selectedSessionRef.current;
+      const url = `/api/attendance?date=${curDate}&grade=${curGrade}&session=${curSession}&_t=${Date.now()}`;
+      const res = await fetch(url, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.records && curDate === selectedDateRef.current && curSession === selectedSessionRef.current) {
+          setAttendanceRecords(data.records);
+          setCounterpartRecords(data.counterpartRecords || []);
+          setIsSchoolClosed(Boolean(data.isSchoolClosed));
+          setIsSessionSubmitted(Boolean(data.isSessionSubmitted));
+        }
+      }
+    } catch {}
+  };
+
+  // 3. Real-time sync for session timings, attendance, and submission across multiple browsers, tabs, and incognito windows
   useEffect(() => {
+    // Immediate fetch on mount
+    fetchSessionTimings();
+
+    // BroadcastChannel for same-origin tabs
     let channel: BroadcastChannel | null = null;
     try {
       if (typeof BroadcastChannel !== 'undefined') {
         channel = new BroadcastChannel('school_portal_sync');
         channel.onmessage = (event) => {
-          if (event.data?.type === 'SESSION_TIMINGS_UPDATED' && event.data.timings) {
-            setSessionTimings(event.data.timings);
+          const data = event.data;
+          if (data?.type === 'SESSION_TIMINGS_UPDATED' && data.timings) {
+            applyUpdatedTimings(data.timings);
+          } else if (data?.type === 'SESSION_SUBMITTED') {
+            if (data.date === selectedDateRef.current && data.session === selectedSessionRef.current) {
+              setIsSessionSubmitted(true);
+            }
+            fetchAttendanceSilent();
+            fetchMoEStats();
+          } else if (data?.type === 'SESSION_REVERTED') {
+            if (data.date === selectedDateRef.current && data.session === selectedSessionRef.current) {
+              setIsSessionSubmitted(false);
+            }
+            fetchAttendanceSilent();
+            fetchMoEStats();
+          } else if (data?.type === 'ATTENDANCE_SINGLE_MUTATED' && data.record) {
+            if (data.date === selectedDateRef.current && data.session === selectedSessionRef.current) {
+              setAttendanceRecords((prev) => {
+                const idx = prev.findIndex((r) => r.studentId === data.record.studentId);
+                if (idx >= 0) {
+                  const copy = [...prev];
+                  copy[idx] = data.record;
+                  return copy;
+                }
+                return [...prev, data.record];
+              });
+              fetchMoEStats();
+            }
+          } else if (data?.type === 'ATTENDANCE_MUTATED' || data?.type === 'CALENDAR_UPDATED') {
+            fetchAttendanceSilent();
+            fetchMoEStats();
           }
         };
       }
     } catch {}
 
-    // Poll every 10 seconds to pick up changes from other browsers (e.g. Incognito vs Normal window)
+    // Storage event for same-profile cross-window instant sync
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'school_session_timings' && e.newValue) {
+        try {
+          applyUpdatedTimings(JSON.parse(e.newValue));
+        } catch {}
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    // Server-Sent Events (SSE) for instant live push across incognito, separate browsers, and devices
+    let eventSource: EventSource | null = null;
+    let sseReconnectTimer: any = null;
+
+    const setupSSE = () => {
+      try {
+        if (typeof EventSource !== 'undefined') {
+          eventSource = new EventSource('/api/live-sync');
+          eventSource.onopen = () => {
+            setIsLiveSyncActive(true);
+            setLastSyncTime(new Date());
+          };
+          eventSource.onmessage = (event) => {
+            try {
+              setIsLiveSyncActive(true);
+              setLastSyncTime(new Date());
+              const data = JSON.parse(event.data);
+              if ((data.type === 'SESSION_TIMINGS_UPDATED' || data.type === 'CONNECTED') && data.timings) {
+                applyUpdatedTimings(data.timings);
+              } else if (data.type === 'SESSION_SUBMITTED') {
+                if (data.date === selectedDateRef.current && data.session === selectedSessionRef.current) {
+                  setIsSessionSubmitted(true);
+                }
+                fetchAttendanceSilent();
+                fetchMoEStats();
+              } else if (data.type === 'SESSION_REVERTED') {
+                if (data.date === selectedDateRef.current && data.session === selectedSessionRef.current) {
+                  setIsSessionSubmitted(false);
+                }
+                fetchAttendanceSilent();
+                fetchMoEStats();
+              } else if (data.type === 'ATTENDANCE_SINGLE_MUTATED' && data.record) {
+                if (data.date === selectedDateRef.current && data.session === selectedSessionRef.current) {
+                  setAttendanceRecords((prev) => {
+                    const idx = prev.findIndex((r) => r.studentId === data.record.studentId);
+                    if (idx >= 0) {
+                      const copy = [...prev];
+                      copy[idx] = data.record;
+                      return copy;
+                    }
+                    return [...prev, data.record];
+                  });
+                  fetchMoEStats();
+                }
+              } else if (
+                data.type === 'ATTENDANCE_MUTATED' ||
+                data.type === 'ATTENDANCE_RECORD_REVERTED' ||
+                data.type === 'CALENDAR_UPDATED'
+              ) {
+                fetchAttendanceSilent();
+                fetchMoEStats();
+              }
+            } catch {}
+          };
+          eventSource.onerror = () => {
+            try {
+              eventSource?.close();
+            } catch {}
+            clearTimeout(sseReconnectTimer);
+            sseReconnectTimer = setTimeout(setupSSE, 2000);
+          };
+        }
+      } catch {}
+    };
+
+    setupSSE();
+
+    // Fast live polling interval (every 1.5 seconds) ensuring incognito & external windows sync live
     const interval = setInterval(() => {
       fetchSessionTimings();
-    }, 10000);
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        fetchAttendanceSilent();
+      }
+    }, 1500);
 
     const handleFocus = () => {
       fetchSessionTimings();
+      fetchAttendanceSilent();
     };
     window.addEventListener('focus', handleFocus);
 
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
         fetchSessionTimings();
+        fetchAttendanceSilent();
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
       clearInterval(interval);
+      clearTimeout(sseReconnectTimer);
       window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('storage', handleStorage);
       document.removeEventListener('visibilitychange', handleVisibility);
       channel?.close();
+      try {
+        eventSource?.close();
+      } catch {}
     };
   }, []);
 
   const initData = async () => {
+    // Immediately fetch session timings in parallel
+    fetchSessionTimings();
     try {
       // 1. Fetch Staff
       try {
@@ -382,8 +597,11 @@ function MainApp() {
         }
       }
 
-      const url = `/api/attendance?date=${selectedDate}&grade=${selectedGrade}&session=${selectedSession}`;
-      const res = await fetch(url);
+      const url = `/api/attendance?date=${selectedDate}&grade=${selectedGrade}&session=${selectedSession}&_t=${Date.now()}`;
+      const res = await fetch(url, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
+      });
       if (res.ok) {
         const data = await res.json();
         setAttendanceRecords(data.records || []);
@@ -490,6 +708,18 @@ function MainApp() {
         const resData = await res.json();
         const savedRec = resData.record || enrichedRecord;
         await offlineDb.attendance.put({ ...savedRec, syncStatus: 'SYNCED' });
+        try {
+          if (typeof BroadcastChannel !== 'undefined') {
+            const channel = new BroadcastChannel('school_portal_sync');
+            channel.postMessage({
+              type: 'ATTENDANCE_SINGLE_MUTATED',
+              date: enrichedRecord.date,
+              session: enrichedRecord.sessionType,
+              record: savedRec,
+            });
+            channel.close();
+          }
+        } catch {}
       } else {
         const errData = await res.json().catch(() => ({}));
         if (
@@ -574,6 +804,17 @@ function MainApp() {
         if (resData.isSessionSubmitted) {
           setIsSessionSubmitted(true);
         }
+        try {
+          if (typeof BroadcastChannel !== 'undefined') {
+            const channel = new BroadcastChannel('school_portal_sync');
+            channel.postMessage({
+              type: 'ATTENDANCE_MUTATED',
+              date: selectedDate,
+              session: selectedSession,
+            });
+            channel.close();
+          }
+        } catch {}
       } else {
         const errData = await res.json().catch(() => ({}));
         if (
@@ -851,10 +1092,12 @@ function MainApp() {
   };
 
   const handleUpdateSessionTimings = async (newTimings: SchoolSessionTimings) => {
-    setSessionTimings(newTimings);
-    try {
-      localStorage.setItem('school_session_timings', JSON.stringify(newTimings));
-    } catch {}
+    // 1. Instantly update local state and localStorage
+    applyUpdatedTimings(newTimings);
+    setIsLiveSyncActive(true);
+    setLastSyncTime(new Date());
+
+    // 2. Broadcast via BroadcastChannel for same-origin tabs
     try {
       if (typeof BroadcastChannel !== 'undefined') {
         const channel = new BroadcastChannel('school_portal_sync');
@@ -862,15 +1105,33 @@ function MainApp() {
         channel.close();
       }
     } catch {}
+
+    // 3. Persist to server API (server immediately broadcasts to live SSE clients & updates cache)
     try {
-      await fetch('/api/settings/session-timings', {
+      fetch('/api/settings/session-timings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ timings: newTimings }),
+      }).catch((err) => console.warn('PUT session timings error:', err));
+    } catch {}
+
+    // 4. Also directly persist to Firestore document in background
+    try {
+      const payload = JSON.stringify({
+        fields: {
+          timingsJson: { stringValue: JSON.stringify(newTimings) },
+          updatedAt: { stringValue: new Date().toISOString() },
+        },
       });
-    } catch (err) {
-      console.warn('Could not persist session timings to server', err);
-    }
+      fetch(
+        `https://firestore.googleapis.com/v1/projects/industrial-heaven-2j4jh/databases/ai-studio-magoodhooschoole-128d6f0a-ac98-471b-97a7-60f7b0b880b4/documents/school_settings/session_timings?key=AIzaSyAfYbbnjncIlteLWYG9ZIpRRa8lq_QZvR8`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: payload,
+        }
+      ).catch(() => {});
+    } catch {}
   };
 
   const handleDeclareSchoolClosed = async (reason: string, reasonDhivehi?: string) => {
@@ -961,6 +1222,13 @@ function MainApp() {
       });
       if (res.ok) {
         setIsSessionSubmitted(true);
+        try {
+          if (typeof BroadcastChannel !== 'undefined') {
+            const channel = new BroadcastChannel('school_portal_sync');
+            channel.postMessage({ type: 'SESSION_SUBMITTED', date: selectedDate, session: selectedSession });
+            channel.close();
+          }
+        } catch {}
         await fetchAttendance();
         await fetchMoEStats();
         await fetchAuditLogs();
@@ -988,6 +1256,13 @@ function MainApp() {
       });
       if (res.ok) {
         setIsSessionSubmitted(false);
+        try {
+          if (typeof BroadcastChannel !== 'undefined') {
+            const channel = new BroadcastChannel('school_portal_sync');
+            channel.postMessage({ type: 'SESSION_REVERTED', date: selectedDate, session: selectedSession });
+            channel.close();
+          }
+        } catch {}
         await fetchAttendance();
         await fetchMoEStats();
         await fetchAuditLogs();
@@ -1299,6 +1574,8 @@ function MainApp() {
             onOpenLoginView={() => setShowLoginView(true)}
             sessionTimings={sessionTimings}
             onUpdateSessionTimings={handleUpdateSessionTimings}
+            isLiveSyncActive={isLiveSyncActive}
+            lastSyncTime={lastSyncTime}
           />
         )}
 

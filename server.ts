@@ -189,9 +189,12 @@ function saveSessionTimingsToDisk(timings: any) {
 
 function fetchTimingsFromFirestore(): Promise<any | null> {
   return new Promise((resolve) => {
-    https
-      .get(FIRESTORE_SETTINGS_URL, (res) => {
-        if (res.statusCode !== 200) return resolve(null);
+    try {
+      const req = https.get(FIRESTORE_SETTINGS_URL, (res) => {
+        if (res.statusCode !== 200) {
+          res.resume();
+          return resolve(null);
+        }
         let body = '';
         res.on('data', (c) => (body += c));
         res.on('end', () => {
@@ -199,48 +202,90 @@ function fetchTimingsFromFirestore(): Promise<any | null> {
             const doc = JSON.parse(body);
             if (doc.fields?.timingsJson?.stringValue) {
               const parsed = JSON.parse(doc.fields.timingsJson.stringValue);
-              resolve(parsed);
-            } else {
-              resolve(null);
+              if (parsed) {
+                const morning = parsed.normal?.morning || parsed.morning;
+                const afternoon = parsed.normal?.afternoon || parsed.afternoon;
+                if (morning?.startTime && afternoon?.startTime) {
+                  const temporaryOverrides = Array.isArray(parsed.temporaryOverrides) ? parsed.temporaryOverrides : [];
+                  const normalized = {
+                    normal: { morning, afternoon },
+                    morning,
+                    afternoon,
+                    temporaryOverrides,
+                  };
+                  return resolve(normalized);
+                }
+              }
             }
+            resolve(null);
           } catch {
             resolve(null);
           }
         });
-      })
-      .on('error', () => resolve(null));
+      });
+      req.setTimeout(2500, () => {
+        req.destroy();
+        resolve(null);
+      });
+      req.on('error', () => resolve(null));
+    } catch {
+      resolve(null);
+    }
   });
+}
+
+// Live SSE broadcast clients for real-time synchronization across different browsers & incognito
+const liveSyncClients = new Set<express.Response>();
+
+function broadcastLiveSync(data: any) {
+  const payload = `data: ${JSON.stringify(data)}\n\n`;
+  for (const client of liveSyncClients) {
+    try {
+      client.write(payload);
+    } catch {
+      liveSyncClients.delete(client);
+    }
+  }
 }
 
 function saveTimingsToFirestore(timings: any): Promise<boolean> {
   return new Promise((resolve) => {
-    const payload = JSON.stringify({
-      fields: {
-        timingsJson: { stringValue: JSON.stringify(timings) },
-        updatedAt: { stringValue: new Date().toISOString() },
-      },
-    });
-
-    const req = https.request(
-      FIRESTORE_SETTINGS_URL,
-      {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(payload),
+    try {
+      const payload = JSON.stringify({
+        fields: {
+          timingsJson: { stringValue: JSON.stringify(timings) },
+          updatedAt: { stringValue: new Date().toISOString() },
         },
-      },
-      (res) => {
-        resolve(res.statusCode === 200);
-      }
-    );
-    req.on('error', () => resolve(false));
-    req.write(payload);
-    req.end();
+      });
+
+      const req = https.request(
+        FIRESTORE_SETTINGS_URL,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(payload),
+          },
+        },
+        (res) => {
+          res.on('data', () => {});
+          res.on('end', () => resolve(res.statusCode === 200));
+        }
+      );
+      req.setTimeout(3000, () => {
+        req.destroy();
+        resolve(false);
+      });
+      req.on('error', () => resolve(false));
+      req.write(payload);
+      req.end();
+    } catch {
+      resolve(false);
+    }
   });
 }
 
-// Initial remote fetch on boot
+// Initial remote fetch on boot in background
 fetchTimingsFromFirestore()
   .then((remote) => {
     if (remote) {
@@ -250,6 +295,25 @@ fetchTimingsFromFirestore()
     }
   })
   .catch(() => {});
+
+// Background periodic sync with Firestore every 20s to catch external updates
+setInterval(() => {
+  fetchTimingsFromFirestore().then((remote) => {
+    if (remote) {
+      const current = cachedSessionTimings || loadSessionTimingsFromDisk();
+      if (
+        current?.morning?.startTime !== remote.morning?.startTime ||
+        current?.morning?.endTime !== remote.morning?.endTime ||
+        current?.afternoon?.startTime !== remote.afternoon?.startTime ||
+        current?.afternoon?.endTime !== remote.afternoon?.endTime
+      ) {
+        cachedSessionTimings = remote;
+        saveSessionTimingsToDisk(remote);
+        broadcastLiveSync({ type: 'SESSION_TIMINGS_UPDATED', timings: remote });
+      }
+    }
+  }).catch(() => {});
+}, 20000);
 
 function loadTermDatesFromDisk(): TermDurationConfig[] {
   let list: TermDurationConfig[] = [];
@@ -1535,6 +1599,9 @@ function checkSessionStartEligibility(
 
 // 3. Attendance API
 app.get('/api/attendance', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   const { date, grade, session, clientTime, clientDate } = req.query;
   const targetDate = (date as string) || new Date().toISOString().slice(0, 10);
   const targetSession = (session as SessionType) || 'MORNING_BEFORE_BREAK';
@@ -1725,6 +1792,14 @@ app.post('/api/attendance/bulk', (req, res) => {
   saveAttendanceToDisk(attendanceStore);
   const isSubmitted = submittedSessions.has(`${targetDate}_${targetSession}`);
 
+  broadcastLiveSync({
+    type: 'ATTENDANCE_MUTATED',
+    date: targetDate,
+    session: targetSession,
+    count: records.length,
+    isSessionSubmitted: isSubmitted,
+  });
+
   logAudit(
     'BULK_ATTENDANCE_MARKED',
     'AttendanceSession',
@@ -1803,6 +1878,14 @@ const handleSingleAttendance = (req: express.Request, res: express.Response) => 
   attendanceStore.set(key, updated);
   saveAttendanceToDisk(attendanceStore);
 
+  // Broadcast instantly to all connected browsers & incognito windows via SSE
+  broadcastLiveSync({
+    type: 'ATTENDANCE_SINGLE_MUTATED',
+    date: updated.date,
+    session: updated.sessionType,
+    record: updated,
+  });
+
   const student = students.find((s) => s.id === normalizedRecord.studentId);
   logAudit(
     'ATTENDANCE_UPDATE',
@@ -1849,6 +1932,13 @@ app.post('/api/attendance/submit-session', (req, res) => {
 
   markSessionSubmitted(`${targetDate}_${targetSession}`);
 
+  broadcastLiveSync({
+    type: 'SESSION_SUBMITTED',
+    date: targetDate,
+    session: targetSession,
+    isSessionSubmitted: true,
+  });
+
   const submitter =
     staffMembers.find((s) => s.id === submittedByUserId || s.staffId === submittedByUserId) ||
     staffMembers.find((s) => s.id === currentActiveUserId) ||
@@ -1881,6 +1971,13 @@ app.post('/api/attendance/revert-session', (req, res) => {
 
   const sessionKey = `${targetDate}_${targetSession}`;
   unmarkSessionSubmitted(sessionKey);
+
+  broadcastLiveSync({
+    type: 'SESSION_REVERTED',
+    date: targetDate,
+    session: targetSession,
+    isSessionSubmitted: false,
+  });
 
   const reasonText = reason?.trim() || 'Teacher reported attendance marked incorrectly; session reopened for homeroom correction';
   logAudit(
@@ -1946,6 +2043,13 @@ app.post('/api/attendance/revert-record', (req, res) => {
   attendanceStore.set(key, updated);
   saveAttendanceToDisk(attendanceStore);
 
+  broadcastLiveSync({
+    type: 'ATTENDANCE_RECORD_REVERTED',
+    date,
+    session: sessionType,
+    record: updated,
+  });
+
   const student = students.find((s) => s.id === studentId);
   logAudit(
     'ATTENDANCE_RECORD_REVERTED_BY_SUPER_ADMIN',
@@ -1968,6 +2072,11 @@ app.post('/api/attendance/reset-all', (req, res) => {
   try {
     saveReportCardOverridesToDisk({});
   } catch (e) {}
+
+  broadcastLiveSync({
+    type: 'ATTENDANCE_MUTATED',
+    resetAll: true,
+  });
 
   logAudit(
     'ATTENDANCE_RESET_ALL',
@@ -2026,6 +2135,13 @@ app.post('/api/school/close-day', (req, res) => {
   const formattedDesc = formatSchoolClosedReason(desc);
   const formattedDescDv = formatSchoolClosedReasonDhivehi(descDv, desc);
 
+  broadcastLiveSync({
+    type: 'CALENDAR_UPDATED',
+    date: targetDate,
+    isSchoolClosed: true,
+    reason: desc,
+  });
+
   logAudit(
     'SCHOOL_CLOSED_AUTO_ATTENDANCE',
     'SchoolStatus',
@@ -2078,6 +2194,12 @@ app.post('/api/school/reopen-day', (req, res) => {
   if (attendanceChanged) {
     saveAttendanceToDisk(attendanceStore);
   }
+
+  broadcastLiveSync({
+    type: 'CALENDAR_UPDATED',
+    date: targetDate,
+    isSchoolClosed: false,
+  });
 
   logAudit(
     'SCHOOL_REOPENED',
@@ -2140,6 +2262,10 @@ app.post('/api/attendance/sync-queue', (req, res) => {
 
   if (syncedCount > 0) {
     saveAttendanceToDisk(attendanceStore);
+    broadcastLiveSync({
+      type: 'ATTENDANCE_MUTATED',
+      count: syncedCount,
+    });
   }
 
   logAudit(
@@ -3362,8 +3488,57 @@ app.put('/api/terms', (req, res) => {
   res.json({ success: true, terms: incomingTerms });
 });
 
+// Live Sync Server-Sent Events (SSE) for Real-Time Multi-Browser Synchronization
+app.get(['/api/live-sync', '/live-sync'], (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  if (typeof (res as any).flushHeaders === 'function') {
+    (res as any).flushHeaders();
+  }
+
+  // Send initial handshake and current timings
+  const currentTimings = loadSessionTimingsFromDisk();
+  res.write(`data: ${JSON.stringify({ type: 'CONNECTED', timings: currentTimings })}\n\n`);
+
+  liveSyncClients.add(res);
+
+  // Keep-alive heartbeat every 20 seconds to prevent proxy disconnects
+  const heartbeat = setInterval(() => {
+    try {
+      res.write(': keepalive\n\n');
+    } catch {
+      clearInterval(heartbeat);
+      liveSyncClients.delete(res);
+    }
+  }, 20000);
+
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    liveSyncClients.delete(res);
+  });
+});
+
 // Session Timings Settings API
-app.get(['/api/settings/session-timings', '/api/session-timings'], async (req, res) => {
+app.get(['/api/settings/session-timings', '/api/session-timings', '/settings/session-timings', '/session-timings'], async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+
+  // Fast path: return in-memory cached timings immediately (<1ms)
+  if (cachedSessionTimings) {
+    return res.json({ timings: cachedSessionTimings });
+  }
+
+  // Next: return disk-persisted timings immediately (<1ms)
+  const disk = loadSessionTimingsFromDisk();
+  if (disk) {
+    cachedSessionTimings = disk;
+    return res.json({ timings: disk });
+  }
+
+  // Fallback to remote Firestore
   try {
     const remote = await fetchTimingsFromFirestore();
     if (remote) {
@@ -3372,11 +3547,12 @@ app.get(['/api/settings/session-timings', '/api/session-timings'], async (req, r
       return res.json({ timings: remote });
     }
   } catch {}
-  const timings = loadSessionTimingsFromDisk();
-  res.json({ timings });
+
+  res.json({ timings: DEFAULT_SESSION_TIMINGS });
 });
 
-app.put(['/api/settings/session-timings', '/api/session-timings'], async (req, res) => {
+app.put(['/api/settings/session-timings', '/api/session-timings', '/settings/session-timings', '/session-timings'], async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   const incoming = req.body.timings;
   if (!incoming) {
     return res.status(400).json({ error: 'Invalid timings payload' });
@@ -3392,8 +3568,15 @@ app.put(['/api/settings/session-timings', '/api/session-timings'], async (req, r
     temporaryOverrides,
   };
 
+  // 1. Immediately update cache & disk
+  cachedSessionTimings = normalized;
   saveSessionTimingsToDisk(normalized);
-  await saveTimingsToFirestore(normalized).catch(() => {});
+
+  // 2. Broadcast instantly to all connected browsers & incognito windows via SSE
+  broadcastLiveSync({ type: 'SESSION_TIMINGS_UPDATED', timings: normalized });
+
+  // 3. Save to Firestore in background without delaying HTTP response
+  saveTimingsToFirestore(normalized).catch(() => {});
 
   logAudit(
     'SESSION_TIMINGS_UPDATED',
@@ -3401,6 +3584,8 @@ app.put(['/api/settings/session-timings', '/api/session-timings'], async (req, r
     `Updated school session timings: Morning (${morning.startTime} - ${morning.endTime}), Afternoon (${afternoon.startTime} - ${afternoon.endTime}), ${temporaryOverrides.length} temporary overrides active`,
     req
   );
+
+  // 4. Return immediately to the client
   res.json({ success: true, timings: normalized });
 });
 

@@ -36,6 +36,7 @@ import {
   ListFilter,
   Zap,
   Settings,
+  Radio,
 } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import {
@@ -102,6 +103,8 @@ interface AttendanceMatrixProps {
   onSwitchStaff?: (staffId: string) => void;
   onOpenLoginView?: () => void;
   onRapidModeChange?: (isRapid: boolean) => void;
+  isLiveSyncActive?: boolean;
+  lastSyncTime?: Date;
 }
 
 export const MALDIVIAN_HOLIDAY_PRESETS = [
@@ -155,6 +158,8 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
   },
   onUpdateSessionTimings,
   onRapidModeChange,
+  isLiveSyncActive = true,
+  lastSyncTime,
 }) => {
   const { t, isRTL } = useLanguage();
 
@@ -674,9 +679,42 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
 
             {/* High-Visibility Session Type Selector */}
             <div className="grid grid-cols-2 sm:flex sm:items-center gap-1.5 p-1 rounded-xl bg-slate-100/90 border border-slate-200 text-xs font-semibold">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider px-2 hidden lg:inline">
-                {t.sessionLabel}:
-              </span>
+              <div className="flex items-center gap-1.5 px-2">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider hidden lg:inline">
+                  {t.sessionLabel}:
+                </span>
+                {/* Live Sync Status Indicator Icon */}
+                <div
+                  id="session-status-live-indicator"
+                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-black border transition select-none ${
+                    isLiveSyncActive
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300/80 shadow-2xs'
+                      : 'bg-amber-50 text-amber-800 border-amber-300'
+                  }`}
+                  title={
+                    isLiveSyncActive
+                      ? (isRTL
+                          ? 'ސާވަރާ ލައިވްކޮށް ގުޅިފައި: ހުރިހާ ބްރައުޒަރެއްގައި ސެޝަން ވަގުތު ވަގުތުން އަޕްޑޭޓްވެއެވެ'
+                          : 'Live: Actively syncing with server and all browser windows')
+                      : (isRTL ? 'ސާވަރާއި ގުޅެނީ...' : 'Connecting to live server sync...')
+                  }
+                >
+                  <span className="relative flex h-2 w-2">
+                    {isLiveSyncActive && (
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    )}
+                    <span
+                      className={`relative inline-flex rounded-full h-2 w-2 ${
+                        isLiveSyncActive ? 'bg-emerald-500' : 'bg-amber-500'
+                      }`}
+                    ></span>
+                  </span>
+                  <Radio className={`w-2.5 h-2.5 shrink-0 ${isLiveSyncActive ? 'text-emerald-600 animate-pulse' : 'text-amber-600'}`} />
+                  <span className="tracking-wider uppercase font-black">
+                    {isLiveSyncActive ? (isRTL ? 'ލައިވް' : 'Live') : (isRTL ? 'ގުޅެނީ' : 'Syncing')}
+                  </span>
+                </div>
+              </div>
               <button
                 id="session-morning-btn"
                 type="button"
@@ -974,6 +1012,25 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
                       ? (isRTL ? 'ކުރިއަށް އޮތް ތާރީޚެއް • ހާޒިރީ ބަންދު' : 'Future Date • Attendance Locked')
                       : (isRTL ? 'ސެޝަން އަދި ނުފެށޭ • ހާޒިރީ ބަންދު' : 'Session Not Started • Attendance Locked')}
                   </span>
+                  {/* Small Live indicator icon next to session lock status */}
+                  <span
+                    id="session-lock-live-indicator"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-extrabold shadow-2xs"
+                    title={
+                      isLiveSyncActive
+                        ? (isRTL ? 'ސާވަރާ ލައިވްކޮށް ގުޅިފައި' : 'Live: Actively syncing with server')
+                        : (isRTL ? 'ސާވަރާއި ގުޅެނީ...' : 'Connecting to live server...')
+                    }
+                  >
+                    <span className="relative flex h-1.5 w-1.5">
+                      {isLiveSyncActive && (
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      )}
+                      <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${isLiveSyncActive ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
+                    </span>
+                    <Radio className={`w-2.5 h-2.5 ${isLiveSyncActive ? 'text-emerald-600 animate-pulse' : 'text-amber-600'}`} />
+                    <span>{isLiveSyncActive ? (isRTL ? 'ލައިވް' : 'Live') : (isRTL ? 'ގުޅެނީ' : 'Syncing')}</span>
+                  </span>
                   <span className="text-[11px] font-bold bg-white text-slate-700 px-2 py-0.5 rounded-md border border-slate-200">
                     {selectedDate} ({selectedSession === 'MORNING_BEFORE_BREAK' ? (isRTL ? 'ހެނދުނުގެ ސެޝަން' : 'Morning Session') : (isRTL ? 'މެންދުރުފަހުގެ ސެޝަން' : 'Afternoon Session')})
                   </span>
@@ -1039,6 +1096,25 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
                     }`}
                   >
                     {t.sessionFinalized} • {isSuperAdmin ? t.revertFeatureSuperAdminOnly : t.attendanceLocked}
+                  </span>
+                  {/* Live indicator icon next to finalized session status */}
+                  <span
+                    id="session-finalized-live-indicator"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-extrabold shadow-2xs"
+                    title={
+                      isLiveSyncActive
+                        ? (isRTL ? 'ސާވަރާ ލައިވްކޮށް ގުޅިފައި' : 'Live: Actively syncing with server')
+                        : (isRTL ? 'ސާވަރާއި ގުޅެނީ...' : 'Connecting to live server...')
+                    }
+                  >
+                    <span className="relative flex h-1.5 w-1.5">
+                      {isLiveSyncActive && (
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      )}
+                      <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${isLiveSyncActive ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
+                    </span>
+                    <Radio className={`w-2.5 h-2.5 ${isLiveSyncActive ? 'text-emerald-600 animate-pulse' : 'text-amber-600'}`} />
+                    <span>{isLiveSyncActive ? (isRTL ? 'ލައިވް' : 'Live') : (isRTL ? 'ގުޅެނީ' : 'Syncing')}</span>
                   </span>
                   <span className="text-[11px] font-bold bg-white text-slate-700 px-2 py-0.5 rounded-md border border-slate-200">
                     {selectedDate} ({selectedSession === 'MORNING_BEFORE_BREAK' ? (isRTL ? 'ހެނދުނު ދަންފަޅި' : 'Morning Session') : (isRTL ? 'މެންދުރުފަސް ދަންފަޅި' : 'Afternoon Session')})

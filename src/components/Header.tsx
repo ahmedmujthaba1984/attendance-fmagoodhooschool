@@ -22,6 +22,7 @@ import {
   Mail,
   BookOpen,
   RotateCcw,
+  Zap,
 } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { PWAInstallButton } from './PWAInstallButton';
@@ -260,8 +261,14 @@ export const Header: React.FC<HeaderProps> = ({
                     <Mail className="w-3 h-3 text-teal-600 shrink-0" />
                     <span className="truncate">{currentUser?.email}</span>
                   </div>
-                  <div className="text-[10px] text-slate-500 mt-0.5">
-                    {currentUser?.designation} • {currentUser?.staffId}
+                  <div className="text-[10px] text-slate-500 mt-0.5 flex items-center justify-between">
+                    <span>{currentUser?.designation} • {currentUser?.staffId}</span>
+                    {(currentUser?.hasRapidRollCallPrivilege || currentUser?.loginViaMobile) && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300 font-black text-[9px]">
+                        <Zap className="w-2.5 h-2.5 fill-amber-700 text-amber-700" />
+                        <span>Rapid</span>
+                      </span>
+                    )}
                   </div>
                 </div>
 

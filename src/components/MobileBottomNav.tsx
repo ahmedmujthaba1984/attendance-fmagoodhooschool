@@ -6,6 +6,7 @@ import {
   FileSpreadsheet,
   Menu,
   Sparkles,
+  Zap,
 } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 
@@ -14,6 +15,7 @@ interface MobileBottomNavProps {
   setActiveTab: (tab: string) => void;
   onOpenVoiceModal: () => void;
   onOpenMenuDrawer: () => void;
+  hasRapidRollCallPrivilege?: boolean;
 }
 
 export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
@@ -21,6 +23,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   setActiveTab,
   onOpenVoiceModal,
   onOpenMenuDrawer,
+  hasRapidRollCallPrivilege = false,
 }) => {
   const { t, isRTL } = useLanguage();
 
@@ -32,21 +35,29 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           id="mobile-nav-attendance"
           type="button"
           onClick={() => setActiveTab('attendance')}
-          className={`flex flex-col items-center justify-center gap-1 h-full cursor-pointer transition select-none ${
+          className={`flex flex-col items-center justify-center gap-0.5 h-full cursor-pointer transition select-none relative ${
             activeTab === 'attendance'
               ? 'text-teal-700 font-bold'
               : 'text-slate-500 hover:text-slate-800'
           }`}
         >
           <div
-            className={`p-1 rounded-xl transition ${
+            className={`p-1 rounded-xl transition relative ${
               activeTab === 'attendance' ? 'bg-teal-50 shadow-xs' : ''
             }`}
           >
             <GraduationCap className="w-5 h-5" />
+            {hasRapidRollCallPrivilege && (
+              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-500 text-white flex items-center justify-center shadow-2xs border border-white">
+                <Zap className="w-2.5 h-2.5 fill-white" />
+              </span>
+            )}
           </div>
-          <span className="text-[10px] leading-tight truncate max-w-[64px]">
+          <span className="text-[10px] leading-tight truncate max-w-[64px] flex items-center gap-0.5">
             {isRTL ? 'ހާޒިރީ' : 'Roll Call'}
+            {hasRapidRollCallPrivilege && (
+              <span className="text-[8px] font-black text-amber-600">⚡</span>
+            )}
           </span>
         </button>
 

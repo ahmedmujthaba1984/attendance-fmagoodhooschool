@@ -17,6 +17,7 @@ import {
   Key,
   Lock,
   BookOpen,
+  Zap,
 } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { User } from '../types';
@@ -174,10 +175,16 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({
               <div className="text-xs font-bold leading-tight">
                 {isRTL ? currentUser?.fullNameDhivehi || currentUser?.fullName : currentUser?.fullName}
               </div>
-              <div className="text-[11px] text-teal-300 font-medium mt-0.5 flex items-center gap-1.5">
+              <div className="text-[11px] text-teal-300 font-medium mt-0.5 flex items-center gap-1.5 flex-wrap">
                 <span>{currentUser?.designation || t.teacher}</span>
                 {currentUser?.assignedGrade && (
                   <span>• {currentUser.assignedGrade}</span>
+                )}
+                {(currentUser?.hasRapidRollCallPrivilege || currentUser?.loginViaMobile) && (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full bg-amber-400 text-amber-950 font-black text-[9px] shadow-2xs">
+                    <Zap className="w-2.5 h-2.5 fill-amber-950" />
+                    <span>{isRTL ? 'ހަލުވި ހާޒިރީގެ އިމްތިޔާޒު' : 'Rapid Roll Call'}</span>
+                  </span>
                 )}
               </div>
             </div>
@@ -191,12 +198,39 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({
               onOpenLoginView();
               onClose();
             }}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs transition cursor-pointer shadow-xs"
+            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs transition cursor-pointer shadow-xs shrink-0"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>{isRTL ? 'ބަދަލުކުރޭ' : 'Switch'}</span>
           </button>
         </div>
+
+        {/* Rapid Roll Call Shortcut for Privileged Staff */}
+        {(currentUser?.hasRapidRollCallPrivilege || currentUser?.loginViaMobile) && (
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('attendance');
+              onClose();
+            }}
+            className="w-full p-3 rounded-2xl bg-linear-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-500 text-white font-black text-xs flex items-center justify-between shadow-md cursor-pointer transition active:scale-98"
+          >
+            <div className="flex items-center gap-2.5 text-left">
+              <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                <Zap className="w-4 h-4 fill-white text-white" />
+              </div>
+              <div>
+                <div className="text-xs font-black leading-tight">
+                  {isRTL ? 'ހަލުވި ހާޒިރީ (Rapid Roll Call)' : 'Launch Rapid Roll Call'}
+                </div>
+                <div className="text-[10px] text-amber-100 font-normal">
+                  {isRTL ? '1-ކްލިކުން ހާޒިރީ ފުރުމުގެ ޚާއްޞަ އިމްތިޔާޒު' : 'Instant 1-tap touch attendance marking'}
+                </div>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 shrink-0" />
+          </button>
+        )}
 
         {/* Quick Utilities Row */}
         <div className="grid grid-cols-2 gap-2">

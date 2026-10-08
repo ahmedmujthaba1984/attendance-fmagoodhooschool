@@ -157,7 +157,7 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
 
   const [earlyMarkingOverride, setEarlyMarkingOverride] = useState(false);
   const isTimingBeforeStart =
-    !sessionEligibility.allowed && sessionEligibility.reason === 'START_TIME_NOT_REACHED';
+    !sessionEligibility.allowed && sessionEligibility.reason === 'SESSION_NOT_STARTED';
 
   const isMarkingAllowed =
     (sessionEligibility.allowed || (isPrivilegedUser && (earlyMarkingOverride || isTimingBeforeStart))) &&
@@ -344,7 +344,7 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [templateMode, currentStudent, currentIndex, displayStudents.length]);
+  }, [templateMode, currentStudent, currentIndex, displayStudents.length, isMarkingAllowed, isSchoolClosed]);
 
   const latePresets = isMorning
     ? ['08:00', '08:15', '08:30', '08:45']
@@ -629,7 +629,7 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                 <p className="text-[11px] mt-0.5 opacity-90">
                   {isRTL ? sessionEligibility.messageDhivehi : sessionEligibility.message}
                 </p>
-                {isPrivilegedUser && sessionEligibility.reason === 'START_TIME_NOT_REACHED' && (
+                {isPrivilegedUser && sessionEligibility.reason === 'SESSION_NOT_STARTED' && (
                   <p className="text-[11px] font-bold text-amber-900 mt-1 flex items-center gap-1 bg-amber-100/90 px-2 py-0.5 rounded-md border border-amber-300/60">
                     <Zap className="w-3.5 h-3.5 text-amber-600 fill-amber-600 shrink-0" />
                     <span>
@@ -818,7 +818,7 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                 <p className="text-xs mt-0.5 leading-relaxed opacity-90">
                   {isRTL ? sessionEligibility.messageDhivehi : sessionEligibility.message}
                 </p>
-                {isPrivilegedUser && sessionEligibility.reason === 'START_TIME_NOT_REACHED' && (
+                {isPrivilegedUser && sessionEligibility.reason === 'SESSION_NOT_STARTED' && (
                   <p className="text-xs font-bold text-amber-900 mt-1.5 flex items-center gap-1.5 bg-amber-100/90 px-2.5 py-1 rounded-lg border border-amber-300">
                     <Zap className="w-4 h-4 text-amber-600 fill-amber-600 shrink-0" />
                     <span>

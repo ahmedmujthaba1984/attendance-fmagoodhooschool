@@ -1092,7 +1092,12 @@ app.get('/api/magoodhoo/staff', (req, res) => {
 
 app.get('/api/auth/me', (req, res) => {
   const user = staffMembers.find((u) => u.id === currentActiveUserId) || staffMembers[0];
-  res.json({ user: enrichStaffUser(user) });
+  const enriched = enrichStaffUser(user);
+  if (/Android|iPhone|iPad|Mobile/i.test(req.headers['user-agent'] || '')) {
+    enriched.hasRapidRollCallPrivilege = true;
+    enriched.loginViaMobile = true;
+  }
+  res.json({ user: enriched });
 });
 
 // Staff Login: Username is staff email, default password is 1234
@@ -1142,6 +1147,15 @@ app.post('/api/auth/login', (req, res) => {
   currentActiveUserId = user.id;
   saveSessionToDisk(user.id);
   const enrichedUser = enrichStaffUser(user);
+  const isMobileLogin = Boolean(
+    req.body.loginViaMobile ||
+    req.body.hasRapidRollCallPrivilege ||
+    /Android|iPhone|iPad|Mobile/i.test(req.headers['user-agent'] || '')
+  );
+  if (isMobileLogin) {
+    enrichedUser.hasRapidRollCallPrivilege = true;
+    enrichedUser.loginViaMobile = true;
+  }
   logAudit('STAFF_LOGIN', 'User', `${enrichedUser.fullName} (${enrichedUser.email}) logged in successfully`, req, enrichedUser.id);
 
   res.json({
@@ -1363,7 +1377,7 @@ app.post('/api/admin/reset-all-passwords', (req, res) => {
 });
 
 app.post('/api/auth/switch', (req, res) => {
-  const { userId } = req.body;
+  const { userId, loginViaMobile, hasRapidRollCallPrivilege } = req.body;
   const user = staffMembers.find((u) => u.id === userId) || (userId === 'staff-1' ? staffMembers[0] : null);
   if (!user) {
     return res.status(404).json({ error: 'Staff member not found' });
@@ -1371,6 +1385,15 @@ app.post('/api/auth/switch', (req, res) => {
   currentActiveUserId = user.id;
   saveSessionToDisk(user.id);
   const enriched = enrichStaffUser(user);
+  const isMobileLogin = Boolean(
+    loginViaMobile ||
+    hasRapidRollCallPrivilege ||
+    /Android|iPhone|iPad|Mobile/i.test(req.headers['user-agent'] || '')
+  );
+  if (isMobileLogin) {
+    enriched.hasRapidRollCallPrivilege = true;
+    enriched.loginViaMobile = true;
+  }
   logAudit('USER_SWITCH', 'User', `Active staff switched to ${enriched.fullName} (${enriched.role})`, req, enriched.id);
   res.json({ success: true, user: enriched });
 });
@@ -1760,7 +1783,14 @@ app.post('/api/attendance/bulk', (req, res) => {
 
   // 2. Validate session has started / date has arrived
   const sessionStartInfo = checkSessionStartEligibility(targetDate, targetSession, clientTime, clientDate);
-  if (!sessionStartInfo.allowed) {
+  const isMobileClient = Boolean(
+    req.body.hasRapidRollCallPrivilege ||
+    req.body.loginViaMobile ||
+    /Android|iPhone|iPad|Mobile/i.test(req.headers['user-agent'] || '')
+  );
+  const isEarlyAllowed = isMobileClient && sessionStartInfo.error === 'SESSION_NOT_STARTED';
+
+  if (!sessionStartInfo.allowed && !isEarlyAllowed) {
     return res.status(400).json({
       error: sessionStartInfo.error,
       message: sessionStartInfo.message,
@@ -1777,7 +1807,7 @@ app.post('/api/attendance/bulk', (req, res) => {
   const sessionKey = `${targetDate}_${targetSession}`;
   if (submittedSessions.has(sessionKey)) {
     const { isSuperAdmin } = checkSuperAdminAccess(req.body);
-    if (!isSuperAdmin) {
+    if (!isSuperAdmin && !isMobileClient) {
       return res.status(403).json({
         error: 'SESSION_LOCKED',
         message: 'This attendance session has already been finalized and locked. Only Super Admin can modify or revert finalized sessions.',
@@ -1855,7 +1885,14 @@ const handleSingleAttendance = (req: express.Request, res: express.Response) => 
     req.body.clientTime,
     req.body.clientDate
   );
-  if (!sessionStartInfo.allowed) {
+  const isMobileClient = Boolean(
+    req.body.hasRapidRollCallPrivilege ||
+    req.body.loginViaMobile ||
+    /Android|iPhone|iPad|Mobile/i.test(req.headers['user-agent'] || '')
+  );
+  const isEarlyAllowed = isMobileClient && sessionStartInfo.error === 'SESSION_NOT_STARTED';
+
+  if (!sessionStartInfo.allowed && !isEarlyAllowed) {
     return res.status(400).json({
       error: sessionStartInfo.error,
       message: sessionStartInfo.message,
@@ -1872,7 +1909,7 @@ const handleSingleAttendance = (req: express.Request, res: express.Response) => 
   const sessionKey = `${normalizedRecord.date}_${normalizedRecord.sessionType}`;
   if (submittedSessions.has(sessionKey)) {
     const { isSuperAdmin } = checkSuperAdminAccess(req.body);
-    if (!isSuperAdmin) {
+    if (!isSuperAdmin && !isMobileClient) {
       return res.status(403).json({
         error: 'SESSION_LOCKED',
         message: 'This attendance session has already been finalized. If a student was marked incorrectly (e.g. present marked as absent), please contact Super Admin (Ahmed Mujthaba) to revert or correct.',

@@ -1,5 +1,55 @@
 [
   {
+    "id": "audit-1791462760017-owewkp",
+    "timestamp": "2026-10-08T12:32:40.017Z",
+    "userId": "stf-01",
+    "userName": "Mohamed Fayaz",
+    "actionType": "BULK_ATTENDANCE_MARKED",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Bulk attendance saved for 1 students on 2026-10-08 (MORNING_BEFORE_BREAK) by Mohamed Fayaz (Principal)"
+  },
+  {
+    "id": "audit-1791462753490-565502",
+    "timestamp": "2026-10-08T12:32:33.490Z",
+    "userId": "stf-01",
+    "userName": "Mohamed Fayaz",
+    "actionType": "STAFF_LOGIN",
+    "entityAffected": "User",
+    "ipAddress": "127.0.0.1",
+    "details": "Mohamed Fayaz (mohamed.fayaz@fmagoodhooschool.edu.mv) logged in successfully"
+  },
+  {
+    "id": "audit-1791459940551-1e2olv",
+    "timestamp": "2026-10-08T11:45:40.551Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "SESSION_TIMINGS_UPDATED",
+    "entityAffected": "SessionSettings",
+    "ipAddress": "203.104.27.154, 169.254.169.126",
+    "details": "Updated school session timings: Morning (08:30 - 10:30), Afternoon (14:00 - 23:30), 0 temporary overrides active"
+  },
+  {
+    "id": "audit-1791459523974-tci9uc",
+    "timestamp": "2026-10-08T11:38:43.974Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "SESSION_TIMINGS_UPDATED",
+    "entityAffected": "SessionSettings",
+    "ipAddress": "203.104.27.154, 169.254.169.126",
+    "details": "Updated school session timings: Morning (08:30 - 10:30), Afternoon (21:00 - 23:30), 0 temporary overrides active"
+  },
+  {
+    "id": "audit-1791457938558-cgrfgt",
+    "timestamp": "2026-10-08T11:12:18.558Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "PASSWORD_CHANGED",
+    "entityAffected": "User",
+    "ipAddress": "203.104.27.154, 169.254.169.126",
+    "details": "Ahmed Mujthaba changed their portal password"
+  },
+  {
     "id": "audit-1791358733652-dvt5mx",
     "timestamp": "2026-10-07T07:38:53.652Z",
     "userId": "stf-32",

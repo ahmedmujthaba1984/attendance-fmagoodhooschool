@@ -154,6 +154,8 @@ export const MobileLoginView: React.FC<MobileLoginViewProps> = ({
         body: JSON.stringify({
           email: cleanEmail,
           password: cleanPass,
+          loginViaMobile: true,
+          hasRapidRollCallPrivilege: enableRapidRollCallPrivilege,
         }),
       });
 

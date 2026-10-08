@@ -512,7 +512,15 @@ function MainApp() {
             if (isSessionValid === 'true' && savedId) {
               const active = data.staff.find((s: User) => s.id === savedId);
               if (active) {
-                setCurrentUser(active);
+                const isMobileOrPrivileged = typeof window !== 'undefined' && (
+                  window.innerWidth < 768 ||
+                  localStorage.getItem('moe_rapid_roll_call_privileged') === 'true' ||
+                  localStorage.getItem('moe_login_source') === 'mobile'
+                );
+                const enriched: User = isMobileOrPrivileged
+                  ? { ...active, hasRapidRollCallPrivilege: true, loginViaMobile: true }
+                  : active;
+                setCurrentUser(enriched);
                 setIsLoggedIn(true);
                 if (active.assignedGrade) {
                   setSelectedGrade(active.assignedGrade);
@@ -704,9 +712,16 @@ function MainApp() {
 
   // Handlers for Mutations
   const handleUpdateRecord = async (record: AttendanceRecord) => {
-    // 0. Validate eligibility: Cannot mark future date or session before start time
+    // 0. Validate eligibility: Cannot mark future date or session before start time unless privileged on mobile
     const eligibility = checkSessionMarkingEligibility(record.date, record.sessionType, sessionTimings);
-    if (!eligibility.allowed) {
+    const isMobilePrivileged = Boolean(
+      currentUser?.hasRapidRollCallPrivilege ||
+      currentUser?.loginViaMobile ||
+      localStorage.getItem('moe_rapid_roll_call_privileged') === 'true' ||
+      localStorage.getItem('moe_login_source') === 'mobile'
+    );
+    const isEarlyAllowed = isMobilePrivileged && eligibility.reason === 'SESSION_NOT_STARTED';
+    if (!eligibility.allowed && !isEarlyAllowed) {
       alert(eligibility.message);
       return;
     }
@@ -734,7 +749,11 @@ function MainApp() {
       const res = await fetch('/api/attendance/single', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ record: enrichedRecord }),
+        body: JSON.stringify({
+          record: enrichedRecord,
+          hasRapidRollCallPrivilege: Boolean(currentUser?.hasRapidRollCallPrivilege || isMobilePrivileged),
+          loginViaMobile: Boolean(currentUser?.loginViaMobile || isMobilePrivileged),
+        }),
       });
       if (res.ok) {
         const resData = await res.json();
@@ -779,7 +798,14 @@ function MainApp() {
   const handleBulkMarkPresent = async (onlyUnmarked: boolean = false) => {
     // 0. Validate eligibility
     const eligibility = checkSessionMarkingEligibility(selectedDate, selectedSession, sessionTimings);
-    if (!eligibility.allowed) {
+    const isMobilePrivileged = Boolean(
+      currentUser?.hasRapidRollCallPrivilege ||
+      currentUser?.loginViaMobile ||
+      localStorage.getItem('moe_rapid_roll_call_privileged') === 'true' ||
+      localStorage.getItem('moe_login_source') === 'mobile'
+    );
+    const isEarlyAllowed = isMobilePrivileged && eligibility.reason === 'SESSION_NOT_STARTED';
+    if (!eligibility.allowed && !isEarlyAllowed) {
       alert(eligibility.message);
       return;
     }
@@ -828,7 +854,12 @@ function MainApp() {
       const res = await fetch('/api/attendance/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ records: updatedRecords }),
+        body: JSON.stringify({
+          records: updatedRecords,
+          hasRapidRollCallPrivilege: Boolean(currentUser?.hasRapidRollCallPrivilege || isMobilePrivileged),
+          loginViaMobile: Boolean(currentUser?.loginViaMobile || isMobilePrivileged),
+          isSuperAdmin: Boolean(currentUser?.isSuperAdmin),
+        }),
       });
       if (res.ok) {
         const resData = await res.json().catch(() => ({}));
@@ -871,14 +902,30 @@ function MainApp() {
 
   const handleSwitchUser = async (userId: string) => {
     try {
+      const isMobileLogin = typeof window !== 'undefined' && (
+        window.innerWidth < 768 ||
+        localStorage.getItem('moe_rapid_roll_call_privileged') === 'true' ||
+        localStorage.getItem('moe_login_source') === 'mobile'
+      );
       const res = await fetch('/api/auth/switch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify({
+          userId,
+          loginViaMobile: isMobileLogin,
+          hasRapidRollCallPrivilege: isMobileLogin,
+        }),
       });
       if (res.ok) {
         const data = await res.json();
-        setCurrentUser(data.user);
+        const userWithPrivilege: User = {
+          ...data.user,
+          hasRapidRollCallPrivilege: isMobileLogin ? true : data.user?.hasRapidRollCallPrivilege,
+          loginViaMobile: isMobileLogin ? true : data.user?.loginViaMobile,
+        };
+        setCurrentUser(userWithPrivilege);
+        localStorage.setItem('moe_logged_in_user', JSON.stringify(userWithPrivilege));
+        localStorage.setItem('moe_active_user_id', userWithPrivilege.id);
         fetchAuditLogs();
       }
     } catch (err) {
@@ -1530,7 +1577,17 @@ function MainApp() {
     if (user.assignedGrade) {
       setSelectedGrade(user.assignedGrade);
     }
-    handleSwitchUser(user.id);
+    // Inform backend of user switch while retaining client privileges
+    fetch('/api/auth/switch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: user.id,
+        loginViaMobile: isMobileLogin,
+        hasRapidRollCallPrivilege: isMobileLogin,
+      }),
+    }).catch(() => {});
+    fetchAuditLogs();
   };
 
   const handleLogout = async () => {
@@ -1705,6 +1762,11 @@ function MainApp() {
         setActiveTab={setActiveTab}
         onOpenVoiceModal={() => setIsVoiceModalOpen(true)}
         onOpenMenuDrawer={() => setIsMenuDrawerOpen(true)}
+        hasRapidRollCallPrivilege={Boolean(
+          currentUser?.hasRapidRollCallPrivilege ||
+          currentUser?.loginViaMobile ||
+          (typeof window !== 'undefined' && localStorage.getItem('moe_rapid_roll_call_privileged') === 'true')
+        )}
       />
 
       {/* Mobile More Modules Sheet / Drawer */}

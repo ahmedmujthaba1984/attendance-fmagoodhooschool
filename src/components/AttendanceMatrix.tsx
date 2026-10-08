@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   CheckCircle,
   XCircle,
@@ -203,13 +203,17 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
     return 'cards';
   });
 
-  // When staff logs in via mobile or receives Rapid Roll Call privilege, automatically switch to Rapid Roll Call
+  // When staff logs in or switches user with Rapid Roll Call privilege, automatically activate Rapid Roll Call
+  const lastActiveUserIdRef = useRef<string | undefined>(currentUser?.id);
   useEffect(() => {
-    if (currentUser?.hasRapidRollCallPrivilege || isMobileOrPrivileged) {
-      setMobileRollCallMode('rapid');
-      onRapidModeChange?.(true);
+    if (currentUser?.id !== lastActiveUserIdRef.current) {
+      lastActiveUserIdRef.current = currentUser?.id;
+      if (currentUser?.hasRapidRollCallPrivilege || isMobileOrPrivileged) {
+        setMobileRollCallMode('rapid');
+        onRapidModeChange?.(true);
+      }
     }
-  }, [currentUser?.id, currentUser?.hasRapidRollCallPrivilege, isMobileOrPrivileged]);
+  }, [currentUser?.id, currentUser?.hasRapidRollCallPrivilege, isMobileOrPrivileged, onRapidModeChange]);
 
   const [showWarningModal, setShowWarningModal] = useState(false);
   const [showLockedNoticeModal, setShowLockedNoticeModal] = useState(false);
@@ -422,7 +426,7 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
     if (isSchoolClosed) {
       return;
     }
-    const isEarlyAllowed = isMobileOrPrivileged && sessionEligibility.reason === 'START_TIME_NOT_REACHED';
+    const isEarlyAllowed = isMobileOrPrivileged && sessionEligibility.reason === 'SESSION_NOT_STARTED';
     if (!sessionEligibility.allowed && !isEarlyAllowed) {
       setShowEligibilityNoticeModal(true);
       return;
@@ -464,7 +468,7 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
 
   const handleReasonChange = (studentId: string, reason: LeaveReason) => {
     if (isSchoolClosed) return;
-    const isEarlyAllowed = isMobileOrPrivileged && sessionEligibility.reason === 'START_TIME_NOT_REACHED';
+    const isEarlyAllowed = isMobileOrPrivileged && sessionEligibility.reason === 'SESSION_NOT_STARTED';
     if (!sessionEligibility.allowed && !isEarlyAllowed) {
       setShowEligibilityNoticeModal(true);
       return;
@@ -494,7 +498,7 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
 
   const handleArrivalTimeChange = (studentId: string, time: string) => {
     if (isSchoolClosed) return;
-    const isEarlyAllowed = isMobileOrPrivileged && sessionEligibility.reason === 'START_TIME_NOT_REACHED';
+    const isEarlyAllowed = isMobileOrPrivileged && sessionEligibility.reason === 'SESSION_NOT_STARTED';
     if (!sessionEligibility.allowed && !isEarlyAllowed) {
       setShowEligibilityNoticeModal(true);
       return;
@@ -524,7 +528,7 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
 
   const handleBulkMarkPresentClicked = (onlyUnmarked: boolean = false) => {
     if (isSchoolClosed) return;
-    const isEarlyAllowed = isMobileOrPrivileged && sessionEligibility.reason === 'START_TIME_NOT_REACHED';
+    const isEarlyAllowed = isMobileOrPrivileged && sessionEligibility.reason === 'SESSION_NOT_STARTED';
     if (!sessionEligibility.allowed && !isEarlyAllowed) {
       setShowEligibilityNoticeModal(true);
       return;

@@ -109,6 +109,8 @@ export interface User {
   hasCustomPassword?: boolean;
   mustChangePassword?: boolean;
   isFirstLogin?: boolean;
+  hasRapidRollCallPrivilege?: boolean;
+  loginViaMobile?: boolean;
   passwordUpdatedAt?: string;
   createdAt: string;
 }

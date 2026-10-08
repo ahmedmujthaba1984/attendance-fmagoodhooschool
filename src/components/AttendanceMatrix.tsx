@@ -170,7 +170,47 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PRESENT' | 'LATE' | 'LEAVE' | 'ABSENT'>('ALL');
-  const [mobileRollCallMode, setMobileRollCallMode] = useState<'cards' | 'rapid'>('cards');
+  // Check if current user or environment has Rapid Roll Call privilege
+  const isMobileOrPrivileged = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    const isMobileScreen = window.innerWidth < 768;
+    const isTouch = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(
+      navigator.userAgent
+    );
+    const hasPrivilege =
+      Boolean(currentUser?.hasRapidRollCallPrivilege) ||
+      Boolean(currentUser?.loginViaMobile) ||
+      localStorage.getItem('moe_rapid_roll_call_privileged') === 'true' ||
+      localStorage.getItem('moe_login_source') === 'mobile' ||
+      localStorage.getItem('moe_default_roll_call_mode') === 'rapid';
+    return isMobileScreen || isTouch || hasPrivilege;
+  }, [currentUser]);
+
+  const [mobileRollCallMode, setMobileRollCallMode] = useState<'cards' | 'rapid'>(() => {
+    if (typeof window !== 'undefined') {
+      const isMobileScreen = window.innerWidth < 768;
+      const isTouch = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(
+        navigator.userAgent
+      );
+      const hasPrivilege =
+        Boolean(currentUser?.hasRapidRollCallPrivilege) ||
+        Boolean(currentUser?.loginViaMobile) ||
+        localStorage.getItem('moe_rapid_roll_call_privileged') === 'true' ||
+        localStorage.getItem('moe_login_source') === 'mobile' ||
+        localStorage.getItem('moe_default_roll_call_mode') === 'rapid';
+      if (isMobileScreen || isTouch || hasPrivilege) return 'rapid';
+    }
+    return 'cards';
+  });
+
+  // When staff logs in via mobile or receives Rapid Roll Call privilege, automatically switch to Rapid Roll Call
+  useEffect(() => {
+    if (currentUser?.hasRapidRollCallPrivilege || isMobileOrPrivileged) {
+      setMobileRollCallMode('rapid');
+      onRapidModeChange?.(true);
+    }
+  }, [currentUser?.id, currentUser?.hasRapidRollCallPrivilege, isMobileOrPrivileged]);
+
   const [showWarningModal, setShowWarningModal] = useState(false);
   const [showLockedNoticeModal, setShowLockedNoticeModal] = useState(false);
   const [showTimingsModal, setShowTimingsModal] = useState(false);
@@ -382,15 +422,16 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
     if (isSchoolClosed) {
       return;
     }
-    if (!sessionEligibility.allowed) {
+    const isEarlyAllowed = isMobileOrPrivileged && sessionEligibility.reason === 'START_TIME_NOT_REACHED';
+    if (!sessionEligibility.allowed && !isEarlyAllowed) {
       setShowEligibilityNoticeModal(true);
       return;
     }
-    if (isSessionSubmitted) {
-      if (!isSuperAdmin) {
-        setShowLockedNoticeModal(true);
-        return;
-      }
+    if (isSessionSubmitted && !isSuperAdmin && !isMobileOrPrivileged) {
+      setShowLockedNoticeModal(true);
+      return;
+    }
+    if (isSessionSubmitted && isSuperAdmin) {
       const student = students.find((s) => s.id === studentId);
       const existing = recordsMap.get(studentId);
       setRevertModalState({
@@ -423,11 +464,12 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
 
   const handleReasonChange = (studentId: string, reason: LeaveReason) => {
     if (isSchoolClosed) return;
-    if (!sessionEligibility.allowed) {
+    const isEarlyAllowed = isMobileOrPrivileged && sessionEligibility.reason === 'START_TIME_NOT_REACHED';
+    if (!sessionEligibility.allowed && !isEarlyAllowed) {
       setShowEligibilityNoticeModal(true);
       return;
     }
-    if (isSessionSubmitted && !isSuperAdmin) {
+    if (isSessionSubmitted && !isSuperAdmin && !isMobileOrPrivileged) {
       setShowLockedNoticeModal(true);
       return;
     }
@@ -452,11 +494,12 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
 
   const handleArrivalTimeChange = (studentId: string, time: string) => {
     if (isSchoolClosed) return;
-    if (!sessionEligibility.allowed) {
+    const isEarlyAllowed = isMobileOrPrivileged && sessionEligibility.reason === 'START_TIME_NOT_REACHED';
+    if (!sessionEligibility.allowed && !isEarlyAllowed) {
       setShowEligibilityNoticeModal(true);
       return;
     }
-    if (isSessionSubmitted && !isSuperAdmin) {
+    if (isSessionSubmitted && !isSuperAdmin && !isMobileOrPrivileged) {
       setShowLockedNoticeModal(true);
       return;
     }
@@ -481,11 +524,12 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
 
   const handleBulkMarkPresentClicked = (onlyUnmarked: boolean = false) => {
     if (isSchoolClosed) return;
-    if (!sessionEligibility.allowed) {
+    const isEarlyAllowed = isMobileOrPrivileged && sessionEligibility.reason === 'START_TIME_NOT_REACHED';
+    if (!sessionEligibility.allowed && !isEarlyAllowed) {
       setShowEligibilityNoticeModal(true);
       return;
     }
-    if (isSessionSubmitted && !isSuperAdmin) {
+    if (isSessionSubmitted && !isSuperAdmin && !isMobileOrPrivileged) {
       setShowLockedNoticeModal(true);
       return;
     }
@@ -548,6 +592,8 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
           isSchoolClosed={isSchoolClosed}
           isSessionSubmitted={isSessionSubmitted}
           isSuperAdmin={isSuperAdmin}
+          currentUser={currentUser}
+          hasMobilePrivilege={isMobileOrPrivileged}
           onStatusChange={handleStatusChange}
           onArrivalTimeChange={handleArrivalTimeChange}
           onReasonChange={handleReasonChange}
@@ -1271,7 +1317,7 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
                 <Zap className="w-4 h-4 text-amber-300 fill-amber-300" />
                 <span>{t.rapidRollCall}</span>
                 <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-amber-400 text-amber-950 font-black">
-                  FAST
+                  {isMobileOrPrivileged ? (isRTL ? 'އިމްތިޔާޒު' : 'PRIVILEGED') : 'FAST'}
                 </span>
               </button>
             </div>

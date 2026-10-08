@@ -24,6 +24,9 @@ import {
   ChevronDown,
   Info,
   Lock,
+  Star,
+  Smartphone,
+  ShieldCheck,
 } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import {
@@ -34,6 +37,7 @@ import {
   SessionType,
   LeaveReason,
   SchoolSessionTimings,
+  User,
 } from '../types';
 import {
   getEffectiveSessionTimings,
@@ -74,6 +78,8 @@ interface RapidRollCallViewProps {
   isSchoolClosed?: boolean;
   isSessionSubmitted?: boolean;
   isSuperAdmin?: boolean;
+  currentUser?: User | null;
+  hasMobilePrivilege?: boolean;
   onStatusChange: (
     studentId: string,
     newStatus: AttendanceStatus,
@@ -102,6 +108,8 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
   isSchoolClosed = false,
   isSessionSubmitted = false,
   isSuperAdmin = false,
+  currentUser,
+  hasMobilePrivilege = false,
   onStatusChange,
   onArrivalTimeChange,
   onReasonChange,
@@ -140,7 +148,21 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
     return checkSessionMarkingEligibility(selectedDate, selectedSession, sessionTimings);
   }, [selectedDate, selectedSession, sessionTimings, currentMinuteTick]);
 
-  const isMarkingAllowed = sessionEligibility.allowed && !isSchoolClosed && !isSessionSubmitted;
+  const isPrivilegedUser = Boolean(
+    hasMobilePrivilege ||
+    isSuperAdmin ||
+    currentUser?.hasRapidRollCallPrivilege ||
+    currentUser?.loginViaMobile
+  );
+
+  const [earlyMarkingOverride, setEarlyMarkingOverride] = useState(false);
+  const isTimingBeforeStart =
+    !sessionEligibility.allowed && sessionEligibility.reason === 'START_TIME_NOT_REACHED';
+
+  const isMarkingAllowed =
+    (sessionEligibility.allowed || (isPrivilegedUser && (earlyMarkingOverride || isTimingBeforeStart))) &&
+    !isSchoolClosed &&
+    (!isSessionSubmitted || isPrivilegedUser);
   const maldivesToday = getMaldivesNow().dateStr;
 
   // Filter students based on local search if present
@@ -232,7 +254,7 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
 
   // Handle Mark Present & Auto Advance (in card mode)
   const handleMarkPresent = (studentId?: string, autoNext = true) => {
-    if (!sessionEligibility.allowed || isSchoolClosed) return;
+    if (!isMarkingAllowed || isSchoolClosed) return;
     const targetId = studentId || currentStudent?.id;
     if (!targetId) return;
     triggerHaptic(20);
@@ -249,7 +271,7 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
 
   // Handle Mark Absent & Auto Advance (in card mode)
   const handleMarkAbsent = (studentId?: string, autoNext = true) => {
-    if (!sessionEligibility.allowed || isSchoolClosed) return;
+    if (!isMarkingAllowed || isSchoolClosed) return;
     const targetId = studentId || currentStudent?.id;
     if (!targetId) return;
     triggerHaptic(35);
@@ -266,7 +288,7 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
 
   // Handle Late with preset time & Auto Advance
   const handleMarkLateWithTime = (time: string, studentId?: string, autoNext = true) => {
-    if (!sessionEligibility.allowed || isSchoolClosed) return;
+    if (!isMarkingAllowed || isSchoolClosed) return;
     const targetId = studentId || currentStudent?.id;
     if (!targetId) return;
     triggerHaptic(25);
@@ -282,7 +304,7 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
 
   // Handle Leave with preset reason & Auto Advance
   const handleMarkLeaveWithReason = (reason: LeaveReason, studentId?: string, autoNext = true) => {
-    if (!sessionEligibility.allowed || isSchoolClosed) return;
+    if (!isMarkingAllowed || isSchoolClosed) return;
     const targetId = studentId || currentStudent?.id;
     if (!targetId) return;
     triggerHaptic(25);
@@ -300,7 +322,7 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (templateMode !== 'card') return;
-      if (!sessionEligibility.allowed || isSchoolClosed) return;
+      if (!isMarkingAllowed || isSchoolClosed) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
       if (e.key === '1') {
@@ -338,6 +360,55 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
 
   return (
     <div className="space-y-4 animate-in fade-in duration-200">
+      {/* 0. Mobile Attendance Rapid Roll Call Privilege Banner */}
+      {isPrivilegedUser && (
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-linear-to-r from-amber-500/15 via-teal-500/10 to-emerald-500/15 border-2 border-amber-400/70 shadow-xs flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 via-orange-500 to-amber-600 text-white flex items-center justify-center font-black shadow-sm shrink-0">
+              <Zap className="w-5 h-5 fill-white text-white" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-black text-amber-950 uppercase tracking-wide">
+                  {isRTL ? 'އަތްމަތީ ފޯނުން ހާޒިރީ ފުރުމުގެ ޚާއްޞަ އިމްތިޔާޒު' : 'Mobile Attendance Privilege Active'}
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-amber-950 shadow-2xs">
+                  RAPID ROLL CALL
+                </span>
+                {currentUser && (
+                  <span className="text-[11px] font-bold text-teal-900 bg-white/90 px-2 py-0.5 rounded-lg border border-teal-200 shadow-2xs">
+                    {isRTL && currentUser.fullNameDhivehi ? currentUser.fullNameDhivehi : currentUser.fullName}
+                    {currentUser.assignedGrade && ` • ${currentUser.assignedGrade}`}
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-amber-900/90 mt-0.5 leading-snug">
+                {isRTL
+                  ? 'މޯބައިލުން ހާޒިރީ ފުރުމަށް ހަލުވި އިމްތިޔާޒު ދެވިފައި: 1-ކްލިކުން ކުދިން ޙާޟިރުކުރުމާއި، ގްރޭޑްތައް ބަދަލުކުރުން'
+                  : 'Fast 1-tap touch roll call, instant class roster switching, and unhindered attendance recording.'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 ml-auto">
+            {counts.unmarked > 0 && !isSchoolClosed && isMarkingAllowed && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic(30);
+                  onBulkMarkPresent(true);
+                }}
+                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-black flex items-center gap-1.5 shadow-xs cursor-pointer transition active:scale-95"
+                title={isRTL ? 'ބާކީ ތިބި ކުދިން ޙާޟިރުކުރޭ' : 'Mark Remaining Present'}
+              >
+                <CheckCheck className="w-4 h-4" />
+                <span>{isRTL ? `ބާކީ ${counts.unmarked} ކުދިން ޙާޟިރު` : `Mark ${counts.unmarked} Present`}</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* 1. TOP CONTROL BAR: Header, Template Selector, and Back Button */}
       <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-100">
@@ -487,6 +558,7 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
               const isSelected = isAll
                 ? selectedGrade === 'ALL' || selectedGrade === 'All Grades' || selectedGrade === 'ހުރިހާ ގްރޭޑެއް'
                 : selectedGrade === grade;
+              const isAssigned = currentUser?.assignedGrade === grade;
               const count = isAll ? (allStudents.length || 215) : (gradeCounts.get(grade) || 0);
 
               return (
@@ -497,10 +569,18 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 border flex items-center gap-1.5 ${
                     isSelected
                       ? 'bg-sky-600 text-white border-sky-600 shadow-sm ring-2 ring-sky-400/30 font-black'
+                      : isAssigned
+                      ? 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300 font-extrabold shadow-2xs'
                       : 'bg-white hover:bg-sky-50 text-slate-700 border-slate-200'
                   }`}
                 >
+                  {isAssigned && <Star className="w-3 h-3 text-amber-500 fill-amber-500 shrink-0" />}
                   <span>{isAll ? (isRTL ? 'ހުރިހާ ގްރޭޑެއް' : 'All Grades') : grade}</span>
+                  {isAssigned && !isSelected && (
+                    <span className="text-[9px] px-1 py-0.2 rounded bg-amber-200 text-amber-900 font-black">
+                      {isRTL ? 'އަޅުގަނޑުގެ ކްލާސް' : 'My Class'}
+                    </span>
+                  )}
                   <span
                     className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-black ${
                       isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
@@ -549,6 +629,16 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                 <p className="text-[11px] mt-0.5 opacity-90">
                   {isRTL ? sessionEligibility.messageDhivehi : sessionEligibility.message}
                 </p>
+                {isPrivilegedUser && sessionEligibility.reason === 'START_TIME_NOT_REACHED' && (
+                  <p className="text-[11px] font-bold text-amber-900 mt-1 flex items-center gap-1 bg-amber-100/90 px-2 py-0.5 rounded-md border border-amber-300/60">
+                    <Zap className="w-3.5 h-3.5 text-amber-600 fill-amber-600 shrink-0" />
+                    <span>
+                      {isRTL
+                        ? 'އަތްމަތީ ފޯނުން ހާޒިރީ ފުރުމުގެ އިމްތިޔާޒު ލިބިފައިވާތީ މިހާރުވެސް ހާޒިރީ ފުރޭނެއެވެ.'
+                        : 'Mobile Rapid Roll Call privilege active: early roll call attendance marking unlocked.'}
+                    </span>
+                  </p>
+                )}
               </div>
             </div>
 
@@ -728,6 +818,16 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                 <p className="text-xs mt-0.5 leading-relaxed opacity-90">
                   {isRTL ? sessionEligibility.messageDhivehi : sessionEligibility.message}
                 </p>
+                {isPrivilegedUser && sessionEligibility.reason === 'START_TIME_NOT_REACHED' && (
+                  <p className="text-xs font-bold text-amber-900 mt-1.5 flex items-center gap-1.5 bg-amber-100/90 px-2.5 py-1 rounded-lg border border-amber-300">
+                    <Zap className="w-4 h-4 text-amber-600 fill-amber-600 shrink-0" />
+                    <span>
+                      {isRTL
+                        ? 'އަތްމަތީ ފޯނުން ހާޒިރީ ފުރުމުގެ އިމްތިޔާޒު ލިބިފައިވާތީ މިހާރުވެސް ހާޒިރީ ފުރޭނެއެވެ.'
+                        : 'Mobile Rapid Roll Call privilege active: early roll call attendance marking unlocked.'}
+                    </span>
+                  </p>
+                )}
               </div>
             </div>
             {sessionEligibility.reason === 'FUTURE_DATE' && onSelectDate && selectedDate !== maldivesToday && (

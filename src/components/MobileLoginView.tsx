@@ -18,6 +18,9 @@ import {
   Users,
   ShieldAlert,
   LogOut,
+  Zap,
+  Smartphone,
+  Sparkles,
 } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { User } from '../types';
@@ -56,6 +59,9 @@ export const MobileLoginView: React.FC<MobileLoginViewProps> = ({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [rememberDevice, setRememberDevice] = useState<boolean>(() => {
     return localStorage.getItem('moe_remember_device') !== 'false';
+  });
+  const [enableRapidRollCallPrivilege, setEnableRapidRollCallPrivilege] = useState<boolean>(() => {
+    return localStorage.getItem('moe_rapid_roll_call_privileged') !== 'false';
   });
 
   // Staff Quick-Select Directory Modal
@@ -255,16 +261,28 @@ export const MobileLoginView: React.FC<MobileLoginViewProps> = ({
           : `Welcome, ${loggedInUser.fullName}!`
       );
 
+      const userToLogin: User = {
+        ...loggedInUser,
+        hasRapidRollCallPrivilege: enableRapidRollCallPrivilege,
+        loginViaMobile: true,
+      };
+
+      if (enableRapidRollCallPrivilege) {
+        localStorage.setItem('moe_rapid_roll_call_privileged', 'true');
+        localStorage.setItem('moe_default_roll_call_mode', 'rapid');
+      }
+      localStorage.setItem('moe_login_source', 'mobile');
+
       // Store active session in localStorage
       if (rememberDevice) {
         localStorage.setItem('moe_last_staff_email', cleanEmail);
-        localStorage.setItem('moe_active_user_id', loggedInUser.id);
+        localStorage.setItem('moe_active_user_id', userToLogin.id);
         localStorage.setItem('moe_portal_logged_in', 'true');
-        localStorage.setItem('moe_logged_in_user', JSON.stringify(loggedInUser));
+        localStorage.setItem('moe_logged_in_user', JSON.stringify(userToLogin));
       }
 
       setTimeout(() => {
-        onLogin(loggedInUser!);
+        onLogin(userToLogin);
       }, 400);
     } else {
       setErrorMessage(
@@ -364,15 +382,27 @@ export const MobileLoginView: React.FC<MobileLoginViewProps> = ({
           : 'Password updated successfully! Entering portal...'
       );
 
-      if (rememberDevice && updatedUser.email) {
-        localStorage.setItem('moe_last_staff_email', updatedUser.email);
-        localStorage.setItem('moe_active_user_id', updatedUser.id);
+      const finalUser: User = {
+        ...updatedUser,
+        hasRapidRollCallPrivilege: enableRapidRollCallPrivilege,
+        loginViaMobile: true,
+      };
+
+      if (enableRapidRollCallPrivilege) {
+        localStorage.setItem('moe_rapid_roll_call_privileged', 'true');
+        localStorage.setItem('moe_default_roll_call_mode', 'rapid');
+      }
+      localStorage.setItem('moe_login_source', 'mobile');
+
+      if (rememberDevice && finalUser.email) {
+        localStorage.setItem('moe_last_staff_email', finalUser.email);
+        localStorage.setItem('moe_active_user_id', finalUser.id);
         localStorage.setItem('moe_portal_logged_in', 'true');
-        localStorage.setItem('moe_logged_in_user', JSON.stringify(updatedUser));
+        localStorage.setItem('moe_logged_in_user', JSON.stringify(finalUser));
       }
 
       setTimeout(() => {
-        onLogin(updatedUser);
+        onLogin(finalUser);
       }, 700);
     } else {
       setCompulsoryError(
@@ -889,11 +919,48 @@ export const MobileLoginView: React.FC<MobileLoginViewProps> = ({
               </button>
             </div>
 
+            {/* Mobile Rapid Roll Call Privilege Activation */}
+            <div className="p-3.5 rounded-2xl bg-linear-to-r from-amber-950/50 via-teal-950/40 to-slate-950 border border-amber-500/40 space-y-2.5">
+              <div className="flex items-start gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-600 text-white flex items-center justify-center shrink-0 shadow-sm border border-amber-400/40">
+                  <Zap className="w-4 h-4 fill-white text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 font-black text-xs text-amber-300 flex-wrap">
+                    <span>{isRTL ? 'ހާޒިރީ ފުރުމުގެ ޚާއްޞަ އިމްތިޔާޒު' : 'Attendance Roll Call Privilege'}</span>
+                    <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-amber-400 text-amber-950 font-black">
+                      RAPID ROLL CALL
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 mt-0.5 leading-snug">
+                    {isRTL
+                      ? 'އަތްމަތީ ފޯނުން ލޮގިންވުމުން ހަލުވި ހާޒިރީ (Rapid Roll Call) ގެ ފުރިހަމަ އިމްތިޔާޒު ވަގުތުން ލިބި، 1-ކްލިކުން ކުދިންގެ ހާޒިރީ ފުރޭނެއެވެ.'
+                      : 'Logging in on mobile grants instant privilege to Rapid Roll Call: 1-tap touch roll call, class sheets, and fast attendance marking.'}
+                  </p>
+                </div>
+              </div>
+
+              <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-300 hover:text-white pt-1.5 border-t border-slate-800">
+                <input
+                  type="checkbox"
+                  checked={enableRapidRollCallPrivilege}
+                  onChange={(e) => {
+                    setEnableRapidRollCallPrivilege(e.target.checked);
+                    localStorage.setItem('moe_rapid_roll_call_privileged', String(e.target.checked));
+                  }}
+                  className="w-4 h-4 rounded bg-slate-950 border-amber-500 text-amber-500 focus:ring-amber-500"
+                />
+                <span className="font-bold text-[11px] text-amber-200">
+                  {isRTL ? 'ހަލުވި ހާޒިރީ (Rapid Roll Call) އިމްތިޔާޒު އެކްޓިވްކޮށް ވަނުން' : 'Activate Rapid Roll Call privilege on entry'}
+                </span>
+              </label>
+            </div>
+
             {/* Submit Button */}
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3.5 rounded-xl bg-linear-to-r from-teal-600 to-sky-600 hover:from-teal-500 hover:to-sky-500 text-white font-black text-sm tracking-wide flex items-center justify-center gap-2 shadow-lg shadow-teal-900/30 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+              className="w-full py-3.5 rounded-xl bg-linear-to-r from-amber-500 via-teal-600 to-sky-600 hover:from-amber-400 hover:to-sky-500 text-white font-black text-sm tracking-wide flex items-center justify-center gap-2 shadow-lg shadow-teal-900/30 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed mt-2 active:scale-98"
             >
               {isLoading ? (
                 <>
@@ -902,8 +969,11 @@ export const MobileLoginView: React.FC<MobileLoginViewProps> = ({
                 </>
               ) : (
                 <>
-                  <span>{isRTL ? 'ޕޯޓަލަށް ވަންނަވާ' : 'Sign In to Portal'}</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <Zap className="w-4 h-4 text-amber-200 fill-amber-200 shrink-0" />
+                  <span className="truncate">
+                    {isRTL ? 'ހާޒިރީ ފުރުމަށް ވަންނަވާ (ހަލުވި ހާޒިރީ)' : 'Sign In to Mark Attendance (Rapid Roll Call)'}
+                  </span>
+                  <ArrowRight className="w-4 h-4 shrink-0" />
                 </>
               )}
             </button>

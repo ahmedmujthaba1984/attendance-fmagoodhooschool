@@ -55,18 +55,36 @@ function MainApp() {
   // Core Data State (initialized with complete bundled data for 100% offline & Vercel reliability)
   const [staffList, setStaffList] = useState<User[]>(DEFAULT_STAFF);
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    const isMobileOrPrivileged = typeof window !== 'undefined' && (
+      window.innerWidth < 768 ||
+      localStorage.getItem('moe_rapid_roll_call_privileged') === 'true' ||
+      localStorage.getItem('moe_login_source') === 'mobile'
+    );
+
     const savedUserJson = localStorage.getItem('moe_logged_in_user');
     if (savedUserJson) {
       try {
-        return JSON.parse(savedUserJson);
+        const parsed = JSON.parse(savedUserJson);
+        if (isMobileOrPrivileged) {
+          parsed.hasRapidRollCallPrivilege = true;
+          parsed.loginViaMobile = true;
+        }
+        return parsed;
       } catch {}
     }
     const savedId = localStorage.getItem('moe_active_user_id');
     if (savedId) {
       const found = DEFAULT_STAFF.find((s) => s.id === savedId);
-      if (found) return found;
+      if (found) {
+        return isMobileOrPrivileged
+          ? { ...found, hasRapidRollCallPrivilege: true, loginViaMobile: true }
+          : found;
+      }
     }
-    return DEFAULT_STAFF[0] || null;
+    const def = DEFAULT_STAFF[0] || null;
+    return def && isMobileOrPrivileged
+      ? { ...def, hasRapidRollCallPrivilege: true, loginViaMobile: true }
+      : def;
   });
   const [students, setStudents] = useState<Student[]>(DEFAULT_STUDENTS);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
@@ -1482,12 +1500,33 @@ function MainApp() {
   };
 
   const handleLoginUser = (user: User) => {
-    setCurrentUser(user);
+    const isMobileLogin =
+      Boolean(user.loginViaMobile) ||
+      Boolean(user.hasRapidRollCallPrivilege) ||
+      (typeof window !== 'undefined' && (
+        window.innerWidth < 768 ||
+        localStorage.getItem('moe_rapid_roll_call_privileged') === 'true' ||
+        localStorage.getItem('moe_login_source') === 'mobile'
+      ));
+
+    const privilegedUser: User = {
+      ...user,
+      hasRapidRollCallPrivilege: isMobileLogin ? true : user.hasRapidRollCallPrivilege,
+      loginViaMobile: isMobileLogin ? true : user.loginViaMobile,
+    };
+
+    setCurrentUser(privilegedUser);
     setIsLoggedIn(true);
     setShowLoginView(false);
+    setActiveTab('attendance'); // Prioritize Attendance tab on login
     localStorage.setItem('moe_portal_logged_in', 'true');
     localStorage.setItem('moe_active_user_id', user.id);
-    localStorage.setItem('moe_logged_in_user', JSON.stringify(user));
+    localStorage.setItem('moe_logged_in_user', JSON.stringify(privilegedUser));
+    if (isMobileLogin) {
+      localStorage.setItem('moe_login_source', 'mobile');
+      localStorage.setItem('moe_rapid_roll_call_privileged', 'true');
+      localStorage.setItem('moe_default_roll_call_mode', 'rapid');
+    }
     if (user.assignedGrade) {
       setSelectedGrade(user.assignedGrade);
     }

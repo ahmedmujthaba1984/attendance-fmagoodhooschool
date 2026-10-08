@@ -28,6 +28,7 @@ import {
   DEFAULT_STAFF,
   DEFAULT_STUDENTS,
   DEFAULT_CALENDAR,
+  hasStaffLocalCustomPassword,
 } from './data/fallbackData';
 import {
   User,
@@ -1745,12 +1746,24 @@ function MainApp() {
         />
       )}
 
-      {/* Staff Self-Service Change Password Modal */}
-      {isChangePasswordModalOpen && (
+      {/* Staff Change Password Modal (Self-service or Compulsory on 1st Login) */}
+      {(isChangePasswordModalOpen || Boolean(currentUser && (!currentUser.hasCustomPassword || currentUser.mustChangePassword) && !hasStaffLocalCustomPassword(currentUser.email))) && (
         <StaffChangePasswordModal
           currentUser={currentUser}
+          isCompulsory={Boolean(currentUser && (!currentUser.hasCustomPassword || currentUser.mustChangePassword) && !hasStaffLocalCustomPassword(currentUser.email))}
+          onLogout={handleLogout}
           onClose={() => setIsChangePasswordModalOpen(false)}
           onSuccess={() => {
+            if (currentUser) {
+              const updated = {
+                ...currentUser,
+                hasCustomPassword: true,
+                mustChangePassword: false,
+                isFirstLogin: false,
+              };
+              setCurrentUser(updated);
+              localStorage.setItem('moe_logged_in_user', JSON.stringify(updated));
+            }
             fetchAuditLogs();
           }}
         />

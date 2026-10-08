@@ -126,8 +126,8 @@ export const SuperAdminPasswordModal: React.FC<SuperAdminPasswordModalProps> = (
   const handleSaveCustomPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedStaffForCustom || !customPasswordInput.trim()) return;
-    if (customPasswordInput.trim().length < 4) {
-      setNotification({ type: 'error', message: 'Password must be at least 4 characters long.' });
+    if (customPasswordInput.trim().length < 5) {
+      setNotification({ type: 'error', message: 'Password must be at least 5 characters long.' });
       return;
     }
 
@@ -528,17 +528,17 @@ export const SuperAdminPasswordModal: React.FC<SuperAdminPasswordModalProps> = (
             <form onSubmit={handleSaveCustomPassword} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  New Password (Minimum 4 characters)
+                  New Password (Minimum 5 characters)
                 </label>
                 <div className="relative">
                   <input
                     type={showCustomPassText ? 'text' : 'password'}
                     value={customPasswordInput}
                     onChange={(e) => setCustomPasswordInput(e.target.value)}
-                    placeholder="Enter new password (e.g. 1234 or custom)"
+                    placeholder="Enter new secure password (min. 5 characters)"
                     className="w-full pl-3 pr-10 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-mono focus:outline-none focus:ring-2 focus:ring-teal-500"
                     required
-                    minLength={4}
+                    minLength={5}
                     autoFocus
                   />
                   <button

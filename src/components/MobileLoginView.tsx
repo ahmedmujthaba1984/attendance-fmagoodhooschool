@@ -16,10 +16,17 @@ import {
   RefreshCw,
   Key,
   Users,
+  ShieldAlert,
+  LogOut,
 } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { User } from '../types';
-import { DEFAULT_STAFF, getStaffLocalPassword, setStaffLocalPassword } from '../data/fallbackData';
+import {
+  DEFAULT_STAFF,
+  getStaffLocalPassword,
+  setStaffLocalPassword,
+  hasStaffLocalCustomPassword,
+} from '../data/fallbackData';
 
 interface MobileLoginViewProps {
   staffList: User[];
@@ -55,6 +62,16 @@ export const MobileLoginView: React.FC<MobileLoginViewProps> = ({
   const [showDirectoryPicker, setShowDirectoryPicker] = useState<boolean>(false);
   const [directorySearch, setDirectorySearch] = useState<string>('');
   const [roleFilter, setRoleFilter] = useState<'ALL' | 'TEACHERS' | 'LEADERSHIP' | 'ADMIN_SUPPORT'>('ALL');
+
+  // Compulsory First Login Password Change State
+  const [compulsoryChangeUser, setCompulsoryChangeUser] = useState<User | null>(null);
+  const [compulsoryCurrentPassword, setCompulsoryCurrentPassword] = useState<string>('1234');
+  const [compulsoryNewPass, setCompulsoryNewPass] = useState<string>('');
+  const [compulsoryConfirmPass, setCompulsoryConfirmPass] = useState<string>('');
+  const [compulsoryShowPass, setCompulsoryShowPass] = useState<boolean>(false);
+  const [compulsoryLoading, setCompulsoryLoading] = useState<boolean>(false);
+  const [compulsoryError, setCompulsoryError] = useState<string | null>(null);
+  const [compulsorySuccess, setCompulsorySuccess] = useState<string | null>(null);
 
   // Self-Service Reset Password Modal
   const [showSelfResetModal, setShowSelfResetModal] = useState<boolean>(false);
@@ -208,6 +225,30 @@ export const MobileLoginView: React.FC<MobileLoginViewProps> = ({
     }
 
     if (loginSucceeded && loggedInUser) {
+      const staffEmail = loggedInUser.email || cleanEmail;
+      const hasCustom = Boolean(
+        (loggedInUser.hasCustomPassword && loggedInUser.mustChangePassword === false) ||
+        hasStaffLocalCustomPassword(staffEmail)
+      );
+      const isDefaultPass = cleanPass === '1234';
+      const mustChange = Boolean(
+        loggedInUser.mustChangePassword ||
+        !hasCustom ||
+        isDefaultPass
+      );
+
+      // Compulsory 1st login password change: if no custom password yet or logged in with 1234, block entry until changed!
+      if (mustChange) {
+        setCompulsoryChangeUser(loggedInUser);
+        setCompulsoryCurrentPassword(cleanPass || '1234');
+        setCompulsoryNewPass('');
+        setCompulsoryConfirmPass('');
+        setCompulsoryError(null);
+        setCompulsorySuccess(null);
+        setIsLoading(false);
+        return;
+      }
+
       setSuccessMessage(
         isRTL
           ? `${loggedInUser.fullNameDhivehi || loggedInUser.fullName} މަރުޙަބާ!`
@@ -236,6 +277,113 @@ export const MobileLoginView: React.FC<MobileLoginViewProps> = ({
     setIsLoading(false);
   };
 
+  // Handle Compulsory First Login Password Change
+  const handleCompulsorySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!compulsoryChangeUser) return;
+    setCompulsoryError(null);
+    setCompulsorySuccess(null);
+
+    const cleanNewPass = compulsoryNewPass.trim();
+    const cleanCurrent = compulsoryCurrentPassword.trim();
+
+    if (cleanNewPass.length < 5) {
+      setCompulsoryError(
+        isRTL
+          ? 'އާ ޕާސްވޯޑުގައި މަދުވެގެން 5 އަކުރު ހުންނަންވާނެއެވެ.'
+          : 'Password should be minimum 5 characters long.'
+      );
+      return;
+    }
+
+    if (cleanNewPass === '1234') {
+      setCompulsoryError(
+        isRTL
+          ? 'ޑީފޯލްޓް ޕާސްވޯޑް (1234) ބޭނުމެއް ނުކުރެވޭނެ. މަދުވެގެން 5 އަކުރުގެ އާ ޕާސްވޯޑެއް ޖައްސަވާ.'
+          : 'Cannot reuse the default password (1234). Please choose a new password of at least 5 characters.'
+      );
+      return;
+    }
+
+    if (cleanNewPass !== compulsoryConfirmPass.trim()) {
+      setCompulsoryError(
+        isRTL ? 'ދެ ޕާސްވޯޑު ދިމައެއް ނުވޭ.' : 'New passwords do not match.'
+      );
+      return;
+    }
+
+    setCompulsoryLoading(true);
+    let changeSucceeded = false;
+
+    // 1. Try server-side change
+    try {
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: compulsoryChangeUser.email,
+          currentPassword: cleanCurrent,
+          newPassword: cleanNewPass,
+        }),
+      });
+
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const data = await res.json();
+        if (res.ok && data.success) {
+          changeSucceeded = true;
+        } else if (data.error) {
+          setCompulsoryError(data.error);
+          setCompulsoryLoading(false);
+          return;
+        }
+      } else if (res.ok) {
+        changeSucceeded = true;
+      }
+    } catch {
+      // Server unreachable, fall back to offline client storage
+    }
+
+    // 2. Always persist locally
+    if (compulsoryChangeUser.email) {
+      setStaffLocalPassword(compulsoryChangeUser.email, cleanNewPass);
+      changeSucceeded = true;
+    }
+
+    if (changeSucceeded) {
+      const updatedUser: User = {
+        ...compulsoryChangeUser,
+        hasCustomPassword: true,
+        mustChangePassword: false,
+        isFirstLogin: false,
+      };
+
+      setCompulsorySuccess(
+        isRTL
+          ? 'ޕާސްވޯޑް ކާމިޔާބުކަމާއެކު ބަދަލުކުރެވިއްޖެ! ޕޯޓަލަށް ވަންނަނީ...'
+          : 'Password updated successfully! Entering portal...'
+      );
+
+      if (rememberDevice && updatedUser.email) {
+        localStorage.setItem('moe_last_staff_email', updatedUser.email);
+        localStorage.setItem('moe_active_user_id', updatedUser.id);
+        localStorage.setItem('moe_portal_logged_in', 'true');
+        localStorage.setItem('moe_logged_in_user', JSON.stringify(updatedUser));
+      }
+
+      setTimeout(() => {
+        onLogin(updatedUser);
+      }, 700);
+    } else {
+      setCompulsoryError(
+        isRTL
+          ? 'ޕާސްވޯޑް އަޕްޑޭޓް ނުކުރެވުނު. އަލުން މަސައްކަތްކުރައްވާ.'
+          : 'Failed to update password. Please try again.'
+      );
+    }
+    setCompulsoryLoading(false);
+  };
+
   // Handle Self-Service Password Reset
   const handleSelfResetSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -250,8 +398,8 @@ export const MobileLoginView: React.FC<MobileLoginViewProps> = ({
       return;
     }
 
-    if (newPass.length < 4) {
-      setResetError(isRTL ? 'ޕާސްވޯޑުގައި މަދުވެގެން 4 އަކުރު ހުންނަންވާނެއެވެ.' : 'Password must be at least 4 characters long.');
+    if (newPass.length < 5) {
+      setResetError(isRTL ? 'ޕާސްވޯޑުގައި މަދުވެގެން 5 އަކުރު ހުންނަންވާނެއެވެ.' : 'Password must be at least 5 characters long.');
       return;
     }
 
@@ -389,17 +537,234 @@ export const MobileLoginView: React.FC<MobileLoginViewProps> = ({
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-            {isRTL ? 'ސްޓާފް ލޮގިން' : 'Staff Portal Login'}
+            {compulsoryChangeUser
+              ? isRTL
+                ? 'ފުރަތަމަ ލޮގިން: ޕާސްވޯޑް ބަދަލުކުރުން މަޖުބޫރު'
+                : '1st Login: Change Password'
+              : isRTL
+              ? 'ސްޓާފް ލޮގިން'
+              : 'Staff Portal Login'}
           </h1>
           <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-            {isRTL
+            {compulsoryChangeUser
+              ? isRTL
+                ? 'ރައްކާތެރިކަމަށްޓަކައި، ކޮންމެ ސްޓާފަކުވެސް ފުރަތަމަ ފަހަރު ލޮގިންވުމަށްފަހު އާ ޕާސްވޯޑެއް ހެދުން މަޖުބޫރެވެ (މަދުވެގެން 5 އަކުރު).'
+                : 'Every staff member must change their default password upon first login (minimum 5 characters).'
+              : isRTL
               ? 'ޕޯޓަލް ބޭނުންކުރުމަށް ސްޓާފް އީމެއިލް އަދި ޕާސްވޯޑް ބޭނުންކުރައްވާ.'
               : 'Every staff member must sign in to mark attendance and manage student records.'}
           </p>
         </div>
 
-        {/* Login Card */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-7 shadow-2xl backdrop-blur-xl">
+        {compulsoryChangeUser ? (
+          /* Compulsory 1st Login Password Change Card */
+          <div className="bg-slate-900/95 border-2 border-amber-500/50 rounded-3xl p-6 sm:p-7 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95">
+            {/* Compulsory Badge */}
+            <div className="mb-4 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-300 font-bold">
+              <ShieldAlert className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span>
+                {isRTL ? 'ފުރަތަމަ ލޮގިން: ޕާސްވޯޑް ބަދަލުކުރުން މަޖުބޫރު' : '1st Login Compulsory Action'}
+              </span>
+            </div>
+
+            {/* Staff Info Preview */}
+            <div className="mb-4 p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-teal-500/20 text-teal-300 flex items-center justify-center font-bold text-sm shrink-0 border border-teal-500/30">
+                {compulsoryChangeUser.fullName.charAt(0)}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="font-extrabold text-white text-sm truncate">
+                  {isRTL && compulsoryChangeUser.fullNameDhivehi ? compulsoryChangeUser.fullNameDhivehi : compulsoryChangeUser.fullName}
+                </div>
+                <div className="text-[11px] text-teal-300 font-mono truncate">
+                  {compulsoryChangeUser.email}
+                </div>
+                <div className="text-[11px] text-slate-400 mt-0.5">
+                  {compulsoryChangeUser.designation} {compulsoryChangeUser.staffId && `• ${compulsoryChangeUser.staffId}`}
+                </div>
+              </div>
+            </div>
+
+            {/* Instruction Warning Box */}
+            <div className="mb-4 p-3 rounded-2xl bg-amber-950/60 border border-amber-800/80 text-xs text-amber-200 leading-relaxed">
+              {isRTL
+                ? 'ދަރިވަރުންގެ މަޢުލޫމާތާއި ޕޯޓަލްގެ ރައްކާތެރިކަމަށްޓަކައި، ކޮންމެ ސްޓާފަކުވެސް ފުރަތަމަ ފަހަރު ލޮގިންވުމަށްފަހު އާ ޕާސްވޯޑެއް ހެދުން މަޖުބޫރެވެ. ޕާސްވޯޑުގައި މަދުވެގެން 5 އަކުރު ހުންނަންވާނެއެވެ.'
+                : 'For student data security, every staff member is required to change their password on first login. Password must be at least 5 characters long.'}
+            </div>
+
+            {/* Feedback Messages */}
+            {compulsoryError && (
+              <div className="mb-4 p-3 rounded-xl bg-rose-950/70 border border-rose-800/80 text-rose-200 text-xs flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>{compulsoryError}</span>
+              </div>
+            )}
+
+            {compulsorySuccess && (
+              <div className="mb-4 p-3 rounded-xl bg-emerald-950/70 border border-emerald-800/80 text-emerald-200 text-xs flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>{compulsorySuccess}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleCompulsorySubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                  {isRTL ? 'މިހާރުގެ ޕާސްވޯޑް (ޑީފޯލްޓް: 1234)' : 'Current Password (Default: 1234)'}
+                </label>
+                <div className="relative">
+                  <input
+                    type={compulsoryShowPass ? 'text' : 'password'}
+                    value={compulsoryCurrentPassword}
+                    onChange={(e) => setCompulsoryCurrentPassword(e.target.value)}
+                    required
+                    className="w-full pl-3.5 pr-10 py-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white font-mono focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setCompulsoryShowPass(!compulsoryShowPass)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer"
+                  >
+                    {compulsoryShowPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-bold text-slate-300">
+                    {isRTL ? 'އާ ޕާސްވޯޑް (މަދުވެގެން 5 އަކުރު)' : 'New Password (min. 5 characters)'}
+                  </label>
+                  <span
+                    className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
+                      compulsoryNewPass.trim().length >= 5
+                        ? 'bg-emerald-950 text-emerald-400 font-bold border border-emerald-800'
+                        : 'bg-slate-800 text-slate-400'
+                    }`}
+                  >
+                    {compulsoryNewPass.trim().length}/5 {isRTL ? 'އަކުރު' : 'chars'}
+                  </span>
+                </div>
+                <input
+                  type={compulsoryShowPass ? 'text' : 'password'}
+                  value={compulsoryNewPass}
+                  onChange={(e) => setCompulsoryNewPass(e.target.value)}
+                  placeholder={isRTL ? 'އާ ޕާސްވޯޑް ލިޔުއްވާ (މަދުވެގެން 5 އަކުރު)' : 'Enter new password (min. 5 chars)'}
+                  required
+                  minLength={5}
+                  autoFocus
+                  className="w-full px-3.5 py-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white font-mono focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                  {isRTL ? 'އާ ޕާސްވޯޑް ކަށަވަރުކުރޭ' : 'Confirm New Password'}
+                </label>
+                <input
+                  type={compulsoryShowPass ? 'text' : 'password'}
+                  value={compulsoryConfirmPass}
+                  onChange={(e) => setCompulsoryConfirmPass(e.target.value)}
+                  placeholder={isRTL ? 'އާ ޕާސްވޯޑް އަލުން ލިޔުއްވާ' : 'Re-enter new password'}
+                  required
+                  minLength={5}
+                  className="w-full px-3.5 py-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white font-mono focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+
+              {/* Requirement Checklist */}
+              <div className="p-3 bg-slate-950/60 rounded-xl space-y-1.5 text-[11px] text-slate-400 border border-slate-800/80">
+                <div className="flex items-center gap-2">
+                  <div
+                    className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] font-bold ${
+                      compulsoryNewPass.trim().length >= 5
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-slate-800 text-slate-500'
+                    }`}
+                  >
+                    {compulsoryNewPass.trim().length >= 5 ? '✓' : '•'}
+                  </div>
+                  <span className={compulsoryNewPass.trim().length >= 5 ? 'text-emerald-400 font-medium' : ''}>
+                    {isRTL ? 'މަދުވެގެން 5 އަކުރު' : 'Minimum 5 characters long'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div
+                    className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] font-bold ${
+                      compulsoryNewPass.trim() !== '1234' && compulsoryNewPass.trim().length > 0
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-slate-800 text-slate-500'
+                    }`}
+                  >
+                    {compulsoryNewPass.trim() !== '1234' && compulsoryNewPass.trim().length > 0 ? '✓' : '•'}
+                  </div>
+                  <span className={compulsoryNewPass.trim() !== '1234' && compulsoryNewPass.trim().length > 0 ? 'text-emerald-400 font-medium' : ''}>
+                    {isRTL ? 'ޑީފޯލްޓް ޕާސްވޯޑް (1234) އާ ތަފާތުވުން' : 'Different from default (1234)'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div
+                    className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] font-bold ${
+                      compulsoryNewPass === compulsoryConfirmPass && compulsoryConfirmPass.length > 0
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-slate-800 text-slate-500'
+                    }`}
+                  >
+                    {compulsoryNewPass === compulsoryConfirmPass && compulsoryConfirmPass.length > 0 ? '✓' : '•'}
+                  </div>
+                  <span className={compulsoryNewPass === compulsoryConfirmPass && compulsoryConfirmPass.length > 0 ? 'text-emerald-400 font-medium' : ''}>
+                    {isRTL ? 'ދެ ޕާސްވޯޑް ދިމާވުން' : 'Passwords match'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-2 flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCompulsoryChangeUser(null);
+                    setPasswordInput('');
+                    setCompulsoryError(null);
+                  }}
+                  disabled={compulsoryLoading}
+                  className="flex-1 py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>{isRTL ? 'ކެންސަލް / ސައިން އައުޓް' : 'Cancel & Sign Out'}</span>
+                </button>
+                <button
+                  type="submit"
+                  disabled={
+                    compulsoryLoading ||
+                    compulsoryNewPass.trim().length < 5 ||
+                    compulsoryNewPass !== compulsoryConfirmPass
+                  }
+                  className={`flex-2 py-3 px-4 rounded-xl text-white font-black text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-lg ${
+                    compulsoryLoading ||
+                    compulsoryNewPass.trim().length < 5 ||
+                    compulsoryNewPass !== compulsoryConfirmPass
+                      ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
+                      : 'bg-teal-500 hover:bg-teal-400 text-slate-950 font-black shadow-teal-500/20 active:scale-98'
+                  }`}
+                >
+                  {compulsoryLoading ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>{isRTL ? 'ސޭވްކުރަނީ...' : 'Saving...'}</span>
+                    </>
+                  ) : (
+                    <span>
+                      {isRTL ? 'ޕާސްވޯޑް ސޭވްކޮށް ޕޯޓަލަށް ވަންނަވާ' : 'Save Password & Enter'}
+                    </span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        ) : (
+          /* Login Card */
+          <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-7 shadow-2xl backdrop-blur-xl">
           {/* Default Password Hint Banner */}
           <div className="mb-5 p-3 rounded-2xl bg-teal-950/60 border border-teal-800/60 flex items-start gap-2.5 text-xs text-teal-200">
             <Key className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />
@@ -557,7 +922,8 @@ export const MobileLoginView: React.FC<MobileLoginViewProps> = ({
             </span>
           </div>
         </div>
-      </div>
+      )}
+    </div>
 
       {/* Footer / Island Info */}
       <div className="relative z-10 py-3 text-center text-[11px] text-slate-500 border-t border-slate-900 bg-slate-950/80">
@@ -743,16 +1109,16 @@ export const MobileLoginView: React.FC<MobileLoginViewProps> = ({
 
               <div>
                 <label className="block font-bold text-slate-300 mb-1">
-                  {isRTL ? 'އާ ޕާސްވޯޑް (މަދުވެގެން 4 އަކުރު)' : 'New Password (min. 4 characters)'}
+                  {isRTL ? 'އާ ޕާސްވޯޑް (މަދުވެގެން 5 އަކުރު)' : 'New Password (min. 5 characters)'}
                 </label>
                 <div className="relative">
                   <input
                     type={resetShowPass ? 'text' : 'password'}
                     value={resetNewPass}
                     onChange={(e) => setResetNewPass(e.target.value)}
-                    placeholder="Enter new password (e.g. 1234 or custom)"
+                    placeholder={isRTL ? 'އާ ޕާސްވޯޑް (މަދުވެގެން 5 އަކުރު)' : 'Enter new password (min. 5 chars)'}
                     required
-                    minLength={4}
+                    minLength={5}
                     className="w-full pl-3 pr-10 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white font-mono text-xs focus:outline-none focus:ring-2 focus:ring-teal-500"
                   />
                   <button
@@ -773,9 +1139,9 @@ export const MobileLoginView: React.FC<MobileLoginViewProps> = ({
                   type={resetShowPass ? 'text' : 'password'}
                   value={resetConfirmPass}
                   onChange={(e) => setResetConfirmPass(e.target.value)}
-                  placeholder="Re-enter your new password"
+                  placeholder={isRTL ? 'އާ ޕާސްވޯޑް އަލުން ލިޔުއްވާ' : 'Re-enter your new password'}
                   required
-                  minLength={4}
+                  minLength={5}
                   className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white font-mono text-xs focus:outline-none focus:ring-2 focus:ring-teal-500"
                 />
               </div>

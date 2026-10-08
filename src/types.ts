@@ -107,6 +107,8 @@ export interface User {
   isActive: boolean;
   isSuperAdmin?: boolean;
   hasCustomPassword?: boolean;
+  mustChangePassword?: boolean;
+  isFirstLogin?: boolean;
   passwordUpdatedAt?: string;
   createdAt: string;
 }
@@ -121,6 +123,7 @@ export interface StaffPasswordInfo {
   designation: string;
   department?: string;
   hasCustomPassword: boolean;
+  mustChangePassword?: boolean;
   isSuperAdmin: boolean;
   passwordUpdatedAt?: string;
 }

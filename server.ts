@@ -1006,7 +1006,7 @@ function getStaffPassword(email: string): string {
 function hasCustomPassword(email: string): boolean {
   const normalized = (email || '').toLowerCase().trim();
   const entry = staffPasswordsStore.get(normalized);
-  return Boolean(entry?.hasCustomPassword);
+  return Boolean(entry?.hasCustomPassword && entry?.password !== '1234');
 }
 
 function getPasswordUpdatedAt(email: string): string | undefined {
@@ -1016,10 +1016,11 @@ function getPasswordUpdatedAt(email: string): string | undefined {
 
 function setStaffPassword(email: string, newPassword: string, updatedBy?: string): void {
   const normalized = (email || '').toLowerCase().trim();
+  const isCustom = newPassword !== '1234';
   staffPasswordsStore.set(normalized, {
     email: normalized,
     password: newPassword,
-    hasCustomPassword: newPassword !== '1234',
+    hasCustomPassword: isCustom,
     updatedAt: new Date().toISOString(),
     updatedBy: updatedBy || 'self',
   });
@@ -1047,12 +1048,15 @@ function resetAllStaffPasswords(updatedBy: string): number {
 function enrichStaffUser(user: User): User {
   const email = (user.email || '').toLowerCase().trim();
   const isSuperAdmin = email === SUPER_ADMIN_EMAIL;
+  const userHasCustom = hasCustomPassword(email);
   return {
     ...user,
     username: email,
     isSuperAdmin,
     role: isSuperAdmin ? 'ADMIN' : user.role,
-    hasCustomPassword: hasCustomPassword(email),
+    hasCustomPassword: userHasCustom,
+    mustChangePassword: !userHasCustom,
+    isFirstLogin: !userHasCustom,
     passwordUpdatedAt: getPasswordUpdatedAt(email),
   };
 }
@@ -1144,6 +1148,8 @@ app.post('/api/auth/login', (req, res) => {
     success: true,
     message: 'Login successful',
     user: enrichedUser,
+    mustChangePassword: !enrichedUser.hasCustomPassword,
+    isFirstLogin: !enrichedUser.hasCustomPassword,
   });
 });
 
@@ -1163,8 +1169,15 @@ app.post('/api/auth/change-password', (req, res) => {
     return res.status(400).json({ success: false, error: 'Email and new password are required.' });
   }
 
-  if (newPassword.trim().length < 4) {
-    return res.status(400).json({ success: false, error: 'New password must be at least 4 characters.' });
+  if (newPassword.trim().length < 5) {
+    return res.status(400).json({ success: false, error: 'New password must be at least 5 characters long.' });
+  }
+
+  if (newPassword.trim() === '1234') {
+    return res.status(400).json({
+      success: false,
+      error: 'New password cannot be the default 1234. Please choose a new password of at least 5 characters.',
+    });
   }
 
   const user = staffMembers.find((s) => (s.email || '').toLowerCase().trim() === targetEmail);
@@ -1186,7 +1199,7 @@ app.post('/api/auth/change-password', (req, res) => {
   res.json({
     success: true,
     message: 'Password updated successfully. You can now use your new password.',
-    hasCustomPassword: newPassword.trim() !== '1234',
+    hasCustomPassword: true,
   });
 });
 
@@ -1197,6 +1210,10 @@ app.post('/api/auth/self-reset-password', (req, res) => {
 
   if (!targetEmail) {
     return res.status(400).json({ success: false, error: 'Staff email is required.' });
+  }
+
+  if (newPassword && newPassword.trim().length > 0 && newPassword.trim().length < 5) {
+    return res.status(400).json({ success: false, error: 'New password must be at least 5 characters long.' });
   }
 
   const user = staffMembers.find((s) => {
@@ -1213,7 +1230,7 @@ app.post('/api/auth/self-reset-password', (req, res) => {
   }
 
   const staffEmail = (user.email || '').toLowerCase().trim();
-  const passToSet = (newPassword && newPassword.trim().length >= 4) ? newPassword.trim() : '1234';
+  const passToSet = (newPassword && newPassword.trim().length >= 5) ? newPassword.trim() : '1234';
 
   setStaffPassword(staffEmail, passToSet, 'self-reset');
   logAudit('PASSWORD_SELF_RESET', 'User', `${user.fullName} self-reset their portal password`, req, user.id);
@@ -1295,7 +1312,7 @@ app.post('/api/admin/reset-staff-password', (req, res) => {
   }
 
   const actualEmail = (user.email || '').toLowerCase().trim();
-  const passToSet = newPassword && newPassword.trim().length >= 4 ? newPassword.trim() : '1234';
+  const passToSet = newPassword && newPassword.trim().length >= 5 ? newPassword.trim() : '1234';
 
   setStaffPassword(actualEmail, passToSet, reqEmail);
   logAudit(

@@ -23,6 +23,7 @@ import {
   BookOpen,
   RotateCcw,
   Zap,
+  Clock,
 } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { PWAInstallButton } from './PWAInstallButton';
@@ -43,6 +44,7 @@ interface HeaderProps {
   onOpenSuperAdminPasswords?: () => void;
   onResetAllAttendance?: () => void;
   pendingExtraClassesCount?: number;
+  onOpenTimingsModal?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -59,6 +61,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenSuperAdminPasswords,
   onResetAllAttendance,
   pendingExtraClassesCount,
+  onOpenTimingsModal,
 }) => {
   const { t, language, toggleLanguage, isRTL } = useLanguage();
   const [syncState, setSyncState] = useState<SyncState>('online_synced');
@@ -194,6 +197,20 @@ export const Header: React.FC<HeaderProps> = ({
             <PWAInstallButton />
           </div>
 
+          {/* Session Timings Direct Button */}
+          {onOpenTimingsModal && (
+            <button
+              type="button"
+              id="header-session-timings-btn"
+              onClick={onOpenTimingsModal}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-900 border border-teal-200 text-xs font-bold shadow-2xs transition cursor-pointer"
+              title={isRTL ? 'ސެޝަން ވަގުތުތައް ބަދަލުކުރުން' : 'Configure Session Timings & Duration'}
+            >
+              <Clock className="w-3.5 h-3.5 text-teal-700" />
+              <span className="hidden md:inline">{isRTL ? 'ސެޝަން ގަޑިތައް' : 'Session Timings'}</span>
+            </button>
+          )}
+
           {/* Super Admin Direct Access Button */}
           {((currentUser?.isSuperAdmin || currentUser?.email?.toLowerCase() === 'ahmed.mujthaba@fmagoodhooschool.edu.mv') && onOpenSuperAdminPasswords) && (
             <button
@@ -310,6 +327,27 @@ export const Header: React.FC<HeaderProps> = ({
                         <div>{isRTL ? 'ހުރިހާ ހާޒިރީއެއް ފޮހެލާ / ރީސެޓް' : 'Reset All Attendance'}</div>
                         <div className="text-[10px] text-rose-700/80 font-normal">
                           {isRTL ? 'ހުރިހާ ދަންފަޅިތަކެއްގެ ހާޒިރީ ރީސެޓްކުރުން' : 'Clear all attendance records & reset marked sessions'}
+                        </div>
+                      </div>
+                    </button>
+                  )}
+
+                  {/* Session Timings & Duration Settings */}
+                  {onOpenTimingsModal && (
+                    <button
+                      type="button"
+                      id="dropdown-session-timings-btn"
+                      onClick={() => {
+                        setShowStaffMenu(false);
+                        onOpenTimingsModal();
+                      }}
+                      className="w-full px-3 py-2 text-left rounded-xl hover:bg-slate-100 text-slate-800 font-bold text-xs flex items-center gap-2.5 transition cursor-pointer"
+                    >
+                      <Clock className="w-4 h-4 text-teal-600 shrink-0" />
+                      <div className="flex-1">
+                        <div>{isRTL ? 'ސެޝަން ވަގުތުތައް' : 'Session Timings & Duration'}</div>
+                        <div className="text-[10px] text-slate-500 font-normal">
+                          {isRTL ? 'ހެނދުނާއި މެންދުރުފަހުގެ ގަޑިތައް ކަނޑައެޅުން' : 'Configure morning and afternoon bell timings'}
                         </div>
                       </div>
                     </button>

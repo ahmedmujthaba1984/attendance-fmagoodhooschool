@@ -18,6 +18,7 @@ import {
   Lock,
   BookOpen,
   Zap,
+  Clock,
 } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { User } from '../types';
@@ -36,6 +37,7 @@ interface MobileMenuDrawerProps {
   onOpenSuperAdminPasswords?: () => void;
   onOpenChangePassword?: () => void;
   onLogout?: () => void;
+  onOpenTimingsModal?: () => void;
 }
 
 export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({
@@ -51,6 +53,7 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({
   onOpenSuperAdminPasswords,
   onOpenChangePassword,
   onLogout,
+  onOpenTimingsModal,
 }) => {
   const { t, language, toggleLanguage, isRTL } = useLanguage();
 
@@ -59,6 +62,16 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({
   const isSuperAdmin = currentUser?.isSuperAdmin || currentUser?.email?.toLowerCase() === 'ahmed.mujthaba@fmagoodhooschool.edu.mv';
 
   const menuItems = [
+    ...(onOpenTimingsModal ? [{
+      id: 'timings',
+      label: isRTL ? 'ސެޝަން ވަގުތުތައް' : 'Session Timings & Duration',
+      icon: Clock,
+      desc: isRTL ? 'ހެނދުނާއި މެންދުރުފަހުގެ ދަންފަޅީގެ ގަޑިތައް' : 'Morning & Afternoon session timings',
+      action: () => {
+        onOpenTimingsModal();
+        onClose();
+      },
+    }] : []),
     {
       id: 'extra_classes',
       label: isRTL ? 'އިތުރު ކްލާސްތަކާއި ހާޒިރީ' : 'Extra Classes & Attendance',

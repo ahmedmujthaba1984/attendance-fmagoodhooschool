@@ -18,6 +18,7 @@ import { EditStudentModal } from './components/EditStudentModal';
 import { MobileLoginView } from './components/MobileLoginView';
 import { SuperAdminPasswordModal } from './components/SuperAdminPasswordModal';
 import { StaffChangePasswordModal } from './components/StaffChangePasswordModal';
+import { SessionTimingsModal } from './components/SessionTimingsModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { MobileMenuDrawer } from './components/MobileMenuDrawer';
 import { ExtraClassesModule } from './components/ExtraClassesModule';
@@ -187,6 +188,7 @@ function MainApp() {
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [isSuperAdminModalOpen, setIsSuperAdminModalOpen] = useState(false);
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
+  const [isTimingsModalOpen, setIsTimingsModalOpen] = useState(false);
 
   // Mobile Navigation & Login View State
   const [showLoginView, setShowLoginView] = useState(false);
@@ -1632,6 +1634,7 @@ function MainApp() {
         onOpenSuperAdminPasswords={() => setIsSuperAdminModalOpen(true)}
         onResetAllAttendance={() => setShowResetAttendanceModal(true)}
         pendingExtraClassesCount={pendingExtraClassesCount}
+        onOpenTimingsModal={() => setIsTimingsModalOpen(true)}
       />
 
       {/* Main Container */}
@@ -1684,6 +1687,7 @@ function MainApp() {
             onOpenLoginView={() => setShowLoginView(true)}
             sessionTimings={sessionTimings}
             onUpdateSessionTimings={handleUpdateSessionTimings}
+            onOpenTimingsModal={() => setIsTimingsModalOpen(true)}
             isLiveSyncActive={isLiveSyncActive}
             lastSyncTime={lastSyncTime}
           />
@@ -1780,6 +1784,7 @@ function MainApp() {
         onOpenLoginView={() => setShowLoginView(true)}
         onOpenSuperAdminPasswords={() => setIsSuperAdminModalOpen(true)}
         onOpenChangePassword={() => setIsChangePasswordModalOpen(true)}
+        onOpenTimingsModal={() => setIsTimingsModalOpen(true)}
         onLogout={handleLogout}
         onManualSync={async () => {
           await syncEngine.flushQueue();
@@ -1830,6 +1835,15 @@ function MainApp() {
         onClose={() => setEditingStudent(null)}
         onSave={handleSaveStudent}
         isRTL={isRTL}
+      />
+
+      {/* Global Session Timings & Duration Settings Modal */}
+      <SessionTimingsModal
+        isOpen={isTimingsModalOpen}
+        onClose={() => setIsTimingsModalOpen(false)}
+        currentTimings={sessionTimings}
+        selectedDate={selectedDate}
+        onSave={handleUpdateSessionTimings}
       />
 
       {/* Super Admin Staff Password Center Modal */}

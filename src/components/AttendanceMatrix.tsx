@@ -103,6 +103,7 @@ interface AttendanceMatrixProps {
   onSwitchStaff?: (staffId: string) => void;
   onOpenLoginView?: () => void;
   onRapidModeChange?: (isRapid: boolean) => void;
+  onOpenTimingsModal?: () => void;
   isLiveSyncActive?: boolean;
   lastSyncTime?: Date;
 }
@@ -158,6 +159,7 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
   },
   onUpdateSessionTimings,
   onRapidModeChange,
+  onOpenTimingsModal,
   isLiveSyncActive = true,
   lastSyncTime,
 }) => {
@@ -188,6 +190,10 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
 
   const [mobileRollCallMode, setMobileRollCallMode] = useState<'cards' | 'rapid'>(() => {
     if (typeof window !== 'undefined') {
+      const explicitPreference = localStorage.getItem('moe_roll_call_view_mode');
+      if (explicitPreference === 'cards' || explicitPreference === 'rapid') {
+        return explicitPreference;
+      }
       const isMobileScreen = window.innerWidth < 768;
       const isTouch = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(
         navigator.userAgent
@@ -203,12 +209,13 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
     return 'cards';
   });
 
-  // When staff logs in or switches user with Rapid Roll Call privilege, automatically activate Rapid Roll Call
+  // When staff logs in or switches user with Rapid Roll Call privilege, automatically activate Rapid Roll Call (unless staff explicitly chose cards view)
   const lastActiveUserIdRef = useRef<string | undefined>(currentUser?.id);
   useEffect(() => {
     if (currentUser?.id !== lastActiveUserIdRef.current) {
       lastActiveUserIdRef.current = currentUser?.id;
-      if (currentUser?.hasRapidRollCallPrivilege || isMobileOrPrivileged) {
+      const explicitPreference = typeof window !== 'undefined' ? localStorage.getItem('moe_roll_call_view_mode') : null;
+      if (!explicitPreference && (currentUser?.hasRapidRollCallPrivilege || isMobileOrPrivileged)) {
         setMobileRollCallMode('rapid');
         onRapidModeChange?.(true);
       }
@@ -219,8 +226,13 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
   const [showLockedNoticeModal, setShowLockedNoticeModal] = useState(false);
   const [showTimingsModal, setShowTimingsModal] = useState(false);
 
+  const handleOpenTimings = onOpenTimingsModal || (() => setShowTimingsModal(true));
+
   const handleSetRollCallMode = (mode: 'cards' | 'rapid') => {
     setMobileRollCallMode(mode);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('moe_roll_call_view_mode', mode);
+    }
     onRapidModeChange?.(mode === 'rapid');
   };
 
@@ -605,6 +617,7 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
           onOpenSmsDraftModal={onOpenSmsDraftModal}
           onSubmitSession={onSubmitSession}
           onSwitchToCards={() => handleSetRollCallMode('cards')}
+          onOpenTimingsModal={handleOpenTimings}
         />
       ) : (
         <>
@@ -838,11 +851,11 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
               <button
                 id="configure-session-timings-btn"
                 type="button"
-                onClick={() => setShowTimingsModal(true)}
+                onClick={handleOpenTimings}
                 className={`flex items-center justify-center gap-1.5 p-1.5 px-2.5 rounded-lg transition cursor-pointer shadow-2xs font-bold text-xs ${
                   effectiveTimings.isTemporary
                     ? 'bg-amber-500 text-white hover:bg-amber-600'
-                    : 'bg-white hover:bg-sky-50 text-slate-600 hover:text-sky-900 border border-slate-200'
+                    : 'bg-white hover:bg-teal-50 text-slate-700 hover:text-teal-900 border border-slate-200'
                 }`}
                 title={
                   effectiveTimings.isTemporary
@@ -850,11 +863,11 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
                     : (isRTL ? 'ސެޝަން ވަގުތުތައް ބަދަލުކުރުން' : 'Configure Session Timings & Duration')
                 }
               >
-                <Settings className={`w-3.5 h-3.5 ${effectiveTimings.isTemporary ? 'text-white' : 'text-slate-500 hover:text-sky-700'}`} />
-                <span className="hidden sm:inline">
+                <Clock className={`w-3.5 h-3.5 ${effectiveTimings.isTemporary ? 'text-white' : 'text-teal-600'}`} />
+                <span>
                   {effectiveTimings.isTemporary
                     ? (isRTL ? 'ވަގުތީ ވަގުތު' : 'Temporary')
-                    : (isRTL ? 'ވަގުތު' : 'Timings')}
+                    : (isRTL ? 'ގަޑިތައް' : 'Timings')}
                 </span>
                 {effectiveTimings.isTemporary && (
                   <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />

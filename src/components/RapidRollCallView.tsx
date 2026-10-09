@@ -91,6 +91,7 @@ interface RapidRollCallViewProps {
   onOpenSmsDraftModal: (student: Student) => void;
   onSubmitSession?: () => void;
   onSwitchToCards: () => void;
+  onOpenTimingsModal?: () => void;
 }
 
 export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
@@ -117,6 +118,7 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
   onOpenSmsDraftModal,
   onSubmitSession,
   onSwitchToCards,
+  onOpenTimingsModal,
 }) => {
   const { t, isRTL } = useLanguage();
 
@@ -370,7 +372,7 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-black text-amber-950 uppercase tracking-wide">
-                  {isRTL ? 'އަތްމަތީ ފޯނުން ހާޒިރީ ފުރުމުގެ ޚާއްޞަ އިމްތިޔާޒު' : 'Mobile Attendance Privilege Active'}
+                  {isRTL ? 'ހަލުވި ހާޒިރީގެ އިމްތިޔާޒު އެކްޓިވް' : 'Rapid Roll Call Attendance Active'}
                 </span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-amber-950 shadow-2xs">
                   RAPID ROLL CALL
@@ -384,13 +386,40 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
               </div>
               <p className="text-[11px] text-amber-900/90 mt-0.5 leading-snug">
                 {isRTL
-                  ? 'މޯބައިލުން ހާޒިރީ ފުރުމަށް ހަލުވި އިމްތިޔާޒު ދެވިފައި: 1-ކްލިކުން ކުދިން ޙާޟިރުކުރުމާއި، ގްރޭޑްތައް ބަދަލުކުރުން'
+                  ? 'ހާޒިރީ ފުރުމަށް ހަލުވި އިމްތިޔާޒު ދެވިފައި: 1-ކްލިކުން ކުދިން ޙާޟިރުކުރުމާއި، ސެޝަން ގަޑިތައް ބެލެހެއްޓުން'
                   : 'Fast 1-tap touch roll call, instant class roster switching, and unhindered attendance recording.'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 ml-auto">
+          <div className="flex items-center gap-2 shrink-0 ml-auto flex-wrap">
+            {onOpenTimingsModal && (
+              <button
+                type="button"
+                id="privilege-banner-timings-btn"
+                onClick={onOpenTimingsModal}
+                className="px-3 py-1.5 rounded-xl bg-white hover:bg-teal-50 text-teal-900 text-xs font-bold border border-teal-300 shadow-2xs flex items-center gap-1.5 cursor-pointer transition"
+                title={isRTL ? 'ސެޝަން ވަގުތުތައް ބަދަލުކުރުން' : 'Configure Session Timings & Duration'}
+              >
+                <Clock className="w-3.5 h-3.5 text-teal-700" />
+                <span>{isRTL ? 'ސެޝަން ގަޑިތައް' : 'Session Timings'}</span>
+                {effectiveTimings.isTemporary && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                )}
+              </button>
+            )}
+
+            <button
+              type="button"
+              id="privilege-banner-switch-cards-btn"
+              onClick={onSwitchToCards}
+              className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-2xs flex items-center gap-1.5 cursor-pointer transition active:scale-95"
+              title={isRTL ? 'ސްޓޭންޑަރޑް ހާޒިރީ މެޓްރިކްސްއަށް ބަދަލުވުން' : 'Switch to standard attendance matrix view'}
+            >
+              <LayoutGrid className="w-3.5 h-3.5 text-teal-300" />
+              <span>{isRTL ? 'ރޮސްޓަރ މެޓްރިކްސް' : 'Standard View'}</span>
+            </button>
+
             {counts.unmarked > 0 && !isSchoolClosed && isMarkingAllowed && (
               <button
                 type="button"
@@ -398,7 +427,7 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                   triggerHaptic(30);
                   onBulkMarkPresent(true);
                 }}
-                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-black flex items-center gap-1.5 shadow-xs cursor-pointer transition active:scale-95"
+                className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-black flex items-center gap-1.5 shadow-xs cursor-pointer transition active:scale-95"
                 title={isRTL ? 'ބާކީ ތިބި ކުދިން ޙާޟިރުކުރޭ' : 'Mark Remaining Present'}
               >
                 <CheckCheck className="w-4 h-4" />
@@ -491,14 +520,41 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
               </button>
             </div>
 
-            {/* Return to Full Roster List Button */}
+            {/* Configure Session Timings Button */}
+            {onOpenTimingsModal && (
+              <button
+                type="button"
+                id="rapid-session-timings-btn"
+                onClick={onOpenTimingsModal}
+                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer shadow-2xs border ${
+                  effectiveTimings.isTemporary
+                    ? 'bg-amber-500 text-white hover:bg-amber-600 border-amber-600 ring-2 ring-amber-300'
+                    : 'bg-teal-50 hover:bg-teal-100 text-teal-900 border-teal-200'
+                }`}
+                title={
+                  effectiveTimings.isTemporary
+                    ? `Temporary schedule active: ${effectiveTimings.override?.reason || 'Special hours'}`
+                    : (isRTL ? 'ސެޝަން ވަގުތުތައް ބަދަލުކުރުން' : 'Configure Session Timings & Duration')
+                }
+              >
+                <Clock className="w-3.5 h-3.5 text-teal-700" />
+                <span>{isRTL ? 'ސެޝަން ގަޑިތައް' : 'Session Timings'}</span>
+                {effectiveTimings.isTemporary && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                )}
+              </button>
+            )}
+
+            {/* Return to Full Standard Matrix View */}
             <button
               type="button"
+              id="rapid-switch-standard-matrix-btn"
               onClick={onSwitchToCards}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-black shadow-xs transition cursor-pointer active:scale-95"
+              title={isRTL ? 'ސްޓޭންޑަރޑް ހާޒިރީ މެޓްރިކްސްއަށް ބަދަލުވުން' : 'Switch to standard attendance matrix view'}
             >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span>{isRTL ? 'ރޮސްޓަރ ލިސްޓް' : 'Roster List'}</span>
+              <LayoutGrid className="w-3.5 h-3.5 text-teal-300" />
+              <span>{isRTL ? 'ރޮސްޓަރ މެޓްރިކްސް' : 'Standard View'}</span>
             </button>
           </div>
         </div>

@@ -93,26 +93,54 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
   }, [selectedDate]);
 
   // Fallback Trend Data if API is pending or offline (Maldives Academic School Week: Sunday to Thursday)
-  const fallbackTrendMonth: DashboardTrendPoint[] = useMemo(
-    () => [
-      { date: 'Aug 23 (Sun)', fullDate: '2026-08-23', morning: 95.8, postBreak: 94.2, officialRate: 95.0, extraClassRate: 92.4, extraClassesCount: 1, combinedRate: 94.1, baseline: 90 },
-      { date: 'Aug 24 (Mon)', fullDate: '2026-08-24', morning: 96.2, postBreak: 95.0, officialRate: 95.6, extraClassRate: 93.1, extraClassesCount: 2, combinedRate: 94.8, baseline: 90 },
-      { date: 'Aug 25 (Tue)', fullDate: '2026-08-25', morning: 94.4, postBreak: 93.1, officialRate: 93.8, extraClassRate: 91.8, extraClassesCount: 1, combinedRate: 93.1, baseline: 90 },
-      { date: 'Aug 26 (Wed)', fullDate: '2026-08-26', morning: 93.8, postBreak: 92.5, officialRate: 93.2, extraClassRate: 92.0, extraClassesCount: 2, combinedRate: 92.8, baseline: 90 },
-      { date: 'Aug 27 (Thu)', fullDate: '2026-08-27', morning: 92.1, postBreak: 90.4, officialRate: 91.3, extraClassRate: 89.5, extraClassesCount: 1, combinedRate: 90.7, baseline: 90 },
-      { date: 'Aug 30 (Sun)', fullDate: '2026-08-30', morning: 94.9, postBreak: 93.8, officialRate: 94.4, extraClassRate: 93.5, extraClassesCount: 1, combinedRate: 94.1, baseline: 90 },
-      { date: 'Aug 31 (Mon)', fullDate: '2026-08-31', morning: 95.3, postBreak: 94.1, officialRate: 94.7, extraClassRate: 94.2, extraClassesCount: 2, combinedRate: 94.5, baseline: 90 },
-      { date: 'Sep 01 (Tue)', fullDate: '2026-09-01', morning: 96.0, postBreak: 95.2, officialRate: 95.6, extraClassRate: 94.8, extraClassesCount: 2, combinedRate: 95.3, baseline: 90 },
-      { date: 'Sep 02 (Wed)', fullDate: '2026-09-02', morning: 94.7, postBreak: 93.9, officialRate: 94.3, extraClassRate: 93.0, extraClassesCount: 1, combinedRate: 93.9, baseline: 90 },
-      { date: 'Sep 03 (Thu)', fullDate: '2026-09-03', morning: 93.2, postBreak: 91.8, officialRate: 92.5, extraClassRate: 91.5, extraClassesCount: 1, combinedRate: 92.2, baseline: 90 },
-      { date: 'Sep 06 (Sun)', fullDate: '2026-09-06', morning: 95.1, postBreak: 94.0, officialRate: 94.6, extraClassRate: 93.4, extraClassesCount: 2, combinedRate: 94.2, baseline: 90 },
-      { date: 'Sep 07 (Mon)', fullDate: '2026-09-07', morning: 95.8, postBreak: 94.5, officialRate: 95.2, extraClassRate: 94.0, extraClassesCount: 2, combinedRate: 94.8, baseline: 90 },
-      { date: 'Sep 08 (Tue)', fullDate: '2026-09-08', morning: 94.2, postBreak: 93.4, officialRate: 93.8, extraClassRate: 92.6, extraClassesCount: 1, combinedRate: 93.4, baseline: 90 },
-      { date: 'Sep 09 (Wed)', fullDate: '2026-09-09', morning: 95.0, postBreak: 94.1, officialRate: 94.6, extraClassRate: 93.8, extraClassesCount: 2, combinedRate: 94.3, baseline: 90 },
-      { date: 'Sep 10 (Thu)', fullDate: '2026-09-10', morning: 95.4, postBreak: 94.6, officialRate: 95.0, extraClassRate: 94.2, extraClassesCount: 2, combinedRate: 94.7, baseline: 90 },
-    ],
-    []
-  );
+  const fallbackTrendMonth: DashboardTrendPoint[] = useMemo(() => {
+    const end = new Date((selectedDate || '2026-10-10') + 'T00:00:00Z');
+    const schoolDays: string[] = [];
+    const cur = new Date(end);
+    let guard = 0;
+    while (schoolDays.length < 15 && guard < 60) {
+      const day = cur.getUTCDay();
+      // Maldives instructional days: Sunday (0) to Thursday (4)
+      if (day !== 5 && day !== 6) {
+        schoolDays.push(cur.toISOString().slice(0, 10));
+      }
+      cur.setUTCDate(cur.getUTCDate() - 1);
+      guard++;
+    }
+    schoolDays.reverse();
+
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    return schoolDays.map((dStr, idx) => {
+      const dt = new Date(dStr + 'T00:00:00Z');
+      const mStr = monthNames[dt.getUTCMonth()];
+      const dNum = String(dt.getUTCDate()).padStart(2, '0');
+      const dayName = dayNames[dt.getUTCDay()];
+      const label = `${mStr} ${dNum} (${dayName})`;
+
+      const dayIdx = dt.getUTCDay();
+      const wave = Math.sin(idx * 0.9) * 1.4;
+      const morning = Math.round((95.4 + wave) * 10) / 10;
+      const postBreak = Math.round((94.2 + wave * 0.7) * 10) / 10;
+      const officialRate = Math.round(((morning + postBreak) / 2) * 10) / 10;
+      const hasExtra = dayIdx === 0 || dayIdx === 2 || dayIdx === 3;
+      const extraClassRate = hasExtra ? Math.round((officialRate - 1.1 + (idx % 3) * 0.3) * 10) / 10 : null;
+      const combinedRate = extraClassRate != null ? Math.round(((officialRate * 2 + extraClassRate) / 3) * 10) / 10 : officialRate;
+
+      return {
+        date: label,
+        fullDate: dStr,
+        morning,
+        postBreak,
+        officialRate,
+        extraClassRate,
+        extraClassesCount: hasExtra ? 2 : 0,
+        combinedRate,
+        baseline: 90,
+      };
+    });
+  }, [selectedDate]);
 
   const fallbackTrendWeek: DashboardTrendPoint[] = useMemo(
     () => fallbackTrendMonth.slice(-5),
@@ -123,7 +151,11 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
   const activeTrendData = useMemo(() => {
     if (dashboardData) {
       const live = timeframe === 'week' ? dashboardData.trendDataWeek : dashboardData.trendDataMonth;
-      if (live && live.some((p) => p.officialRate != null || p.combinedRate != null)) {
+      if (
+        live &&
+        live.length > 0 &&
+        live.some((p) => (p.officialRate != null && p.officialRate > 0) || (p.combinedRate != null && p.combinedRate > 0))
+      ) {
         return live;
       }
     }
@@ -674,12 +706,23 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
           </div>
         </div>
 
-        <div className="h-72 w-full">
+        <div className="h-72 w-full" dir="ltr">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={activeTrendData} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
+            <LineChart data={activeTrendData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#64748b' }} />
-              <YAxis domain={[80, 100]} tick={{ fontSize: 11, fill: '#64748b' }} unit="%" />
+              <YAxis
+                domain={[
+                  (dataMin: number) =>
+                    isNaN(dataMin) || dataMin == null
+                      ? 80
+                      : Math.max(0, Math.min(80, Math.floor(dataMin - 5))),
+                  100,
+                ]}
+                tick={{ fontSize: 11, fill: '#64748b' }}
+                unit="%"
+                allowDataOverflow={false}
+              />
               <Tooltip
                 contentStyle={{
                   backgroundColor: '#ffffff',
@@ -689,7 +732,9 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                   boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                 }}
                 formatter={(val: number | string | undefined, name: string | undefined) => [
-                  `${Number(val ?? 0).toFixed(1)}%`,
+                  val == null || val === '' || isNaN(Number(val))
+                    ? (isRTL ? 'ރެކޯޑެއް ނެތް' : 'Not Recorded / No Session')
+                    : `${Number(val).toFixed(1)}%`,
                   name ?? '',
                 ]}
               />
@@ -706,6 +751,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                     strokeWidth={3}
                     dot={{ r: 4, fill: '#0284c7' }}
                     activeDot={{ r: 7 }}
+                    connectNulls={true}
                   />
                 </>
               )}
@@ -721,6 +767,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                     strokeWidth={3}
                     dot={{ r: 4, fill: '#0d9488' }}
                     activeDot={{ r: 7 }}
+                    connectNulls={true}
                   />
                 </>
               )}
@@ -736,6 +783,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                     strokeWidth={2.5}
                     dot={{ r: 3, fill: '#0284c7' }}
                     activeDot={{ r: 6 }}
+                    connectNulls={true}
                   />
                   <Line
                     type="monotone"
@@ -745,6 +793,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                     strokeWidth={2.5}
                     dot={{ r: 3, fill: '#0d9488' }}
                     activeDot={{ r: 6 }}
+                    connectNulls={true}
                   />
                   <Line
                     type="monotone"
@@ -754,6 +803,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                     strokeWidth={1.5}
                     strokeDasharray="2 2"
                     dot={false}
+                    connectNulls={true}
                   />
                 </>
               )}
@@ -769,6 +819,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                     strokeWidth={3}
                     dot={{ r: 4, fill: '#9333ea' }}
                     activeDot={{ r: 7 }}
+                    connectNulls={true}
                   />
                 </>
               )}
@@ -784,6 +835,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                     strokeWidth={2.5}
                     dot={{ r: 3, fill: '#0284c7' }}
                     activeDot={{ r: 6 }}
+                    connectNulls={true}
                   />
                   <Line
                     type="monotone"
@@ -793,6 +845,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                     strokeWidth={2.5}
                     dot={{ r: 3, fill: '#9333ea' }}
                     activeDot={{ r: 6 }}
+                    connectNulls={true}
                   />
                   <Line
                     type="monotone"
@@ -802,6 +855,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                     strokeWidth={3}
                     dot={{ r: 4, fill: '#059669' }}
                     activeDot={{ r: 7 }}
+                    connectNulls={true}
                   />
                 </>
               )}
@@ -815,6 +869,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                 strokeDasharray="4 4"
                 strokeWidth={1.5}
                 dot={false}
+                connectNulls={true}
               />
             </LineChart>
           </ResponsiveContainer>
@@ -920,7 +975,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
             </div>
           )}
 
-          <div className="h-72 w-full">
+          <div className="h-72 w-full" dir="ltr">
             <ResponsiveContainer width="100%" height="100%">
               {/* MODE 1: MORNING ONLY (STACKED BAR) */}
               {reportMode === 'MORNING' ? (
@@ -1176,7 +1231,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
               </p>
             </div>
           ) : (
-            <div className="h-56 w-full my-2">
+            <div className="h-56 w-full my-2" dir="ltr">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie

@@ -92,7 +92,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
     };
   }, [selectedDate]);
 
-  // Fallback Trend Data if API is pending or offline (Maldives Academic School Week: Sunday to Thursday)
+  // Fallback Trend Data if API is pending or offline (empty by default if no attendance marked)
   const fallbackTrendMonth: DashboardTrendPoint[] = useMemo(() => {
     const end = new Date((selectedDate || '2026-10-10') + 'T00:00:00Z');
     const schoolDays: string[] = [];
@@ -112,32 +112,23 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-    return schoolDays.map((dStr, idx) => {
+    return schoolDays.map((dStr) => {
       const dt = new Date(dStr + 'T00:00:00Z');
       const mStr = monthNames[dt.getUTCMonth()];
       const dNum = String(dt.getUTCDate()).padStart(2, '0');
       const dayName = dayNames[dt.getUTCDay()];
       const label = `${mStr} ${dNum} (${dayName})`;
 
-      const dayIdx = dt.getUTCDay();
-      const wave = Math.sin(idx * 0.9) * 1.4;
-      const morning = Math.round((95.4 + wave) * 10) / 10;
-      const postBreak = Math.round((94.2 + wave * 0.7) * 10) / 10;
-      const officialRate = Math.round(((morning + postBreak) / 2) * 10) / 10;
-      const hasExtra = dayIdx === 0 || dayIdx === 2 || dayIdx === 3;
-      const extraClassRate = hasExtra ? Math.round((officialRate - 1.1 + (idx % 3) * 0.3) * 10) / 10 : null;
-      const combinedRate = extraClassRate != null ? Math.round(((officialRate * 2 + extraClassRate) / 3) * 10) / 10 : officialRate;
-
       return {
         date: label,
         fullDate: dStr,
-        morning,
-        postBreak,
-        officialRate,
-        extraClassRate,
-        extraClassesCount: hasExtra ? 2 : 0,
-        combinedRate,
-        baseline: 90,
+        morning: null,
+        postBreak: null,
+        officialRate: null,
+        extraClassRate: null,
+        extraClassesCount: 0,
+        combinedRate: null,
+        baseline: null as any,
       };
     });
   }, [selectedDate]);
@@ -147,20 +138,27 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
     [fallbackTrendMonth]
   );
 
-  // Active trend series based on timeframe selection
+  // Active trend series based on timeframe selection (reflects real live data only)
   const activeTrendData = useMemo(() => {
     if (dashboardData) {
       const live = timeframe === 'week' ? dashboardData.trendDataWeek : dashboardData.trendDataMonth;
-      if (
-        live &&
-        live.length > 0 &&
-        live.some((p) => (p.officialRate != null && p.officialRate > 0) || (p.combinedRate != null && p.combinedRate > 0))
-      ) {
+      if (live && live.length > 0) {
         return live;
       }
     }
     return timeframe === 'week' ? fallbackTrendWeek : fallbackTrendMonth;
   }, [dashboardData, timeframe, fallbackTrendWeek, fallbackTrendMonth]);
+
+  // Check if any actual attendance has been marked in this active trend series
+  const hasAnyTrendData = useMemo(() => {
+    return activeTrendData.some((p) => {
+      if (reportMode === 'MORNING') return p.morning != null;
+      if (reportMode === 'AFTERNOON') return p.postBreak != null;
+      if (reportMode === 'OFFICIAL') return p.morning != null || p.postBreak != null || p.officialRate != null;
+      if (reportMode === 'EXTRA_CLASS') return p.extraClassRate != null;
+      return p.officialRate != null || p.extraClassRate != null || p.combinedRate != null;
+    });
+  }, [activeTrendData, reportMode]);
 
   // Active grade statistics
   const activeGradeStats = useMemo(() => {
@@ -706,174 +704,190 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
           </div>
         </div>
 
-        <div className="h-72 w-full" dir="ltr">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={activeTrendData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#64748b' }} />
-              <YAxis
-                domain={[
-                  (dataMin: number) =>
-                    isNaN(dataMin) || dataMin == null
-                      ? 80
-                      : Math.max(0, Math.min(80, Math.floor(dataMin - 5))),
-                  100,
-                ]}
-                tick={{ fontSize: 11, fill: '#64748b' }}
-                unit="%"
-                allowDataOverflow={false}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#ffffff',
-                  borderColor: '#e2e8f0',
-                  borderRadius: '0.75rem',
-                  fontSize: '12px',
-                  boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                }}
-                formatter={(val: number | string | undefined, name: string | undefined) => [
-                  val == null || val === '' || isNaN(Number(val))
-                    ? (isRTL ? 'ރެކޯޑެއް ނެތް' : 'Not Recorded / No Session')
-                    : `${Number(val).toFixed(1)}%`,
-                  name ?? '',
-                ]}
-              />
-              <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+        {!hasAnyTrendData ? (
+          <div className="h-72 w-full flex flex-col items-center justify-center rounded-xl bg-slate-50/70 border border-dashed border-slate-200/90 p-6 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center mb-3">
+              <TrendingUp className="w-6 h-6 text-slate-400" />
+            </div>
+            <h4 className="text-sm font-bold text-slate-700">
+              {isRTL ? 'ހާޒިރީ ރެކޯޑެއް މާކުކޮށްފައެއް ނުވޭ' : 'No Attendance Records Marked Yet'}
+            </h4>
+            <p className="text-xs text-slate-500 max-w-sm mt-1">
+              {isRTL
+                ? 'މި މުއްދަތަށް އަދި ހާޒިރީ މާކުކޮށްފައެއް ނުވޭ. ހާޒިރީ މެޓްރިކްސްއިން ހާޒިރީ ނެގުމުން ޓްރެންޑް ލައިންތައް މިތަނުގައި ފެންނާނެއެވެ.'
+                : 'No student attendance has been marked for this timeframe yet. Mark attendance in the Attendance Matrix to view live attendance trends and lines.'}
+            </p>
+          </div>
+        ) : (
+          <div className="h-72 w-full" dir="ltr">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={activeTrendData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#64748b' }} />
+                <YAxis
+                  domain={[
+                    (dataMin: number) =>
+                      isNaN(dataMin) || dataMin == null
+                        ? 80
+                        : Math.max(0, Math.min(80, Math.floor(dataMin - 5))),
+                    100,
+                  ]}
+                  tick={{ fontSize: 11, fill: '#64748b' }}
+                  unit="%"
+                  allowDataOverflow={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#ffffff',
+                    borderColor: '#e2e8f0',
+                    borderRadius: '0.75rem',
+                    fontSize: '12px',
+                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                  }}
+                  formatter={(val: number | string | undefined, name: string | undefined) => [
+                    val == null || val === '' || isNaN(Number(val))
+                      ? (isRTL ? 'ރެކޯޑެއް ނެތް' : 'Not Recorded / No Session')
+                      : `${Number(val).toFixed(1)}%`,
+                    name ?? '',
+                  ]}
+                />
+                <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
 
-              {/* MODE: MORNING ONLY */}
-              {reportMode === 'MORNING' && (
-                <>
-                  <Line
-                    type="monotone"
-                    dataKey="morning"
-                    name={isRTL ? 'ހެނދުނުގެ ސެޝަން' : 'Morning Session Rate (%)'}
-                    stroke="#0284c7"
-                    strokeWidth={3}
-                    dot={{ r: 4, fill: '#0284c7' }}
-                    activeDot={{ r: 7 }}
-                    connectNulls={true}
-                  />
-                </>
-              )}
+                {/* MODE: MORNING ONLY */}
+                {reportMode === 'MORNING' && (
+                  <>
+                    <Line
+                      type="monotone"
+                      dataKey="morning"
+                      name={isRTL ? 'ހެނދުނުގެ ސެޝަން' : 'Morning Session Rate (%)'}
+                      stroke="#0284c7"
+                      strokeWidth={3}
+                      dot={{ r: 4, fill: '#0284c7' }}
+                      activeDot={{ r: 7 }}
+                      connectNulls={true}
+                    />
+                  </>
+                )}
 
-              {/* MODE: AFTERNOON ONLY */}
-              {reportMode === 'AFTERNOON' && (
-                <>
-                  <Line
-                    type="monotone"
-                    dataKey="postBreak"
-                    name={isRTL ? 'މެންދުރުފަސް ސެޝަން' : 'Afternoon Session Rate (%)'}
-                    stroke="#0d9488"
-                    strokeWidth={3}
-                    dot={{ r: 4, fill: '#0d9488' }}
-                    activeDot={{ r: 7 }}
-                    connectNulls={true}
-                  />
-                </>
-              )}
+                {/* MODE: AFTERNOON ONLY */}
+                {reportMode === 'AFTERNOON' && (
+                  <>
+                    <Line
+                      type="monotone"
+                      dataKey="postBreak"
+                      name={isRTL ? 'މެންދުރުފަސް ސެޝަން' : 'Afternoon Session Rate (%)'}
+                      stroke="#0d9488"
+                      strokeWidth={3}
+                      dot={{ r: 4, fill: '#0d9488' }}
+                      activeDot={{ r: 7 }}
+                      connectNulls={true}
+                    />
+                  </>
+                )}
 
-              {/* MODE: OFFICIAL ONLY */}
-              {reportMode === 'OFFICIAL' && (
-                <>
-                  <Line
-                    type="monotone"
-                    dataKey="morning"
-                    name={isRTL ? 'ހެނދުނުގެ ސެޝަން' : 'Morning Session (Before Break)'}
-                    stroke="#0284c7"
-                    strokeWidth={2.5}
-                    dot={{ r: 3, fill: '#0284c7' }}
-                    activeDot={{ r: 6 }}
-                    connectNulls={true}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="postBreak"
-                    name={isRTL ? 'ބްރޭކަށްފަހު ސެޝަން' : 'Post-Break Session (After Tea-time)'}
-                    stroke="#0d9488"
-                    strokeWidth={2.5}
-                    dot={{ r: 3, fill: '#0d9488' }}
-                    activeDot={{ r: 6 }}
-                    connectNulls={true}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="officialRate"
-                    name={isRTL ? 'ރަސްމީ އެވްރެޖް' : 'Official Daily Average'}
-                    stroke="#1e293b"
-                    strokeWidth={1.5}
-                    strokeDasharray="2 2"
-                    dot={false}
-                    connectNulls={true}
-                  />
-                </>
-              )}
+                {/* MODE: OFFICIAL ONLY */}
+                {reportMode === 'OFFICIAL' && (
+                  <>
+                    <Line
+                      type="monotone"
+                      dataKey="morning"
+                      name={isRTL ? 'ހެނދުނުގެ ސެޝަން' : 'Morning Session (Before Break)'}
+                      stroke="#0284c7"
+                      strokeWidth={2.5}
+                      dot={{ r: 3, fill: '#0284c7' }}
+                      activeDot={{ r: 6 }}
+                      connectNulls={true}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="postBreak"
+                      name={isRTL ? 'ބްރޭކަށްފަހު ސެޝަން' : 'Post-Break Session (After Tea-time)'}
+                      stroke="#0d9488"
+                      strokeWidth={2.5}
+                      dot={{ r: 3, fill: '#0d9488' }}
+                      activeDot={{ r: 6 }}
+                      connectNulls={true}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="officialRate"
+                      name={isRTL ? 'ރަސްމީ އެވްރެޖް' : 'Official Daily Average'}
+                      stroke="#1e293b"
+                      strokeWidth={1.5}
+                      strokeDasharray="2 2"
+                      dot={false}
+                      connectNulls={true}
+                    />
+                  </>
+                )}
 
-              {/* MODE: EXTRA CLASS ONLY */}
-              {reportMode === 'EXTRA_CLASS' && (
-                <>
-                  <Line
-                    type="monotone"
-                    dataKey="extraClassRate"
-                    name={isRTL ? 'އިތުރު ކްލާހުގެ ހާޒިރީ ރޭޓް' : 'Extra Class Attendance Rate (%)'}
-                    stroke="#9333ea"
-                    strokeWidth={3}
-                    dot={{ r: 4, fill: '#9333ea' }}
-                    activeDot={{ r: 7 }}
-                    connectNulls={true}
-                  />
-                </>
-              )}
+                {/* MODE: EXTRA CLASS ONLY */}
+                {reportMode === 'EXTRA_CLASS' && (
+                  <>
+                    <Line
+                      type="monotone"
+                      dataKey="extraClassRate"
+                      name={isRTL ? 'އިތުރު ކްލާހުގެ ހާޒިރީ ރޭޓް' : 'Extra Class Attendance Rate (%)'}
+                      stroke="#9333ea"
+                      strokeWidth={3}
+                      dot={{ r: 4, fill: '#9333ea' }}
+                      activeDot={{ r: 7 }}
+                      connectNulls={true}
+                    />
+                  </>
+                )}
 
-              {/* MODE: BOTH (OFFICIAL & EXTRA CLASS) */}
-              {reportMode === 'BOTH' && (
-                <>
-                  <Line
-                    type="monotone"
-                    dataKey="officialRate"
-                    name={isRTL ? 'ރަސްމީ ހާޒިރީ ރޭޓް' : 'Official Attendance Rate (%)'}
-                    stroke="#0284c7"
-                    strokeWidth={2.5}
-                    dot={{ r: 3, fill: '#0284c7' }}
-                    activeDot={{ r: 6 }}
-                    connectNulls={true}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="extraClassRate"
-                    name={isRTL ? 'އިތުރު ކްލާސް ހާޒިރީ ރޭޓް' : 'Extra Class Attendance Rate (%)'}
-                    stroke="#9333ea"
-                    strokeWidth={2.5}
-                    dot={{ r: 3, fill: '#9333ea' }}
-                    activeDot={{ r: 6 }}
-                    connectNulls={true}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="combinedRate"
-                    name={isRTL ? 'އެކުލެވޭ ޖުމްލަ ރޭޓް' : 'Combined Overall Rate (%)'}
-                    stroke="#059669"
-                    strokeWidth={3}
-                    dot={{ r: 4, fill: '#059669' }}
-                    activeDot={{ r: 7 }}
-                    connectNulls={true}
-                  />
-                </>
-              )}
+                {/* MODE: BOTH (OFFICIAL & EXTRA CLASS) */}
+                {reportMode === 'BOTH' && (
+                  <>
+                    <Line
+                      type="monotone"
+                      dataKey="officialRate"
+                      name={isRTL ? 'ރަސްމީ ހާޒިރީ ރޭޓް' : 'Official Attendance Rate (%)'}
+                      stroke="#0284c7"
+                      strokeWidth={2.5}
+                      dot={{ r: 3, fill: '#0284c7' }}
+                      activeDot={{ r: 6 }}
+                      connectNulls={true}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="extraClassRate"
+                      name={isRTL ? 'އިތުރު ކްލާސް ހާޒިރީ ރޭޓް' : 'Extra Class Attendance Rate (%)'}
+                      stroke="#9333ea"
+                      strokeWidth={2.5}
+                      dot={{ r: 3, fill: '#9333ea' }}
+                      activeDot={{ r: 6 }}
+                      connectNulls={true}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="combinedRate"
+                      name={isRTL ? 'އެކުލެވޭ ޖުމްލަ ރޭޓް' : 'Combined Overall Rate (%)'}
+                      stroke="#059669"
+                      strokeWidth={3}
+                      dot={{ r: 4, fill: '#059669' }}
+                      activeDot={{ r: 7 }}
+                      connectNulls={true}
+                    />
+                  </>
+                )}
 
-              {/* Universal MoE 90% Benchmark Threshold */}
-              <Line
-                type="monotone"
-                dataKey="baseline"
-                name={isRTL ? 'އެމް.އޯ.އީ ޓާގެޓް (90%)' : 'MoE Target Threshold (90%)'}
-                stroke="#ef4444"
-                strokeDasharray="4 4"
-                strokeWidth={1.5}
-                dot={false}
-                connectNulls={true}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+                {/* Universal MoE 90% Benchmark Threshold (only shown if attendance exists) */}
+                <Line
+                  type="monotone"
+                  dataKey="baseline"
+                  name={isRTL ? 'އެމް.އޯ.އީ ޓާގެޓް (90%)' : 'MoE Target Threshold (90%)'}
+                  stroke="#ef4444"
+                  strokeDasharray="4 4"
+                  strokeWidth={1.5}
+                  dot={false}
+                  connectNulls={true}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </div>
 
       {/* ======================================================== */}
@@ -979,7 +993,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
             <ResponsiveContainer width="100%" height="100%">
               {/* MODE 1: MORNING ONLY (STACKED BAR) */}
               {reportMode === 'MORNING' ? (
-                <BarChart data={gradeChartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                <BarChart data={gradeChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis dataKey="grade" tick={{ fontSize: 11, fill: '#64748b' }} />
                   <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
@@ -1003,7 +1017,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                 </BarChart>
               ) : reportMode === 'AFTERNOON' ? (
                 /* MODE 2: AFTERNOON ONLY (STACKED BAR) */
-                <BarChart data={gradeChartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                <BarChart data={gradeChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis dataKey="grade" tick={{ fontSize: 11, fill: '#64748b' }} />
                   <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
@@ -1025,7 +1039,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                 </BarChart>
               ) : reportMode === 'OFFICIAL' ? (
                 /* MODE 3: OFFICIAL (MORNING + AFTERNOON) */
-                <BarChart data={gradeChartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                <BarChart data={gradeChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis dataKey="grade" tick={{ fontSize: 11, fill: '#64748b' }} />
                   <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
@@ -1049,7 +1063,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                 </BarChart>
               ) : reportMode === 'EXTRA_CLASS' ? (
                 /* MODE 2: EXTRA CLASS ONLY (STACKED CLINICS PARTICIPATION) */
-                <BarChart data={gradeChartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                <BarChart data={gradeChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis dataKey="grade" tick={{ fontSize: 11, fill: '#64748b' }} />
                   <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
@@ -1097,7 +1111,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                 </BarChart>
               ) : barDisplayType === 'rates' ? (
                 /* MODE 3A: BOTH (RATES COMPARISON SIDE-BY-SIDE) */
-                <BarChart data={gradeChartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                <BarChart data={gradeChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis dataKey="grade" tick={{ fontSize: 11, fill: '#64748b' }} />
                   <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#64748b' }} unit="%" />
@@ -1135,7 +1149,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                 </BarChart>
               ) : (
                 /* MODE 3B: BOTH (STACKED SESSIONS) */
-                <BarChart data={gradeChartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                <BarChart data={gradeChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis dataKey="grade" tick={{ fontSize: 11, fill: '#64748b' }} />
                   <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />

@@ -3905,13 +3905,13 @@ app.get('/api/analytics/dashboard', (req, res) => {
       return {
         date: label,
         fullDate: dStr,
-        morning: 100,
-        postBreak: 100,
-        officialRate: 100,
+        morning: null,
+        postBreak: null,
+        officialRate: null,
         extraClassRate: null,
         extraClassesCount: 0,
-        combinedRate: 100,
-        baseline: 90,
+        combinedRate: null,
+        baseline: null,
       };
     }
 
@@ -3954,32 +3954,10 @@ app.get('/api/analytics/dashboard', (req, res) => {
         morning != null && postBreak != null
           ? Math.round(((morning + postBreak) / 2) * 10) / 10
           : (morning ?? postBreak);
-    } else if (dStr <= targetDate) {
-      // Historical instructional day without manual entries: evaluate deterministic historical rate
-      let dPres = 0;
-      let dLate = 0;
-      let dpPres = 0;
-      students.forEach((st) => {
-        const dAtt = getDeterministicStudentAttendance(st, dStr);
-        if (dAtt.status === 'PRESENT') dPres++;
-        else if (dAtt.status === 'LATE') dLate++;
-        if (dAtt.postBreakStatus === 'PRESENT' || dAtt.postBreakStatus === 'LATE') dpPres++;
-      });
-      morning = Math.round(((dPres + dLate) / (students.length || 1)) * 1000) / 10;
-      postBreak = Math.round((dpPres / (students.length || 1)) * 1000) / 10;
-      officialRate = Math.round(((morning + postBreak) / 2) * 10) / 10;
     } else {
-      return {
-        date: label,
-        fullDate: dStr,
-        morning: null,
-        postBreak: null,
-        officialRate: null,
-        extraClassRate: null,
-        extraClassesCount: 0,
-        combinedRate: null,
-        baseline: 90,
-      };
+      morning = null;
+      postBreak = null;
+      officialRate = null;
     }
 
     // Extra classes on dStr
@@ -4002,24 +3980,19 @@ app.get('/api/analytics/dashboard', (req, res) => {
       });
     });
 
-    let extraClassRate: number | null =
+    const extraClassRate: number | null =
       exTotal > 0 ? Math.round((exPres / exTotal) * 1000) / 10 : null;
 
-    let extraCount = dayClasses.length;
-
-    // Provide realistic extra-class participation on standard clinic days (Sun, Tue, Wed) if none logged
-    if (extraClassRate == null && (dayIdx === 0 || dayIdx === 2 || dayIdx === 3) && officialRate != null) {
-      const pseudoDelta = ((dayIdx * 7 + parseInt(d, 10)) % 5) * 0.4 - 0.8;
-      extraClassRate = Math.max(88, Math.min(98, Math.round((officialRate - 1.2 + pseudoDelta) * 10) / 10));
-      extraCount = 2;
-    }
+    const extraCount = dayClasses.length;
 
     const combinedRate: number | null =
       officialRate != null
         ? extraClassRate != null
           ? Math.round(((officialRate * 2 + extraClassRate) / 3) * 10) / 10
           : officialRate
-        : null;
+        : (extraClassRate ?? null);
+
+    const hasAnyRate = officialRate != null || extraClassRate != null || combinedRate != null;
 
     return {
       date: label,
@@ -4030,7 +4003,7 @@ app.get('/api/analytics/dashboard', (req, res) => {
       extraClassRate,
       extraClassesCount: extraCount,
       combinedRate,
-      baseline: 90,
+      baseline: hasAnyRate ? 90 : null,
     };
   };
 

@@ -12,6 +12,7 @@ import {
   GradeLevel,
 } from '../types';
 import { ALL_ACADEMIC_WEEKS_2026, getCurrentOrLatestSchoolWeek } from './academicWeeks';
+import { safeLocalStorage, safeJsonParse } from './browserUtils';
 
 const DAY_NAMES_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const DAY_NAMES_DV = ['އާދީއްތަ', 'ހޯމަ', 'އަންގާރަ', 'ބުދަ', 'ބުރާސްފަތި', 'ހުކުރު', 'ހޮނިހިރު'];
@@ -512,13 +513,10 @@ export function generateClientReportCardData({
   const daysToBeAttended = totalInstructionalDays;
 
   // Retrieve any client-side saved overrides from localStorage
-  let localOverrides: Record<string, any> = {};
-  if (typeof window !== 'undefined') {
-    try {
-      const saved = localStorage.getItem('moe_report_card_overrides');
-      if (saved) localOverrides = JSON.parse(saved);
-    } catch {}
-  }
+  const localOverrides: Record<string, any> = safeJsonParse(
+    safeLocalStorage.getItem('moe_report_card_overrides'),
+    {}
+  );
 
   const targetStudents = grade === 'ALL'
     ? students

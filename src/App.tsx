@@ -25,6 +25,7 @@ import { ExtraClassesModule } from './components/ExtraClassesModule';
 import { syncEngine } from './lib/syncEngine';
 import { offlineDb } from './lib/db';
 import { checkSessionMarkingEligibility, getMaldivesNow } from './utils/sessionTimingsHelper';
+import { safeLocalStorage, safeJsonParse } from './utils/browserUtils';
 import {
   DEFAULT_STAFF,
   DEFAULT_STUDENTS,
@@ -58,11 +59,11 @@ function MainApp() {
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const isMobileOrPrivileged = typeof window !== 'undefined' && (
       window.innerWidth < 768 ||
-      localStorage.getItem('moe_rapid_roll_call_privileged') === 'true' ||
-      localStorage.getItem('moe_login_source') === 'mobile'
+      safeLocalStorage.getItem('moe_rapid_roll_call_privileged') === 'true' ||
+      safeLocalStorage.getItem('moe_login_source') === 'mobile'
     );
 
-    const savedUserJson = localStorage.getItem('moe_logged_in_user');
+    const savedUserJson = safeLocalStorage.getItem('moe_logged_in_user');
     if (savedUserJson) {
       try {
         const parsed = JSON.parse(savedUserJson);
@@ -73,7 +74,7 @@ function MainApp() {
         return parsed;
       } catch {}
     }
-    const savedId = localStorage.getItem('moe_active_user_id');
+    const savedId = safeLocalStorage.getItem('moe_active_user_id');
     if (savedId) {
       const found = DEFAULT_STAFF.find((s) => s.id === savedId);
       if (found) {
@@ -168,7 +169,7 @@ function MainApp() {
   // School Session Timings (configurable for Morning and Afternoon)
   const [sessionTimings, setSessionTimings] = useState<SchoolSessionTimings>(() => {
     try {
-      const cached = localStorage.getItem('school_session_timings');
+      const cached = safeLocalStorage.getItem('school_session_timings');
       if (cached) {
         const parsed = JSON.parse(cached);
         if (parsed?.morning && parsed?.afternoon) return parsed;
@@ -194,17 +195,37 @@ function MainApp() {
   const [showLoginView, setShowLoginView] = useState(false);
   const [isMenuDrawerOpen, setIsMenuDrawerOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
-    const valid = localStorage.getItem('moe_portal_logged_in');
+    const valid = safeLocalStorage.getItem('moe_portal_logged_in');
     if (valid === null) return true; // Default logged in on first load so portal is immediately functional
     return valid === 'true';
   });
 
   // Check if chosen date is Maldives weekend (Friday=5, Saturday=6)
   const isWeekend = (() => {
-    const d = new Date(selectedDate + 'T00:00:00');
-    const day = d.getDay();
-    return day === 5 || day === 6;
+    if (!selectedDate) return false;
+    const parts = selectedDate.split('-');
+    if (parts.length === 3) {
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10) - 1;
+      const dayNum = parseInt(parts[2], 10);
+      if (!isNaN(y) && !isNaN(m) && !isNaN(dayNum)) {
+        // Use UTC noon to be completely immune to browser local timezone shifts
+        const day = new Date(Date.UTC(y, m, dayNum, 12, 0, 0)).getUTCDay();
+        return day === 5 || day === 6;
+      }
+    }
+    return false;
   })();
+
+  // Toast notifications for cross-browser safe alerts (avoids window.alert iframe security restrictions)
+  const [toastNotification, setToastNotification] = useState<{ message: string; type: 'info' | 'warning' | 'error' } | null>(null);
+
+  const showNotification = (message: string, type: 'info' | 'warning' | 'error' = 'warning') => {
+    setToastNotification({ message, type });
+    setTimeout(() => {
+      setToastNotification((curr) => (curr?.message === message ? null : curr));
+    }, 4500);
+  };
 
   // 1. Initial Load: Fetch from API and sync with Dexie cache
   useEffect(() => {
@@ -248,9 +269,7 @@ function MainApp() {
       }
       return normalized;
     });
-    try {
-      localStorage.setItem('school_session_timings', JSON.stringify(normalized));
-    } catch {}
+    safeLocalStorage.setItem('school_session_timings', JSON.stringify(normalized));
     setIsLiveSyncActive(true);
     setLastSyncTime(new Date());
   };
@@ -509,15 +528,15 @@ function MainApp() {
           const data = await staffRes.json();
           if (data.staff && data.staff.length > 0) {
             setStaffList(data.staff);
-            const savedId = localStorage.getItem('moe_active_user_id');
-            const isSessionValid = localStorage.getItem('moe_portal_logged_in');
+            const savedId = safeLocalStorage.getItem('moe_active_user_id');
+            const isSessionValid = safeLocalStorage.getItem('moe_portal_logged_in');
             if (isSessionValid === 'true' && savedId) {
               const active = data.staff.find((s: User) => s.id === savedId);
               if (active) {
                 const isMobileOrPrivileged = typeof window !== 'undefined' && (
                   window.innerWidth < 768 ||
-                  localStorage.getItem('moe_rapid_roll_call_privileged') === 'true' ||
-                  localStorage.getItem('moe_login_source') === 'mobile'
+                  safeLocalStorage.getItem('moe_rapid_roll_call_privileged') === 'true' ||
+                  safeLocalStorage.getItem('moe_login_source') === 'mobile'
                 );
                 const enriched: User = isMobileOrPrivileged
                   ? { ...active, hasRapidRollCallPrivilege: true, loginViaMobile: true }
@@ -563,25 +582,25 @@ function MainApp() {
           const cData = await calRes.json();
           let calList: AcademicCalendarDay[] = cData.calendar || [];
           try {
-            const clientDeleted: string[] = JSON.parse(localStorage.getItem('moe_deleted_holidays') || '[]');
+            const clientDeleted: string[] = safeJsonParse(safeLocalStorage.getItem('moe_deleted_holidays'), []);
             if (clientDeleted.length > 0) {
               calList = calList.filter((d) => !clientDeleted.includes(d.id) && !clientDeleted.includes(d.date));
             }
           } catch (e) {}
           setCalendarDays(calList);
           try {
-            localStorage.setItem('moe_academic_calendar', JSON.stringify(calList));
+            safeLocalStorage.setItem('moe_academic_calendar', JSON.stringify(calList));
             await offlineDb.calendar.clear();
             if (calList.length > 0) {
               await offlineDb.calendar.bulkPut(calList);
             }
           } catch (e) {}
         } else {
-          const cached = localStorage.getItem('moe_academic_calendar');
+          const cached = safeLocalStorage.getItem('moe_academic_calendar');
           if (cached) {
-            let parsed = JSON.parse(cached);
+            let parsed = safeJsonParse(cached, []);
             try {
-              const clientDeleted: string[] = JSON.parse(localStorage.getItem('moe_deleted_holidays') || '[]');
+              const clientDeleted: string[] = safeJsonParse(safeLocalStorage.getItem('moe_deleted_holidays'), []);
               if (clientDeleted.length > 0) {
                 parsed = parsed.filter((d: AcademicCalendarDay) => !clientDeleted.includes(d.id) && !clientDeleted.includes(d.date));
               }
@@ -590,11 +609,11 @@ function MainApp() {
           }
         }
       } catch (e) {
-        const cached = localStorage.getItem('moe_academic_calendar');
+        const cached = safeLocalStorage.getItem('moe_academic_calendar');
         if (cached) {
-          let parsed = JSON.parse(cached);
+          let parsed = safeJsonParse(cached, []);
           try {
-            const clientDeleted: string[] = JSON.parse(localStorage.getItem('moe_deleted_holidays') || '[]');
+            const clientDeleted: string[] = safeJsonParse(safeLocalStorage.getItem('moe_deleted_holidays'), []);
             if (clientDeleted.length > 0) {
               parsed = parsed.filter((d: AcademicCalendarDay) => !clientDeleted.includes(d.id) && !clientDeleted.includes(d.date));
             }
@@ -719,12 +738,12 @@ function MainApp() {
     const isMobilePrivileged = Boolean(
       currentUser?.hasRapidRollCallPrivilege ||
       currentUser?.loginViaMobile ||
-      localStorage.getItem('moe_rapid_roll_call_privileged') === 'true' ||
-      localStorage.getItem('moe_login_source') === 'mobile'
+      safeLocalStorage.getItem('moe_rapid_roll_call_privileged') === 'true' ||
+      safeLocalStorage.getItem('moe_login_source') === 'mobile'
     );
     const isEarlyAllowed = isMobilePrivileged && eligibility.reason === 'SESSION_NOT_STARTED';
     if (!eligibility.allowed && !isEarlyAllowed) {
-      alert(eligibility.message);
+      showNotification(eligibility.message, 'warning');
       return;
     }
 
@@ -783,7 +802,7 @@ function MainApp() {
         ) {
           // Revert optimistic update
           setAttendanceRecords(previousRecords);
-          alert(errData.message || 'Cannot mark attendance.');
+          showNotification(errData.message || 'Cannot mark attendance.', 'warning');
           return;
         }
         await syncEngine.recordAttendance(enrichedRecord);
@@ -803,12 +822,12 @@ function MainApp() {
     const isMobilePrivileged = Boolean(
       currentUser?.hasRapidRollCallPrivilege ||
       currentUser?.loginViaMobile ||
-      localStorage.getItem('moe_rapid_roll_call_privileged') === 'true' ||
-      localStorage.getItem('moe_login_source') === 'mobile'
+      safeLocalStorage.getItem('moe_rapid_roll_call_privileged') === 'true' ||
+      safeLocalStorage.getItem('moe_login_source') === 'mobile'
     );
     const isEarlyAllowed = isMobilePrivileged && eligibility.reason === 'SESSION_NOT_STARTED';
     if (!eligibility.allowed && !isEarlyAllowed) {
-      alert(eligibility.message);
+      showNotification(eligibility.message, 'warning');
       return;
     }
 
@@ -889,7 +908,7 @@ function MainApp() {
           errData.error === 'SESSION_LOCKED'
         ) {
           setAttendanceRecords(previousRecords);
-          alert(errData.message || 'Cannot mark attendance.');
+          showNotification(errData.message || 'Cannot mark attendance.', 'warning');
           return;
         }
         await syncEngine.bulkRecordAttendance(updatedRecords);
@@ -906,8 +925,8 @@ function MainApp() {
     try {
       const isMobileLogin = typeof window !== 'undefined' && (
         window.innerWidth < 768 ||
-        localStorage.getItem('moe_rapid_roll_call_privileged') === 'true' ||
-        localStorage.getItem('moe_login_source') === 'mobile'
+        safeLocalStorage.getItem('moe_rapid_roll_call_privileged') === 'true' ||
+        safeLocalStorage.getItem('moe_login_source') === 'mobile'
       );
       const res = await fetch('/api/auth/switch', {
         method: 'POST',
@@ -926,8 +945,8 @@ function MainApp() {
           loginViaMobile: isMobileLogin ? true : data.user?.loginViaMobile,
         };
         setCurrentUser(userWithPrivilege);
-        localStorage.setItem('moe_logged_in_user', JSON.stringify(userWithPrivilege));
-        localStorage.setItem('moe_active_user_id', userWithPrivilege.id);
+        safeLocalStorage.setItem('moe_logged_in_user', JSON.stringify(userWithPrivilege));
+        safeLocalStorage.setItem('moe_active_user_id', userWithPrivilege.id);
         fetchAuditLogs();
       }
     } catch (err) {
@@ -1006,14 +1025,14 @@ function MainApp() {
         const data = await res.json();
         let calList: AcademicCalendarDay[] = data.calendar || [];
         try {
-          const clientDeleted: string[] = JSON.parse(localStorage.getItem('moe_deleted_holidays') || '[]');
+          const clientDeleted: string[] = safeJsonParse(safeLocalStorage.getItem('moe_deleted_holidays'), []);
           if (clientDeleted.length > 0) {
             calList = calList.filter((d) => !clientDeleted.includes(d.id) && !clientDeleted.includes(d.date));
           }
         } catch (e) {}
         setCalendarDays(calList);
         try {
-          localStorage.setItem('moe_academic_calendar', JSON.stringify(calList));
+          safeLocalStorage.setItem('moe_academic_calendar', JSON.stringify(calList));
           await offlineDb.calendar.clear();
           if (calList.length > 0) {
             await offlineDb.calendar.bulkPut(calList);
@@ -1045,7 +1064,7 @@ function MainApp() {
         const calList = data.calendar || [];
         setCalendarDays(calList);
         try {
-          localStorage.setItem('moe_academic_calendar', JSON.stringify(calList));
+          safeLocalStorage.setItem('moe_academic_calendar', JSON.stringify(calList));
           await offlineDb.calendar.clear();
           await offlineDb.calendar.bulkPut(calList);
         } catch (e) {}
@@ -1083,12 +1102,12 @@ function MainApp() {
         setCalendarDays(calList);
         // Unmark from client deleted tracking if saved/edited
         try {
-          const clientDeleted: string[] = JSON.parse(localStorage.getItem('moe_deleted_holidays') || '[]');
+          const clientDeleted: string[] = safeJsonParse(safeLocalStorage.getItem('moe_deleted_holidays'), []);
           const filtered = clientDeleted.filter((x) => x !== holiday.id && x !== holiday.date);
-          localStorage.setItem('moe_deleted_holidays', JSON.stringify(filtered));
+          safeLocalStorage.setItem('moe_deleted_holidays', JSON.stringify(filtered));
         } catch (e) {}
         try {
-          localStorage.setItem('moe_academic_calendar', JSON.stringify(calList));
+          safeLocalStorage.setItem('moe_academic_calendar', JSON.stringify(calList));
           await offlineDb.calendar.clear();
           await offlineDb.calendar.bulkPut(calList);
         } catch (e) {}
@@ -1110,17 +1129,17 @@ function MainApp() {
     try {
       // Optimistic instant local removal & blacklist
       try {
-        const clientDeleted: string[] = JSON.parse(localStorage.getItem('moe_deleted_holidays') || '[]');
+        const clientDeleted: string[] = safeJsonParse(safeLocalStorage.getItem('moe_deleted_holidays'), []);
         if (!clientDeleted.includes(id)) {
           clientDeleted.push(id);
-          localStorage.setItem('moe_deleted_holidays', JSON.stringify(clientDeleted));
+          safeLocalStorage.setItem('moe_deleted_holidays', JSON.stringify(clientDeleted));
         }
       } catch (e) {}
 
       setCalendarDays((prev) => {
         const updated = prev.filter((d) => d.id !== id && d.date !== id);
         try {
-          localStorage.setItem('moe_academic_calendar', JSON.stringify(updated));
+          safeLocalStorage.setItem('moe_academic_calendar', JSON.stringify(updated));
         } catch (e) {}
         return updated;
       });
@@ -1133,7 +1152,7 @@ function MainApp() {
         const calList = data.calendar || [];
         setCalendarDays(calList);
         try {
-          localStorage.setItem('moe_academic_calendar', JSON.stringify(calList));
+          safeLocalStorage.setItem('moe_academic_calendar', JSON.stringify(calList));
           await offlineDb.calendar.clear();
           await offlineDb.calendar.bulkPut(calList);
         } catch (e) {}
@@ -1149,7 +1168,7 @@ function MainApp() {
   const handleResetCalendar = async () => {
     try {
       try {
-        localStorage.removeItem('moe_deleted_holidays');
+        safeLocalStorage.removeItem('moe_deleted_holidays');
       } catch (e) {}
       const res = await fetch('/api/calendar/reset', {
         method: 'POST',
@@ -1159,7 +1178,7 @@ function MainApp() {
         const calList = data.calendar || [];
         setCalendarDays(calList);
         try {
-          localStorage.setItem('moe_academic_calendar', JSON.stringify(calList));
+          safeLocalStorage.setItem('moe_academic_calendar', JSON.stringify(calList));
           await offlineDb.calendar.clear();
           await offlineDb.calendar.bulkPut(calList);
         } catch (e) {}
@@ -1287,7 +1306,7 @@ function MainApp() {
   const handleSubmitSession = async () => {
     const eligibility = checkSessionMarkingEligibility(selectedDate, selectedSession, sessionTimings);
     if (!eligibility.allowed) {
-      alert(eligibility.message);
+      showNotification(eligibility.message, 'warning');
       return;
     }
     try {
@@ -1315,7 +1334,7 @@ function MainApp() {
         await fetchAuditLogs();
       } else {
         const errData = await res.json().catch(() => ({}));
-        alert(errData.message || 'Failed to submit session.');
+        showNotification(errData.message || 'Failed to submit session.', 'error');
       }
     } catch (err) {
       console.error('Failed to submit session:', err);
@@ -1499,7 +1518,7 @@ function MainApp() {
   ) => {
     const eligibility = checkSessionMarkingEligibility(selectedDate, selectedSession, sessionTimings);
     if (!eligibility.allowed) {
-      alert(eligibility.message);
+      showNotification(eligibility.message, 'warning');
       return;
     }
 
@@ -1554,8 +1573,8 @@ function MainApp() {
       Boolean(user.hasRapidRollCallPrivilege) ||
       (typeof window !== 'undefined' && (
         window.innerWidth < 768 ||
-        localStorage.getItem('moe_rapid_roll_call_privileged') === 'true' ||
-        localStorage.getItem('moe_login_source') === 'mobile'
+        safeLocalStorage.getItem('moe_rapid_roll_call_privileged') === 'true' ||
+        safeLocalStorage.getItem('moe_login_source') === 'mobile'
       ));
 
     const privilegedUser: User = {
@@ -1568,13 +1587,13 @@ function MainApp() {
     setIsLoggedIn(true);
     setShowLoginView(false);
     setActiveTab('attendance'); // Prioritize Attendance tab on login
-    localStorage.setItem('moe_portal_logged_in', 'true');
-    localStorage.setItem('moe_active_user_id', user.id);
-    localStorage.setItem('moe_logged_in_user', JSON.stringify(privilegedUser));
+    safeLocalStorage.setItem('moe_portal_logged_in', 'true');
+    safeLocalStorage.setItem('moe_active_user_id', user.id);
+    safeLocalStorage.setItem('moe_logged_in_user', JSON.stringify(privilegedUser));
     if (isMobileLogin) {
-      localStorage.setItem('moe_login_source', 'mobile');
-      localStorage.setItem('moe_rapid_roll_call_privileged', 'true');
-      localStorage.setItem('moe_default_roll_call_mode', 'rapid');
+      safeLocalStorage.setItem('moe_login_source', 'mobile');
+      safeLocalStorage.setItem('moe_rapid_roll_call_privileged', 'true');
+      safeLocalStorage.setItem('moe_default_roll_call_mode', 'rapid');
     }
     if (user.assignedGrade) {
       setSelectedGrade(user.assignedGrade);
@@ -1596,9 +1615,9 @@ function MainApp() {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
     } catch (e) {}
-    localStorage.removeItem('moe_portal_logged_in');
-    localStorage.removeItem('moe_active_user_id');
-    localStorage.removeItem('moe_logged_in_user');
+    safeLocalStorage.removeItem('moe_portal_logged_in');
+    safeLocalStorage.removeItem('moe_active_user_id');
+    safeLocalStorage.removeItem('moe_logged_in_user');
     setIsLoggedIn(false);
     setCurrentUser(null);
     setShowLoginView(true);
@@ -1769,7 +1788,7 @@ function MainApp() {
         hasRapidRollCallPrivilege={Boolean(
           currentUser?.hasRapidRollCallPrivilege ||
           currentUser?.loginViaMobile ||
-          (typeof window !== 'undefined' && localStorage.getItem('moe_rapid_roll_call_privileged') === 'true')
+          (typeof window !== 'undefined' && safeLocalStorage.getItem('moe_rapid_roll_call_privileged') === 'true')
         )}
       />
 
@@ -1877,7 +1896,7 @@ function MainApp() {
                 isFirstLogin: false,
               };
               setCurrentUser(updated);
-              localStorage.setItem('moe_logged_in_user', JSON.stringify(updated));
+              safeLocalStorage.setItem('moe_logged_in_user', JSON.stringify(updated));
             }
             fetchAuditLogs();
           }}
@@ -2013,6 +2032,45 @@ function MainApp() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+      {/* In-App Floating Toast Notification (replaces native window.alert to prevent iframe/sandbox crashes) */}
+      {toastNotification && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-md w-[92vw] pointer-events-auto transition-all animate-in fade-in slide-in-from-top-4 duration-200"
+        >
+          <div
+            className={`p-3.5 rounded-2xl shadow-xl border flex items-center justify-between gap-3 text-xs sm:text-sm font-semibold backdrop-blur-md ${
+              toastNotification.type === 'error'
+                ? 'bg-rose-900/95 text-white border-rose-700 shadow-rose-900/30'
+                : toastNotification.type === 'warning'
+                ? 'bg-amber-900/95 text-amber-50 border-amber-700 shadow-amber-900/30'
+                : 'bg-teal-900/95 text-teal-50 border-teal-700 shadow-teal-900/30'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <AlertTriangle
+                className={`w-4 h-4 shrink-0 ${
+                  toastNotification.type === 'error'
+                    ? 'text-rose-300'
+                    : toastNotification.type === 'warning'
+                    ? 'text-amber-300'
+                    : 'text-teal-300'
+                }`}
+              />
+              <span className="leading-snug">{toastNotification.message}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setToastNotification(null)}
+              className="p-1 rounded-lg hover:bg-white/10 active:bg-white/20 transition cursor-pointer text-white/80 hover:text-white shrink-0"
+              aria-label="Dismiss notification"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         </div>
       )}

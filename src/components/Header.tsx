@@ -206,8 +206,9 @@ export const Header: React.FC<HeaderProps> = ({
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-900 border border-teal-200 text-xs font-bold shadow-2xs transition cursor-pointer"
               title={isRTL ? 'ސެޝަން ވަގުތުތައް ބަދަލުކުރުން' : 'Configure Session Timings & Duration'}
             >
-              <Clock className="w-3.5 h-3.5 text-teal-700" />
-              <span className="hidden md:inline">{isRTL ? 'ސެޝަން ގަޑިތައް' : 'Session Timings'}</span>
+              <Clock className="w-3.5 h-3.5 text-teal-700 shrink-0" />
+              <span className="hidden sm:inline">{isRTL ? 'ސެޝަން ގަޑިތައް' : 'Session Timings'}</span>
+              <span className="sm:hidden text-[10px] font-bold">{isRTL ? 'ގަޑި' : 'Timings'}</span>
             </button>
           )}
 

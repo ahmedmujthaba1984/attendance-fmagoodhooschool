@@ -29,6 +29,7 @@
 }
 
 @theme {
+  --breakpoint-xs: 420px;
   --font-thaana: 'Faruma', 'MV Faruma', 'Noto Sans Thaana', 'MV Waheed', 'MV Boli', 'A_Waheed', sans-serif;
   --font-english: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }

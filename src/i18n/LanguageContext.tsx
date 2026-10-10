@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { translations, Language } from './translations';
+import { safeLocalStorage } from '../utils/browserUtils';
 
 interface LanguageContextType {
   language: Language;
@@ -13,14 +14,14 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [language, setLanguageState] = useState<Language>(() => {
-    const saved = localStorage.getItem('moe_portal_lang');
+    const saved = safeLocalStorage.getItem('moe_portal_lang');
     return (saved === 'dv' || saved === 'en') ? saved : 'en';
   });
 
   const isRTL = language === 'dv';
 
   useEffect(() => {
-    localStorage.setItem('moe_portal_lang', language);
+    safeLocalStorage.setItem('moe_portal_lang', language);
     document.documentElement.dir = isRTL ? 'rtl' : 'ltr';
     document.documentElement.lang = language;
     if (isRTL) {

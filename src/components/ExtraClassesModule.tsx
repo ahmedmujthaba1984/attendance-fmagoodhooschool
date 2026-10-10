@@ -1256,6 +1256,7 @@ const CreateExtraClassModal: React.FC<CreateExtraClassModalProps> = ({
   const [venue, setVenue] = useState<string>('Classroom 10A');
   const [notes, setNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -1269,6 +1270,7 @@ const CreateExtraClassModal: React.FC<CreateExtraClassModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setErrorMsg(null);
 
     const selectedTeacher = staffList.find((s) => s.id === teacherId);
 
@@ -1299,11 +1301,12 @@ const CreateExtraClassModal: React.FC<CreateExtraClassModalProps> = ({
         const data = await res.json();
         onSuccess(data.extraClass);
       } else {
-        const err = await res.json();
-        alert(err.error || 'Failed to create extra class');
+        const err = await res.json().catch(() => ({}));
+        setErrorMsg(err.error || 'Failed to create extra class');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Submit failed:', err);
+      setErrorMsg(err.message || 'Failed to create extra class');
     } finally {
       setIsSubmitting(false);
     }
@@ -1365,6 +1368,13 @@ const CreateExtraClassModal: React.FC<CreateExtraClassModalProps> = ({
               )}
             </div>
           </div>
+
+          {errorMsg && (
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
 
           {/* Grade & Date */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1595,6 +1605,7 @@ const BulkUploadExtraClassesModal: React.FC<BulkUploadExtraClassesModalProps> = 
 
   const [parsedRows, setParsedRows] = useState<ParsedExtraClassRow[]>([]);
   const [parseErrors, setParseErrors] = useState<string[]>([]);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string>('');
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [isDragging, setIsDragging] = useState<boolean>(false);
@@ -1603,6 +1614,7 @@ const BulkUploadExtraClassesModal: React.FC<BulkUploadExtraClassesModalProps> = 
 
   const handleFileChange = async (file: File) => {
     setFileName(file.name);
+    setUploadError(null);
     try {
       const { classes, errors } = await parseExtraClassExcel(file, staffList);
       setParsedRows(classes);
@@ -1616,6 +1628,7 @@ const BulkUploadExtraClassesModal: React.FC<BulkUploadExtraClassesModalProps> = 
   const handleConfirmUpload = async () => {
     if (parsedRows.length === 0) return;
     setIsUploading(true);
+    setUploadError(null);
 
     try {
       const res = await fetch('/api/extra-classes/bulk-upload', {
@@ -1631,11 +1644,12 @@ const BulkUploadExtraClassesModal: React.FC<BulkUploadExtraClassesModalProps> = 
       if (res.ok) {
         onSuccess();
       } else {
-        const err = await res.json();
-        alert(err.error || 'Failed to bulk upload extra classes');
+        const err = await res.json().catch(() => ({}));
+        setUploadError(err.error || 'Failed to bulk upload extra classes');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Bulk upload failed:', err);
+      setUploadError(err.message || 'Failed to bulk upload extra classes');
     } finally {
       setIsUploading(false);
     }
@@ -1731,6 +1745,14 @@ const BulkUploadExtraClassesModal: React.FC<BulkUploadExtraClassesModalProps> = 
               {isRTL ? '.xlsx ނުވަތަ .xls ފޯމެޓް' : 'Accepts Microsoft Excel (.xlsx, .xls)'}
             </span>
           </div>
+
+          {/* Upload error banner if any */}
+          {uploadError && (
+            <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 text-xs text-rose-800 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>{uploadError}</span>
+            </div>
+          )}
 
           {/* Error messages if any */}
           {parseErrors.length > 0 && (
@@ -1887,6 +1909,7 @@ const ExtraClassAttendanceModal: React.FC<ExtraClassAttendanceModalProps> = ({
 
   const [searchFilter, setSearchFilter] = useState<string>('');
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [statusNotice, setStatusNotice] = useState<{ text: string; isError: boolean } | null>(null);
 
   // Status counters
   const counters = useMemo(() => {
@@ -1930,10 +1953,11 @@ const ExtraClassAttendanceModal: React.FC<ExtraClassAttendanceModalProps> = ({
 
   // Handle Excel attendance upload for this class
   const handleExcelAttendanceUpload = async (file: File) => {
+    setStatusNotice(null);
     try {
       const { records, errors } = await parseExtraClassAttendanceExcel(file, students);
       if (errors.length > 0) {
-        alert(errors.join('\n'));
+        setStatusNotice({ text: errors.join(', '), isError: true });
       }
       if (records.length > 0) {
         const updated = { ...attendanceMap };
@@ -1945,10 +1969,13 @@ const ExtraClassAttendanceModal: React.FC<ExtraClassAttendanceModalProps> = ({
           };
         });
         setAttendanceMap(updated);
-        alert(isRTL ? `${records.length} ދަރިވަރުންގެ ހާޒިރީ އަޕްޑޭޓް ކުރެވިއްޖެ!` : `Loaded ${records.length} attendance marks from Excel.`);
+        setStatusNotice({
+          text: isRTL ? `${records.length} ދަރިވަރުންގެ ހާޒިރީ އަޕްޑޭޓް ކުރެވިއްޖެ!` : `Loaded ${records.length} attendance marks from Excel.`,
+          isError: false,
+        });
       }
     } catch (err: any) {
-      alert(err.message || 'Failed to read attendance file');
+      setStatusNotice({ text: err.message || 'Failed to read attendance file', isError: true });
     }
   };
 
@@ -1988,11 +2015,12 @@ const ExtraClassAttendanceModal: React.FC<ExtraClassAttendanceModalProps> = ({
         const data = await res.json();
         onSuccess(data.extraClass);
       } else {
-        const err = await res.json();
-        alert(err.error || 'Failed to submit attendance');
+        const err = await res.json().catch(() => ({}));
+        setStatusNotice({ text: err.error || 'Failed to submit attendance', isError: true });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Save attendance failed:', err);
+      setStatusNotice({ text: err.message || 'Save attendance failed', isError: true });
     } finally {
       setIsSaving(false);
     }
@@ -2071,6 +2099,33 @@ const ExtraClassAttendanceModal: React.FC<ExtraClassAttendanceModalProps> = ({
             <div className="text-lg font-black text-sky-900">{counters.leave}</div>
           </div>
         </div>
+
+        {/* Status Notice Banner if any */}
+        {statusNotice && (
+          <div
+            className={`p-3 rounded-xl border text-xs flex items-center justify-between gap-2 my-2.5 ${
+              statusNotice.isError
+                ? 'bg-rose-50 border-rose-200 text-rose-800'
+                : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              {statusNotice.isError ? (
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              ) : (
+                <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+              )}
+              <span>{statusNotice.text}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setStatusNotice(null)}
+              className="text-slate-400 hover:text-slate-600 p-1"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* Action Toolbar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 py-2.5">

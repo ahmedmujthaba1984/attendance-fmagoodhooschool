@@ -3,6 +3,7 @@ import { Key, Lock, Check, AlertTriangle, X, Eye, EyeOff, RefreshCw, ShieldAlert
 import { useLanguage } from '../i18n/LanguageContext';
 import { User } from '../types';
 import { setStaffLocalPassword } from '../data/fallbackData';
+import { safeLocalStorage } from '../utils/browserUtils';
 
 interface StaffChangePasswordModalProps {
   currentUser: User | null;
@@ -110,14 +111,14 @@ export const StaffChangePasswordModal: React.FC<StaffChangePasswordModalProps> =
 
       // Update stored session if present
       try {
-        const savedUserJson = localStorage.getItem('moe_logged_in_user');
+        const savedUserJson = safeLocalStorage.getItem('moe_logged_in_user');
         if (savedUserJson) {
           const parsed = JSON.parse(savedUserJson);
           if (parsed.email === currentUser?.email) {
             parsed.hasCustomPassword = true;
             parsed.mustChangePassword = false;
             parsed.isFirstLogin = false;
-            localStorage.setItem('moe_logged_in_user', JSON.stringify(parsed));
+            safeLocalStorage.setItem('moe_logged_in_user', JSON.stringify(parsed));
           }
         }
       } catch {}

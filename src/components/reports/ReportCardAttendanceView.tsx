@@ -31,6 +31,7 @@ import {
   ReportCardAttendanceResponse,
   AttendanceRecord,
 } from '../../types';
+import { safeCopyToClipboard } from '../../utils/browserUtils';
 import { generateClientReportCardData } from '../../utils/reportGenerator';
 
 interface ReportCardAttendanceViewProps {
@@ -288,10 +289,10 @@ export const ReportCardAttendanceView: React.FC<ReportCardAttendanceViewProps> =
   };
 
   // Copy 3 Values to Clipboard for Report Card Entry
-  const handleCopyThreeValues = (st: StudentReportCardAttendance) => {
+  const handleCopyThreeValues = async (st: StudentReportCardAttendance) => {
     // Tab-separated string: DaysToBeAttended \t DaysAttended \t DaysLate
     const textToCopy = `${st.daysToBeAttended}\t${st.daysAttended}\t${st.daysLate}`;
-    navigator.clipboard.writeText(textToCopy);
+    await safeCopyToClipboard(textToCopy);
     setCopiedId(st.studentId);
     showToast(
       isRTL

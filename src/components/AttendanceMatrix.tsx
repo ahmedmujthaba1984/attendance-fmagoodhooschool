@@ -60,6 +60,7 @@ import {
   checkSessionMarkingEligibility,
   getMaldivesNow,
 } from '../utils/sessionTimingsHelper';
+import { safeLocalStorage } from '../utils/browserUtils';
 
 interface AttendanceMatrixProps {
   students: Student[];
@@ -182,15 +183,15 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
     const hasPrivilege =
       Boolean(currentUser?.hasRapidRollCallPrivilege) ||
       Boolean(currentUser?.loginViaMobile) ||
-      localStorage.getItem('moe_rapid_roll_call_privileged') === 'true' ||
-      localStorage.getItem('moe_login_source') === 'mobile' ||
-      localStorage.getItem('moe_default_roll_call_mode') === 'rapid';
+      safeLocalStorage.getItem('moe_rapid_roll_call_privileged') === 'true' ||
+      safeLocalStorage.getItem('moe_login_source') === 'mobile' ||
+      safeLocalStorage.getItem('moe_default_roll_call_mode') === 'rapid';
     return isMobileScreen || isTouch || hasPrivilege;
   }, [currentUser]);
 
   const [mobileRollCallMode, setMobileRollCallMode] = useState<'cards' | 'rapid'>(() => {
     if (typeof window !== 'undefined') {
-      const explicitPreference = localStorage.getItem('moe_roll_call_view_mode');
+      const explicitPreference = safeLocalStorage.getItem('moe_roll_call_view_mode');
       if (explicitPreference === 'cards' || explicitPreference === 'rapid') {
         return explicitPreference;
       }
@@ -201,9 +202,9 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
       const hasPrivilege =
         Boolean(currentUser?.hasRapidRollCallPrivilege) ||
         Boolean(currentUser?.loginViaMobile) ||
-        localStorage.getItem('moe_rapid_roll_call_privileged') === 'true' ||
-        localStorage.getItem('moe_login_source') === 'mobile' ||
-        localStorage.getItem('moe_default_roll_call_mode') === 'rapid';
+        safeLocalStorage.getItem('moe_rapid_roll_call_privileged') === 'true' ||
+        safeLocalStorage.getItem('moe_login_source') === 'mobile' ||
+        safeLocalStorage.getItem('moe_default_roll_call_mode') === 'rapid';
       if (isMobileScreen || isTouch || hasPrivilege) return 'rapid';
     }
     return 'cards';
@@ -214,7 +215,7 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
   useEffect(() => {
     if (currentUser?.id !== lastActiveUserIdRef.current) {
       lastActiveUserIdRef.current = currentUser?.id;
-      const explicitPreference = typeof window !== 'undefined' ? localStorage.getItem('moe_roll_call_view_mode') : null;
+      const explicitPreference = typeof window !== 'undefined' ? safeLocalStorage.getItem('moe_roll_call_view_mode') : null;
       if (!explicitPreference && (currentUser?.hasRapidRollCallPrivilege || isMobileOrPrivileged)) {
         setMobileRollCallMode('rapid');
         onRapidModeChange?.(true);
@@ -231,7 +232,7 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
   const handleSetRollCallMode = (mode: 'cards' | 'rapid') => {
     setMobileRollCallMode(mode);
     if (typeof window !== 'undefined') {
-      localStorage.setItem('moe_roll_call_view_mode', mode);
+      safeLocalStorage.setItem('moe_roll_call_view_mode', mode);
     }
     onRapidModeChange?.(mode === 'rapid');
   };
@@ -1884,6 +1885,22 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
         </div>
 
         <div className="flex items-center gap-1.5">
+          {/* Direct Session Timings in Floating Dock */}
+          <button
+            type="button"
+            id="dock-session-timings-btn"
+            onClick={handleOpenTimings}
+            className={`px-2.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1 min-h-[40px] shadow-2xs border ${
+              effectiveTimings.isTemporary
+                ? 'bg-amber-500 text-white border-amber-600'
+                : 'bg-teal-50 hover:bg-teal-100 text-teal-900 border-teal-200'
+            }`}
+            title={isRTL ? 'ސެޝަން ވަގުތުތައް ބަދަލުކުރުން' : 'Configure Session Timings & Duration'}
+          >
+            <Clock className="w-3.5 h-3.5 text-teal-700 shrink-0" />
+            <span className="hidden xs:inline">{isRTL ? 'ގަޑި' : 'Timings'}</span>
+          </button>
+
           {/* Quick Mode Toggle in Floating Dock */}
           <button
             type="button"

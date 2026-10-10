@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { MessageSquare, Copy, Check, X, Sparkles, Phone, Send, Loader2 } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { Student } from '../types';
+import { safeCopyToClipboard } from '../utils/browserUtils';
 
 interface ParentSmsModalProps {
   isOpen: boolean;
@@ -74,9 +75,9 @@ export const ParentSmsModal: React.FC<ParentSmsModalProps> = ({ isOpen, onClose,
     }
   };
 
-  const handleCopy = () => {
+  const handleCopy = async () => {
     if (draft?.smsText) {
-      navigator.clipboard.writeText(draft.smsText);
+      await safeCopyToClipboard(draft.smsText);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }

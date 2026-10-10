@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { User } from '../types';
+import { safeLocalStorage } from '../utils/browserUtils';
 import {
   DEFAULT_STAFF,
   getStaffLocalPassword,
@@ -50,7 +51,7 @@ export const MobileLoginView: React.FC<MobileLoginViewProps> = ({
 
   // Primary Login Form State
   const [emailInput, setEmailInput] = useState<string>(() => {
-    return currentUser?.email || localStorage.getItem('moe_last_staff_email') || '';
+    return currentUser?.email || safeLocalStorage.getItem('moe_last_staff_email') || '';
   });
   const [passwordInput, setPasswordInput] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
@@ -58,10 +59,10 @@ export const MobileLoginView: React.FC<MobileLoginViewProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [rememberDevice, setRememberDevice] = useState<boolean>(() => {
-    return localStorage.getItem('moe_remember_device') !== 'false';
+    return safeLocalStorage.getItem('moe_remember_device') !== 'false';
   });
   const [enableRapidRollCallPrivilege, setEnableRapidRollCallPrivilege] = useState<boolean>(() => {
-    return localStorage.getItem('moe_rapid_roll_call_privileged') !== 'false';
+    return safeLocalStorage.getItem('moe_rapid_roll_call_privileged') !== 'false';
   });
 
   // Staff Quick-Select Directory Modal
@@ -270,17 +271,17 @@ export const MobileLoginView: React.FC<MobileLoginViewProps> = ({
       };
 
       if (enableRapidRollCallPrivilege) {
-        localStorage.setItem('moe_rapid_roll_call_privileged', 'true');
-        localStorage.setItem('moe_default_roll_call_mode', 'rapid');
+        safeLocalStorage.setItem('moe_rapid_roll_call_privileged', 'true');
+        safeLocalStorage.setItem('moe_default_roll_call_mode', 'rapid');
       }
-      localStorage.setItem('moe_login_source', 'mobile');
+      safeLocalStorage.setItem('moe_login_source', 'mobile');
 
       // Store active session in localStorage
       if (rememberDevice) {
-        localStorage.setItem('moe_last_staff_email', cleanEmail);
-        localStorage.setItem('moe_active_user_id', userToLogin.id);
-        localStorage.setItem('moe_portal_logged_in', 'true');
-        localStorage.setItem('moe_logged_in_user', JSON.stringify(userToLogin));
+        safeLocalStorage.setItem('moe_last_staff_email', cleanEmail);
+        safeLocalStorage.setItem('moe_active_user_id', userToLogin.id);
+        safeLocalStorage.setItem('moe_portal_logged_in', 'true');
+        safeLocalStorage.setItem('moe_logged_in_user', JSON.stringify(userToLogin));
       }
 
       setTimeout(() => {
@@ -391,16 +392,16 @@ export const MobileLoginView: React.FC<MobileLoginViewProps> = ({
       };
 
       if (enableRapidRollCallPrivilege) {
-        localStorage.setItem('moe_rapid_roll_call_privileged', 'true');
-        localStorage.setItem('moe_default_roll_call_mode', 'rapid');
+        safeLocalStorage.setItem('moe_rapid_roll_call_privileged', 'true');
+        safeLocalStorage.setItem('moe_default_roll_call_mode', 'rapid');
       }
-      localStorage.setItem('moe_login_source', 'mobile');
+      safeLocalStorage.setItem('moe_login_source', 'mobile');
 
       if (rememberDevice && finalUser.email) {
-        localStorage.setItem('moe_last_staff_email', finalUser.email);
-        localStorage.setItem('moe_active_user_id', finalUser.id);
-        localStorage.setItem('moe_portal_logged_in', 'true');
-        localStorage.setItem('moe_logged_in_user', JSON.stringify(finalUser));
+        safeLocalStorage.setItem('moe_last_staff_email', finalUser.email);
+        safeLocalStorage.setItem('moe_active_user_id', finalUser.id);
+        safeLocalStorage.setItem('moe_portal_logged_in', 'true');
+        safeLocalStorage.setItem('moe_logged_in_user', JSON.stringify(finalUser));
       }
 
       setTimeout(() => {
@@ -904,7 +905,7 @@ export const MobileLoginView: React.FC<MobileLoginViewProps> = ({
                   checked={rememberDevice}
                   onChange={(e) => {
                     setRememberDevice(e.target.checked);
-                    localStorage.setItem('moe_remember_device', String(e.target.checked));
+                    safeLocalStorage.setItem('moe_remember_device', String(e.target.checked));
                   }}
                   className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-teal-600 focus:ring-teal-500 focus:ring-offset-0"
                 />
@@ -948,7 +949,7 @@ export const MobileLoginView: React.FC<MobileLoginViewProps> = ({
                   checked={enableRapidRollCallPrivilege}
                   onChange={(e) => {
                     setEnableRapidRollCallPrivilege(e.target.checked);
-                    localStorage.setItem('moe_rapid_roll_call_privileged', String(e.target.checked));
+                    safeLocalStorage.setItem('moe_rapid_roll_call_privileged', String(e.target.checked));
                   }}
                   className="w-4 h-4 rounded bg-slate-950 border-amber-500 text-amber-500 focus:ring-amber-500"
                 />

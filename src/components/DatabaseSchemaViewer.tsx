@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Layers, Database, Copy, Check, FileCode, Shield } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
+import { safeCopyToClipboard } from '../utils/browserUtils';
 
 export const DatabaseSchemaViewer: React.FC = () => {
   const { isRTL } = useLanguage();
@@ -169,9 +170,9 @@ CREATE POLICY admin_full_access ON attendance_records
     EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'ADMIN')
   );`;
 
-  const handleCopy = () => {
+  const handleCopy = async () => {
     const text = activeSubTab === 'prisma' ? prismaSchemaCode : sqlSeedCode;
-    navigator.clipboard.writeText(text);
+    await safeCopyToClipboard(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };

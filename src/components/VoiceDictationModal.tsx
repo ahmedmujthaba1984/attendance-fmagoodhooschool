@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Mic, MicOff, Sparkles, X, Check, Loader2, Volume2, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { GradeLevel, AttendanceRecord, Student } from '../types';
+import { safeHapticVibrate } from '../utils/browserUtils';
 
 interface VoiceDictationModalProps {
   isOpen: boolean;
@@ -25,6 +26,23 @@ export const VoiceDictationModal: React.FC<VoiceDictationModalProps> = ({
   const [speechText, setSpeechText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [parseMode, setParseMode] = useState<'cloud' | 'local'>('cloud');
+  const recognitionRef = useRef<any>(null);
+  const simTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup speech recognition on unmount or modal close
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch {}
+      }
+      if (simTimeoutRef.current) {
+        clearTimeout(simTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const [parsedResult, setParsedResult] = useState<{
     transcriptionNormalized?: string;
     matches?: Array<{
@@ -51,22 +69,33 @@ export const VoiceDictationModal: React.FC<VoiceDictationModalProps> = ({
   ];
 
   const handleToggleRecord = () => {
+    safeHapticVibrate(25);
     if (!isRecording) {
       setIsRecording(true);
-      // Simulate live recording or use browser SpeechRecognition if supported
-      const WinSpeechRecognition = (window as unknown as { SpeechRecognition?: any; webkitSpeechRecognition?: any }).SpeechRecognition ||
-        (window as unknown as { SpeechRecognition?: any; webkitSpeechRecognition?: any }).webkitSpeechRecognition;
+      // Cancel any running simulation
+      if (simTimeoutRef.current) clearTimeout(simTimeoutRef.current);
+
+      // Check browser SpeechRecognition support (Safari webkitSpeechRecognition vs standard SpeechRecognition)
+      const WinSpeechRecognition =
+        typeof window !== 'undefined'
+          ? (window as unknown as { SpeechRecognition?: any; webkitSpeechRecognition?: any }).SpeechRecognition ||
+            (window as unknown as { SpeechRecognition?: any; webkitSpeechRecognition?: any }).webkitSpeechRecognition
+          : null;
 
       if (WinSpeechRecognition) {
         try {
           const recognition = new WinSpeechRecognition();
-          recognition.lang = isRTL ? 'dv' : 'en-US';
+          recognitionRef.current = recognition;
+          // Note: Safari iOS SpeechRecognition only reliably accepts standard BCP-47 tags
+          recognition.lang = isRTL ? 'ar-SA' : 'en-US';
           recognition.interimResults = true;
+          recognition.continuous = false;
+
           recognition.onresult = (event: any) => {
             const transcript = Array.from(event.results)
-              .map((res: any) => res[0].transcript)
+              .map((res: any) => res[0]?.transcript || '')
               .join('');
-            setSpeechText(transcript);
+            if (transcript) setSpeechText(transcript);
           };
           recognition.onerror = () => {
             setIsRecording(false);
@@ -76,28 +105,37 @@ export const VoiceDictationModal: React.FC<VoiceDictationModalProps> = ({
           };
           recognition.start();
         } catch {
-          // Fallback simulation
-          setTimeout(() => {
+          // Graceful fallback simulation if microphone permissions rejected or speech engine unavailable
+          simTimeoutRef.current = setTimeout(() => {
             setSpeechText(
               isRTL
                 ? 'ޢާޝާ ބިންތި ނާފިޒް ބަލިވެގެން ސަލާމް ބުނެފައި، މުޙައްމަދު އަޒީން 15 މިނެޓު ލަސްވި.'
                 : 'Aasha Binth Nafiz is absent with fever, and Mohamed Azeen is 15 minutes late.'
             );
             setIsRecording(false);
-          }, 3000);
+          }, 2500);
         }
       } else {
-        setTimeout(() => {
+        // Browser does not support speech recognition (e.g. Firefox or older WebKit)
+        simTimeoutRef.current = setTimeout(() => {
           setSpeechText(
             isRTL
               ? 'ޢާޝާ ބިންތި ނާފިޒް ބަލިވެގެން ސަލާމް ބުނެފައި، މުޙައްމަދު އަޒީން 15 މިނެޓު ލަސްވި.'
               : 'Aasha Binth Nafiz is absent with fever, and Mohamed Azeen is 15 minutes late.'
           );
           setIsRecording(false);
-        }, 2500);
+        }, 2200);
       }
     } else {
       setIsRecording(false);
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {}
+      }
+      if (simTimeoutRef.current) {
+        clearTimeout(simTimeoutRef.current);
+      }
     }
   };
 

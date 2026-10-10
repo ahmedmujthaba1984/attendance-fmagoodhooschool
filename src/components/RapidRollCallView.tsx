@@ -44,6 +44,7 @@ import {
   checkSessionMarkingEligibility,
   getMaldivesNow,
 } from '../utils/sessionTimingsHelper';
+import { safeHapticVibrate } from '../utils/browserUtils';
 
 const ALL_GRADES_LIST: (GradeLevel | 'ALL')[] = [
   'ALL',
@@ -179,13 +180,9 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
     );
   }, [students, localSearch]);
 
-  // Trigger tactile vibration on mobile
+  // Trigger tactile vibration on mobile (safely handled across Safari iOS, Android, and Desktop)
   const triggerHaptic = (ms = 25) => {
-    if (typeof window !== 'undefined' && 'vibrate' in navigator) {
-      try {
-        navigator.vibrate(ms);
-      } catch {}
-    }
+    safeHapticVibrate(ms);
   };
 
   // Clamp index if student list changes
@@ -1791,6 +1788,78 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* 8. Mobile Persistent Floating Action Bar (guarantees Timings & View Toggle always accessible) */}
+      <div className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-30 px-3.5 py-2.5 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-lg flex items-center justify-between md:hidden">
+        <div>
+          <div className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+            <span>{selectedGrade === 'ALL' ? (isRTL ? 'ހުރިހާ ގްރޭޑެއް' : 'All Classes') : selectedGrade}</span>
+            <span className="text-slate-300">•</span>
+            <span className="text-slate-600 font-semibold">{counts.total} {isRTL ? 'ދަރިވަރުން' : 'Students'}</span>
+          </div>
+          <div className="text-[11px] font-bold text-slate-500 flex items-center gap-1.5 mt-0.5">
+            <span className="text-emerald-700">{counts.present} {t.present}</span>
+            <span>•</span>
+            <span className="text-amber-700">{counts.late} {t.late}</span>
+            <span>•</span>
+            <span className="text-rose-700">{counts.absent} {t.absent}</span>
+            {counts.unmarked > 0 && (
+              <>
+                <span>•</span>
+                <span className="text-sky-600 font-black">{counts.unmarked} {isRTL ? 'ބާކީ' : 'left'}</span>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          {/* Direct Session Timings */}
+          {onOpenTimingsModal && (
+            <button
+              type="button"
+              id="rapid-dock-timings-btn"
+              onClick={onOpenTimingsModal}
+              className={`px-2.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1 min-h-[40px] shadow-2xs border ${
+                effectiveTimings.isTemporary
+                  ? 'bg-amber-500 text-white border-amber-600'
+                  : 'bg-teal-50 hover:bg-teal-100 text-teal-900 border-teal-200'
+              }`}
+              title={isRTL ? 'ސެޝަން ވަގުތުތައް ބަދަލުކުރުން' : 'Configure Session Timings & Duration'}
+            >
+              <Clock className="w-3.5 h-3.5 text-teal-700 shrink-0" />
+              <span className="hidden xs:inline">{isRTL ? 'ގަޑި' : 'Timings'}</span>
+            </button>
+          )}
+
+          {/* Switch to Standard View */}
+          <button
+            type="button"
+            id="rapid-dock-switch-cards-btn"
+            onClick={onSwitchToCards}
+            className="px-2.5 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1 min-h-[40px] shadow-2xs bg-slate-900 hover:bg-slate-800 text-white active:scale-95"
+            title={isRTL ? 'ސްޓޭންޑަރޑް ހާޒިރީ މެޓްރިކްސްއަށް ބަދަލުވުން' : 'Switch to standard attendance matrix view'}
+          >
+            <LayoutGrid className="w-3.5 h-3.5 text-teal-300 shrink-0" />
+            <span className="hidden xs:inline">{isRTL ? 'ރޮސްޓަރ' : 'Standard'}</span>
+          </button>
+
+          {/* Quick Bulk Mark Present or Submit */}
+          {counts.unmarked > 0 && !isSchoolClosed && isMarkingAllowed && (
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic(30);
+                onBulkMarkPresent(true);
+              }}
+              className="px-2.5 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1 min-h-[40px] shadow-2xs bg-emerald-600 hover:bg-emerald-700 text-white active:scale-95"
+              title={isRTL ? 'ބާކީ ތިބި ކުދިން ޙާޟިރުކުރޭ' : 'Mark Remaining Present'}
+            >
+              <CheckCheck className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden xs:inline">{isRTL ? 'ހުރިހާ' : 'All'}</span>
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

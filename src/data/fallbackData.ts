@@ -4,6 +4,7 @@ import rawCalendar from '../../server/calendarData.json';
 import rawTermDates from '../../server/termDates.json';
 import rawPasswords from '../../server/staffPasswords.json';
 import { User, Student, AcademicCalendarDay, TermDurationConfig } from '../types';
+import { safeLocalStorage, safeJsonParse } from '../utils/browserUtils';
 
 const LOCAL_PASSWORDS_KEY = 'moe_staff_custom_passwords';
 
@@ -14,7 +15,7 @@ export function hasStaffLocalCustomPassword(email: string): boolean {
 
   // 1. Check client local storage custom passwords
   try {
-    const custom = JSON.parse(localStorage.getItem(LOCAL_PASSWORDS_KEY) || '{}');
+    const custom = safeJsonParse<Record<string, string>>(safeLocalStorage.getItem(LOCAL_PASSWORDS_KEY), {});
     if (custom[cleanEmail] && String(custom[cleanEmail]).trim() !== '1234') {
       return true;
     }
@@ -64,7 +65,7 @@ export function getStaffLocalPassword(email: string): string {
 
   // 1. Check client local storage
   try {
-    const custom = JSON.parse(localStorage.getItem(LOCAL_PASSWORDS_KEY) || '{}');
+    const custom = safeJsonParse<Record<string, string>>(safeLocalStorage.getItem(LOCAL_PASSWORDS_KEY), {});
     if (custom[cleanEmail]) {
       return String(custom[cleanEmail]).trim();
     }
@@ -89,8 +90,8 @@ export function setStaffLocalPassword(email: string, newPass: string): void {
   if (!email) return;
   const cleanEmail = email.toLowerCase().trim();
   try {
-    const custom = JSON.parse(localStorage.getItem(LOCAL_PASSWORDS_KEY) || '{}');
+    const custom = safeJsonParse<Record<string, string>>(safeLocalStorage.getItem(LOCAL_PASSWORDS_KEY), {});
     custom[cleanEmail] = String(newPass).trim();
-    localStorage.setItem(LOCAL_PASSWORDS_KEY, JSON.stringify(custom));
+    safeLocalStorage.setItem(LOCAL_PASSWORDS_KEY, JSON.stringify(custom));
   } catch {}
 }

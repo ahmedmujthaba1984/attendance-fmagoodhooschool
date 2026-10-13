@@ -1763,8 +1763,10 @@ function MainApp() {
 
       {/* Main Container */}
       <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 pb-36 sm:pb-32 md:pb-8 space-y-5 sm:space-y-6">
-        {/* Real-time Dashboard KPI Bar (visible across portal) */}
-        <DashboardStats stats={stats} />
+        {/* Real-time Dashboard KPI Bar (visible across portal on desktop; hidden on mobile attendance to prioritize instant roll call) */}
+        <div className={activeTab === 'attendance' ? 'hidden md:block' : 'block'}>
+          <DashboardStats stats={stats} />
+        </div>
 
         {/* View Switcher */}
         {activeTab === 'extra_classes' && (

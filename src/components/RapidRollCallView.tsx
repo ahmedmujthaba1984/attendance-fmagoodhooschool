@@ -44,7 +44,7 @@ import {
   checkSessionMarkingEligibility,
   getMaldivesNow,
 } from '../utils/sessionTimingsHelper';
-import { safeHapticVibrate } from '../utils/browserUtils';
+import { safeHapticVibrate, safeLocalStorage } from '../utils/browserUtils';
 
 const ALL_GRADES_LIST: (GradeLevel | 'ALL')[] = [
   'ALL',
@@ -123,8 +123,21 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
 }) => {
   const { t, isRTL } = useLanguage();
 
-  // 3 Easy Templates: Card (One-by-one focus), Sheet (Full class roster table), Grid (Compact cards grid)
-  const [templateMode, setTemplateMode] = useState<RapidTemplateMode>('sheet');
+  // 3 Easy Templates: Grid (Touch Cards Roster - default for mobile), Card (One-by-one focus), Sheet (Full class roster table)
+  const [templateMode, setTemplateMode] = useState<RapidTemplateMode>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = safeLocalStorage.getItem('moe_rapid_template_mode');
+      if (saved === 'grid' || saved === 'card' || saved === 'sheet') return saved as RapidTemplateMode;
+    }
+    return 'grid'; // Mobile-first friendly touch cards
+  });
+
+  const handleTemplateChange = (mode: RapidTemplateMode) => {
+    setTemplateMode(mode);
+    if (typeof window !== 'undefined') {
+      safeLocalStorage.setItem('moe_rapid_template_mode', mode);
+    }
+  };
   const [currentIndex, setCurrentIndex] = useState(0);
   const [localSearch, setLocalSearch] = useState('');
   const [showLateOptions, setShowLateOptions] = useState(false);
@@ -359,253 +372,149 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
 
   return (
     <div className="space-y-4 animate-in fade-in duration-200">
-      {/* 0. Mobile Attendance Rapid Roll Call Privilege Banner */}
-      {isPrivilegedUser && (
-        <div className="p-3.5 sm:p-4 rounded-2xl bg-linear-to-r from-amber-500/15 via-teal-500/10 to-emerald-500/15 border-2 border-amber-400/70 shadow-xs flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 via-orange-500 to-amber-600 text-white flex items-center justify-center font-black shadow-sm shrink-0">
+      {/* UNIFIED STREAMLINED MOBILE & RAPID ROLL CALL HEADER */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 p-3 sm:p-4 shadow-xs space-y-3">
+        {/* Row 1: App Header, Active Staff & Template Switcher */}
+        <div className="flex flex-wrap items-center justify-between gap-2.5 pb-2.5 border-b border-slate-100">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-linear-to-tr from-amber-500 via-orange-500 to-amber-600 text-white flex items-center justify-center font-black shadow-xs shrink-0">
               <Zap className="w-5 h-5 fill-white text-white" />
             </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-black text-amber-950 uppercase tracking-wide">
-                  {isRTL ? 'ހަލުވި ހާޒިރީގެ އިމްތިޔާޒު އެކްޓިވް' : 'Rapid Roll Call Attendance Active'}
-                </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-amber-950 shadow-2xs">
-                  RAPID ROLL CALL
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <h2 className="text-sm sm:text-base font-black text-slate-900 tracking-tight">
+                  {isRTL ? 'ހަލުވި ހާޒިރީ' : 'Roll Call'}
+                </h2>
+                <span className="px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300 shrink-0">
+                  RAPID
                 </span>
                 {currentUser && (
-                  <span className="text-[11px] font-bold text-teal-900 bg-white/90 px-2 py-0.5 rounded-lg border border-teal-200 shadow-2xs">
-                    {isRTL && currentUser.fullNameDhivehi ? currentUser.fullNameDhivehi : currentUser.fullName}
-                    {currentUser.assignedGrade && ` • ${currentUser.assignedGrade}`}
+                  <span className="text-[11px] font-bold text-teal-900 bg-teal-50 px-2 py-0.5 rounded-lg border border-teal-200/80 shadow-2xs flex items-center gap-1 truncate">
+                    <span className="truncate">{isRTL && currentUser.fullNameDhivehi ? currentUser.fullNameDhivehi : currentUser.fullName}</span>
+                    {currentUser.assignedGrade && (
+                      <span className="font-black text-amber-700 bg-amber-100/90 px-1 py-0.2 rounded text-[10px] shrink-0">
+                        ★ {currentUser.assignedGrade}
+                      </span>
+                    )}
+                  </span>
+                )}
+                {effectiveTimings.isTemporary && (
+                  <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-500 text-white shadow-2xs shrink-0">
+                    {isRTL ? 'ވަގުތީ ގަޑި' : 'Temporary'}
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-amber-900/90 mt-0.5 leading-snug">
-                {isRTL
-                  ? 'ހާޒިރީ ފުރުމަށް ހަލުވި އިމްތިޔާޒު ދެވިފައި: 1-ކްލިކުން ކުދިން ޙާޟިރުކުރުމާއި، ސެޝަން ގަޑިތައް ބެލެހެއްޓުން'
-                  : 'Fast 1-tap touch roll call, instant class roster switching, and unhindered attendance recording.'}
-              </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 ml-auto flex-wrap">
-            {onOpenTimingsModal && (
+          {/* Quick Header Actions: 3 Templates, Timings & Full Matrix Toggle */}
+          <div className="flex items-center gap-1.5 flex-wrap ml-auto">
+            {/* 3 Template Modes */}
+            <div className="inline-flex p-0.5 bg-slate-100 rounded-xl border border-slate-200 text-xs font-bold shadow-2xs">
               <button
                 type="button"
-                id="privilege-banner-timings-btn"
-                onClick={onOpenTimingsModal}
-                className="px-3 py-1.5 rounded-xl bg-white hover:bg-teal-50 text-teal-900 text-xs font-bold border border-teal-300 shadow-2xs flex items-center gap-1.5 cursor-pointer transition"
-                title={isRTL ? 'ސެޝަން ވަގުތުތައް ބަދަލުކުރުން' : 'Configure Session Timings & Duration'}
-              >
-                <Clock className="w-3.5 h-3.5 text-teal-700" />
-                <span>{isRTL ? 'ސެޝަން ގަޑިތައް' : 'Session Timings'}</span>
-                {effectiveTimings.isTemporary && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                )}
-              </button>
-            )}
-
-            <button
-              type="button"
-              id="privilege-banner-switch-cards-btn"
-              onClick={onSwitchToCards}
-              className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-2xs flex items-center gap-1.5 cursor-pointer transition active:scale-95"
-              title={isRTL ? 'ސްޓޭންޑަރޑް ހާޒިރީ މެޓްރިކްސްއަށް ބަދަލުވުން' : 'Switch to standard attendance matrix view'}
-            >
-              <LayoutGrid className="w-3.5 h-3.5 text-teal-300" />
-              <span>{isRTL ? 'ރޮސްޓަރ މެޓްރިކްސް' : 'Standard View'}</span>
-            </button>
-
-            {counts.unmarked > 0 && !isSchoolClosed && isMarkingAllowed && (
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic(30);
-                  onBulkMarkPresent(true);
-                }}
-                className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-black flex items-center gap-1.5 shadow-xs cursor-pointer transition active:scale-95"
-                title={isRTL ? 'ބާކީ ތިބި ކުދިން ޙާޟިރުކުރޭ' : 'Mark Remaining Present'}
-              >
-                <CheckCheck className="w-4 h-4" />
-                <span>{isRTL ? `ބާކީ ${counts.unmarked} ކުދިން ޙާޟިރު` : `Mark ${counts.unmarked} Present`}</span>
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* 1. TOP CONTROL BAR: Header, Template Selector, and Back Button */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 via-orange-500 to-amber-600 text-white flex items-center justify-center shadow-md shrink-0">
-              <Zap className="w-5 h-5 fill-white text-white" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
-                  {isRTL ? 'ހަލުވި ހާޒިރީ (Rapid Roll Call)' : 'Rapid Roll Call'}
-                </h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-300">
-                  FAST
-                </span>
-                {effectiveTimings.isTemporary && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-white shadow-2xs">
-                    {isRTL ? 'ވަގުތީ ގަޑި' : 'Temporary Timings'}
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                {isRTL
-                  ? 'ކްލާސް ޚިޔާރުކުރައްވާ، ދަރިވަރުންގެ ނަމާއި ހާޒިރީ (ޙާޟިރު، ލަސް، ސަލާމް، ޣައިރު) ފަސޭހަ ޓެމްޕްލޭޓްތަކުން ފުރުން'
-                  : 'Clean easy templates to select grade class, view student names, and mark attendance (Present, Late, On Leave, Absent)'}
-              </p>
-            </div>
-          </div>
-
-          {/* Right Controls: 3 Easy Templates Selector & Return to Roster List */}
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Template Switcher: 3 Easy Templates */}
-            <div className="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200 text-xs font-bold shadow-2xs">
-              {/* Template 1: Focus Card */}
-              <button
-                type="button"
-                onClick={() => setTemplateMode('card')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition cursor-pointer ${
-                  templateMode === 'card'
-                    ? 'bg-white text-slate-900 shadow-xs font-black'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-                title={isRTL ? 'ކާޑު ޓެމްޕްލޭޓް: އެއް ކުއްޖަކަށްފަހު އަނެއް ކުއްޖާ' : 'Card Template: One-by-one focus card'}
-              >
-                <CreditCard className="w-3.5 h-3.5 text-amber-600" />
-                <span className="hidden xs:inline">{isRTL ? 'ކާޑު ޓެމްޕްލޭޓް' : 'Focus Card'}</span>
-                <span className="xs:hidden">{isRTL ? 'ކާޑު' : 'Card'}</span>
-              </button>
-
-              {/* Template 2: Clean Sheet Table */}
-              <button
-                type="button"
-                onClick={() => setTemplateMode('sheet')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition cursor-pointer ${
-                  templateMode === 'sheet'
-                    ? 'bg-white text-slate-900 shadow-xs font-black'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-                title={isRTL ? 'ޝީޓް ޓެމްޕްލޭޓް: ކްލާހުގެ ހުރިހާ ދަރިވަރުންގެ ލިސްޓް' : 'Class Sheet: Full class attendance table'}
-              >
-                <TableProperties className="w-3.5 h-3.5 text-teal-600" />
-                <span className="hidden xs:inline">{isRTL ? 'ޝީޓް ޓެމްޕްލޭޓް' : 'Class Sheet'}</span>
-                <span className="xs:hidden">{isRTL ? 'ޝީޓް' : 'Sheet'}</span>
-              </button>
-
-              {/* Template 3: Quick Grid Cards */}
-              <button
-                type="button"
-                onClick={() => setTemplateMode('grid')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                onClick={() => handleTemplateChange('grid')}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg transition cursor-pointer ${
                   templateMode === 'grid'
                     ? 'bg-white text-slate-900 shadow-xs font-black'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
-                title={isRTL ? 'ގްރިޑް ޓެމްޕްލޭޓް: ކުދިންގެ ކާޑުތައް އެއްފަހަރާ' : 'Quick Grid: Visual card grid for the whole class'}
+                title={isRTL ? 'ކާޑުތައް: ކުދިންގެ ފަސޭހަ ކާޑުތައް' : 'Roster Cards (Touch friendly)'}
               >
                 <Grid3X3 className="w-3.5 h-3.5 text-sky-600" />
-                <span className="hidden xs:inline">{isRTL ? 'ގްރިޑް ޓެމްޕްލޭޓް' : 'Quick Grid'}</span>
-                <span className="xs:hidden">{isRTL ? 'ގްރިޑް' : 'Grid'}</span>
+                <span className="text-[11px]">{isRTL ? 'ކާޑު' : 'Cards'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleTemplateChange('card')}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg transition cursor-pointer ${
+                  templateMode === 'card'
+                    ? 'bg-white text-slate-900 shadow-xs font-black'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+                title={isRTL ? '1-ބައި-1: އެއް ދަރިވަރަކަށްފަހު އަނެއް ދަރިވަރު' : '1-by-1 Focus Card'}
+              >
+                <CreditCard className="w-3.5 h-3.5 text-amber-600" />
+                <span className="text-[11px]">{isRTL ? '1-ބައި-1' : '1-by-1'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleTemplateChange('sheet')}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg transition cursor-pointer ${
+                  templateMode === 'sheet'
+                    ? 'bg-white text-slate-900 shadow-xs font-black'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+                title={isRTL ? 'ތާވަލު: ކްލާހުގެ ޝީޓް' : 'Class Sheet Table'}
+              >
+                <TableProperties className="w-3.5 h-3.5 text-teal-600" />
+                <span className="text-[11px]">{isRTL ? 'ތާވަލު' : 'Sheet'}</span>
               </button>
             </div>
 
-            {/* Configure Session Timings Button */}
+            {/* Timings Modal Button */}
             {onOpenTimingsModal && (
               <button
                 type="button"
                 id="rapid-session-timings-btn"
                 onClick={onOpenTimingsModal}
-                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer shadow-2xs border ${
+                className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shadow-2xs border ${
                   effectiveTimings.isTemporary
                     ? 'bg-amber-500 text-white hover:bg-amber-600 border-amber-600 ring-2 ring-amber-300'
                     : 'bg-teal-50 hover:bg-teal-100 text-teal-900 border-teal-200'
                 }`}
-                title={
-                  effectiveTimings.isTemporary
-                    ? `Temporary schedule active: ${effectiveTimings.override?.reason || 'Special hours'}`
-                    : (isRTL ? 'ސެޝަން ވަގުތުތައް ބަދަލުކުރުން' : 'Configure Session Timings & Duration')
-                }
+                title={isRTL ? 'ސެޝަން ވަގުތުތައް ބަދަލުކުރުން' : 'Session Timings'}
               >
                 <Clock className="w-3.5 h-3.5 text-teal-700" />
-                <span>{isRTL ? 'ސެޝަން ގަޑިތައް' : 'Session Timings'}</span>
+                <span className="text-[11px] hidden xs:inline">{isRTL ? 'ގަޑި' : 'Timings'}</span>
                 {effectiveTimings.isTemporary && (
                   <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                 )}
               </button>
             )}
 
-            {/* Return to Full Standard Matrix View */}
+            {/* Standard Full Matrix Toggle */}
             <button
               type="button"
               id="rapid-switch-standard-matrix-btn"
               onClick={onSwitchToCards}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-black shadow-xs transition cursor-pointer active:scale-95"
-              title={isRTL ? 'ސްޓޭންޑަރޑް ހާޒިރީ މެޓްރިކްސްއަށް ބަދަލުވުން' : 'Switch to standard attendance matrix view'}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-2xs transition cursor-pointer active:scale-95"
+              title={isRTL ? 'ސްޓޭންޑަރޑް މެޓްރިކްސްއަށް ބަދަލުވުން' : 'Switch to standard full view'}
             >
               <LayoutGrid className="w-3.5 h-3.5 text-teal-300" />
-              <span>{isRTL ? 'ރޮސްޓަރ މެޓްރިކްސް' : 'Standard View'}</span>
+              <span className="text-[11px] hidden xs:inline">{isRTL ? 'ފުރިހަމަ' : 'Full'}</span>
             </button>
           </div>
         </div>
 
-        {/* 2. SELECT GRADE CLASS: Clean Prominent Selector with Pills & Quick Dropdown */}
-        <div className="space-y-2">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
-                <Users className="w-4 h-4 text-sky-600" />
-                <span>{isRTL ? 'ކްލާސް ޚިޔާރުކުރައްވާ (Select Grade Class):' : 'Select Grade Class:'}</span>
-              </span>
-              <span className="px-2 py-0.5 rounded-md bg-sky-50 text-sky-900 text-xs font-mono font-bold border border-sky-200">
+        {/* Row 2: Grade / Class Selector & Filter Search */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-slate-800">
+              <Users className="w-3.5 h-3.5 text-sky-600" />
+              <span>{isRTL ? 'ކްލާސް:' : 'Class:'}</span>
+              <span className="px-2 py-0.5 rounded-md bg-sky-50 text-sky-900 font-mono font-bold border border-sky-200">
                 {selectedGrade === 'ALL' ? (isRTL ? 'ހުރިހާ ގްރޭޑެއް' : 'All Classes') : selectedGrade}
               </span>
             </div>
 
-            {/* Quick Mobile/Tablet Grade Dropdown */}
-            <div className="flex items-center gap-2">
-              {onSelectGrade && (
-                <div className="relative inline-block sm:hidden">
-                  <select
-                    value={selectedGrade}
-                    onChange={(e) => onSelectGrade(e.target.value as GradeLevel | 'ALL')}
-                    aria-label={isRTL ? 'ކްލާސް ޚިޔާރުކުރައްވާ' : 'Select Grade Class'}
-                    className="appearance-none pl-3 pr-8 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-800 border border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer"
-                  >
-                    <option value="ALL">{isRTL ? 'ހުރިހާ ގްރޭޑެއް (All Grades)' : 'All Grades (215)'}</option>
-                    {ALL_GRADES_LIST.filter((g) => g !== 'ALL').map((grade) => (
-                      <option key={grade} value={grade}>
-                        {grade} ({gradeCounts.get(grade) || 0})
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-              )}
-
-              {/* Search within Class */}
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <input
-                  type="text"
-                  value={localSearch}
-                  onChange={(e) => setLocalSearch(e.target.value)}
-                  placeholder={isRTL ? 'ދަރިވަރު ހޯއްދަވާ...' : 'Filter student...'}
-                  className="pl-8 pr-3 py-1 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 w-36 sm:w-48"
-                />
-              </div>
+            {/* Quick Filter Search */}
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={localSearch}
+                onChange={(e) => setLocalSearch(e.target.value)}
+                placeholder={isRTL ? 'ދަރިވަރު ހޯއްދަވާ...' : 'Filter student...'}
+                className="pl-8 pr-3 py-1 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 w-32 sm:w-44"
+              />
             </div>
           </div>
 
-          {/* Grade Class Pills Row */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 pt-0.5 scrollbar-none touch-pan-x -mx-1 px-1">
+          {/* Swipeable Class Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5 scrollbar-none touch-pan-x -mx-1 px-1">
             {ALL_GRADES_LIST.map((grade) => {
               const isAll = grade === 'ALL';
               const isSelected = isAll
@@ -619,7 +528,7 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                   key={grade}
                   type="button"
                   onClick={() => onSelectGrade && onSelectGrade(grade)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 border flex items-center gap-1.5 ${
+                  className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 border flex items-center gap-1.5 ${
                     isSelected
                       ? 'bg-sky-600 text-white border-sky-600 shadow-sm ring-2 ring-sky-400/30 font-black'
                       : isAssigned
@@ -628,12 +537,7 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                   }`}
                 >
                   {isAssigned && <Star className="w-3 h-3 text-amber-500 fill-amber-500 shrink-0" />}
-                  <span>{isAll ? (isRTL ? 'ހުރިހާ ގްރޭޑެއް' : 'All Grades') : grade}</span>
-                  {isAssigned && !isSelected && (
-                    <span className="text-[9px] px-1 py-0.2 rounded bg-amber-200 text-amber-900 font-black">
-                      {isRTL ? 'އަޅުގަނޑުގެ ކްލާސް' : 'My Class'}
-                    </span>
-                  )}
+                  <span>{isAll ? (isRTL ? 'ހުރިހާ' : 'All') : grade}</span>
                   <span
                     className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-black ${
                       isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
@@ -647,76 +551,16 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
           </div>
         </div>
 
-        {/* Timing / Future Date Lock Banner */}
-        {!isSchoolClosed && !sessionEligibility.allowed && (
-          <div
-            className={`p-3.5 rounded-2xl border-2 shadow-xs flex items-center justify-between gap-3 text-xs ${
-              sessionEligibility.reason === 'FUTURE_DATE'
-                ? 'bg-amber-50 border-amber-300 text-amber-950'
-                : 'bg-sky-50 border-sky-300 text-sky-950'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <div
-                className={`w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0 shadow-xs ${
-                  sessionEligibility.reason === 'FUTURE_DATE' ? 'bg-amber-600' : 'bg-sky-600'
-                }`}
-              >
-                <Lock className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="flex flex-wrap items-center gap-2 font-extrabold">
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                      sessionEligibility.reason === 'FUTURE_DATE' ? 'bg-amber-200 text-amber-900' : 'bg-sky-200 text-sky-900'
-                    }`}
-                  >
-                    {sessionEligibility.reason === 'FUTURE_DATE'
-                      ? (isRTL ? 'ކުރިއަށް އޮތް ތާރީޚެއް • ހާޒިރީ ބަންދު' : 'Future Date • Roll Call Locked')
-                      : (isRTL ? 'ސެޝަން އަދި ނުފެށޭ • ހާޒިރީ ބަންދު' : 'Session Not Started • Roll Call Locked')}
-                  </span>
-                  <span className="font-mono text-slate-600 text-[11px]">
-                    {sessionEligibility.reason === 'FUTURE_DATE' ? selectedDate : `Starts ${sessionEligibility.startTime}`}
-                  </span>
-                </div>
-                <p className="text-[11px] mt-0.5 opacity-90">
-                  {isRTL ? sessionEligibility.messageDhivehi : sessionEligibility.message}
-                </p>
-                {isPrivilegedUser && sessionEligibility.reason === 'SESSION_NOT_STARTED' && (
-                  <p className="text-[11px] font-bold text-amber-900 mt-1 flex items-center gap-1 bg-amber-100/90 px-2 py-0.5 rounded-md border border-amber-300/60">
-                    <Zap className="w-3.5 h-3.5 text-amber-600 fill-amber-600 shrink-0" />
-                    <span>
-                      {isRTL
-                        ? 'އަތްމަތީ ފޯނުން ހާޒިރީ ފުރުމުގެ އިމްތިޔާޒު ލިބިފައިވާތީ މިހާރުވެސް ހާޒިރީ ފުރޭނެއެވެ.'
-                        : 'Mobile Rapid Roll Call privilege active: early roll call attendance marking unlocked.'}
-                    </span>
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {sessionEligibility.reason === 'FUTURE_DATE' && onSelectDate && (
-              <button
-                type="button"
-                onClick={() => onSelectDate(getMaldivesNow().dateStr)}
-                className="px-3 py-1.5 rounded-xl bg-white border-2 border-amber-300 text-amber-900 font-extrabold hover:bg-amber-100 transition shrink-0 cursor-pointer shadow-2xs"
-              >
-                {isRTL ? 'މިއަދަށް ދިއުމަށް' : 'Go to Today'}
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* 3. SESSION, DATE & SUMMARY COUNTERS */}
-        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-slate-100 text-xs">
-          {/* Active Session & Date */}
-          <div className="flex flex-wrap items-center gap-2">
+        {/* Row 3: Session, Date, Attendance Counters & 1-Tap Action */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {/* Session Switcher Pills */}
             {onSelectSession && (
-              <div className="inline-flex p-0.5 rounded-lg bg-slate-100 border border-slate-200 text-xs font-bold">
+              <div className="inline-flex p-0.5 rounded-xl bg-slate-100 border border-slate-200 text-xs font-bold shadow-2xs">
                 <button
                   type="button"
                   onClick={() => onSelectSession('MORNING_BEFORE_BREAK')}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-md transition cursor-pointer ${
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg transition cursor-pointer ${
                     isMorning
                       ? 'bg-amber-500 text-white shadow-2xs font-black'
                       : 'text-slate-600 hover:text-slate-900'
@@ -725,13 +569,13 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                   <Sunrise className="w-3.5 h-3.5" />
                   <span>{t.morningSessionShort}</span>
                   <span className="text-[10px] font-mono opacity-85 hidden sm:inline">
-                    ({effectiveTimings.morning.startTime}-{effectiveTimings.morning.endTime})
+                    ({effectiveTimings.morning.startTime})
                   </span>
                 </button>
                 <button
                   type="button"
                   onClick={() => onSelectSession('POST_BREAK')}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-md transition cursor-pointer ${
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg transition cursor-pointer ${
                     !isMorning
                       ? 'bg-teal-600 text-white shadow-2xs font-black'
                       : 'text-slate-600 hover:text-slate-900'
@@ -740,41 +584,90 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                   <Sunset className="w-3.5 h-3.5" />
                   <span>{t.postBreakSessionShort}</span>
                   <span className="text-[10px] font-mono opacity-85 hidden sm:inline">
-                    ({effectiveTimings.afternoon.startTime}-{effectiveTimings.afternoon.endTime})
+                    ({effectiveTimings.afternoon.startTime})
                   </span>
                 </button>
               </div>
             )}
 
+            {/* Date Picker with Quick Prev/Today/Next */}
             {onSelectDate && (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 font-mono text-xs font-bold">
-                <Calendar className="w-3.5 h-3.5 text-sky-700" />
-                <input
-                  type="date"
-                  value={selectedDate}
-                  max={maldivesToday}
-                  onChange={(e) => onSelectDate(e.target.value)}
-                  aria-label={isRTL ? 'ތާރީޚް ޚިޔާރުކުރައްވާ' : 'Select Date'}
-                  className="bg-transparent text-xs font-mono font-bold text-slate-900 focus:outline-none cursor-pointer"
-                />
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    try {
+                      const d = new Date(selectedDate + 'T00:00:00Z');
+                      d.setUTCDate(d.getUTCDate() - 1);
+                      onSelectDate(d.toISOString().slice(0, 10));
+                    } catch {}
+                  }}
+                  className="p-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 cursor-pointer"
+                  title={isRTL ? 'ކުރީ ދުވަސް' : 'Previous day'}
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+
+                <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 font-mono text-xs font-bold">
+                  <Calendar className="w-3.5 h-3.5 text-sky-700 shrink-0" />
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    max={maldivesToday}
+                    onChange={(e) => onSelectDate(e.target.value)}
+                    aria-label={isRTL ? 'ތާރީޚް ޚިޔާރުކުރައްވާ' : 'Select Date'}
+                    className="bg-transparent text-xs font-mono font-bold text-slate-900 focus:outline-none cursor-pointer"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    try {
+                      const d = new Date(selectedDate + 'T00:00:00Z');
+                      d.setUTCDate(d.getUTCDate() + 1);
+                      const next = d.toISOString().slice(0, 10);
+                      if (next <= maldivesToday) onSelectDate(next);
+                    } catch {}
+                  }}
+                  disabled={selectedDate >= maldivesToday}
+                  className={`p-1.5 rounded-lg border border-slate-200 text-slate-700 ${
+                    selectedDate >= maldivesToday
+                      ? 'opacity-40 cursor-not-allowed bg-slate-50'
+                      : 'bg-slate-50 hover:bg-slate-100 cursor-pointer'
+                  }`}
+                  title={isRTL ? 'އަނެއް ދުވަސް' : 'Next day'}
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+
+                {selectedDate !== maldivesToday && (
+                  <button
+                    type="button"
+                    onClick={() => onSelectDate(maldivesToday)}
+                    className="px-2 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-900 border border-teal-200 text-[11px] font-bold cursor-pointer shrink-0"
+                  >
+                    {isRTL ? 'މިއަދު' : 'Today'}
+                  </button>
+                )}
               </div>
             )}
           </div>
 
-          {/* Attendance Counters & Bulk Action */}
-          <div className="flex flex-wrap items-center gap-2 ml-auto">
-            <div className="flex items-center gap-1.5 text-xs font-bold font-mono">
-              <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                ✓ {counts.present} {t.present}
+          {/* Quick Attendance Counters & 1-Tap Bulk Action */}
+          <div className="flex items-center gap-2 ml-auto flex-wrap">
+            <div className="flex items-center gap-1 text-[11px] font-bold font-mono">
+              <span className="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                ✓ {counts.present}
               </span>
-              <span className="text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
-                ⏰ {counts.late} {t.late}
+              <span className="text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                ⏰ {counts.late}
               </span>
-              <span className="text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200">
-                🏖️ {counts.leave} {t.leave}
+              <span className="text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
+                🏖️ {counts.leave}
               </span>
-              <span className="text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
-                ✕ {counts.absent} {t.absent}
+              <span className="text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
+                ✕ {counts.absent}
               </span>
             </div>
 
@@ -785,101 +678,39 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                   triggerHaptic(30);
                   onBulkMarkPresent(true);
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs transition cursor-pointer shadow-xs"
-                title="Mark all remaining uncalled students as Present"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black text-xs transition cursor-pointer shadow-xs active:scale-95"
+                title={isRTL ? 'ބާކީ ތިބި ކުދިން ޙާޟިރުކުރޭ' : 'Mark Remaining Present'}
               >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>{isRTL ? `ބާކީ ${counts.unmarked} ކުދިން ޙާޟިރުކުރޭ` : `Mark ${counts.unmarked} Present`}</span>
+                <CheckCheck className="w-3.5 h-3.5" />
+                <span>{isRTL ? `ބާކީ ${counts.unmarked} ޙާޟިރު` : `Mark ${counts.unmarked} Present`}</span>
               </button>
             )}
           </div>
         </div>
 
-        {/* Template Guide Banner */}
-        <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] text-slate-600">
-          <div className="flex items-center gap-1.5">
-            <Info className="w-3.5 h-3.5 text-sky-600 shrink-0" />
-            <span>
-              {templateMode === 'card' &&
-                (isRTL
-                  ? 'ކާޑު ޓެމްޕްލޭޓް: ކޮންމެ ދަރިވަރަކަށް ވަކިން ބޮޑެތި ބަޓަންތަކުން ހާޒިރީ ފުރުން (އޮޓޯއިން އަނެއް ދަރިވަރަށް ދާނެ).'
-                  : 'Focus Card Template: Large tactile buttons for one student at a time with automatic advance to next student.')}
-              {templateMode === 'sheet' &&
-                (isRTL
-                  ? 'ޝީޓް ޓެމްޕްލޭޓް: ކްލާހުގެ ހުރިހާ ދަރިވަރުންގެ ނަމާއި ހާޒިރީ (ޙާޟިރު، ލަސް، ސަލާމް، ޣައިރު) 1-ޓެޕުން ފުރޭ ތާވަލު.'
-                  : 'Class Sheet Template: Clean row-by-row table showing student names and 4 instant attendance buttons (Present, Late, On Leave, Absent).')}
-              {templateMode === 'grid' &&
-                (isRTL
-                  ? 'ގްރިޑް ޓެމްޕްލޭޓް: ކްލާހުގެ ހުރިހާ ދަރިވަރުންގެ ކާޑުތައް އެއްފަހަރާ ފެންނަ ގޮތަށް 1-ޓެޕުން ހާޒިރީ ފުރުން.'
-                  : 'Quick Grid Template: Visual card tiles for every student with direct 1-tap attendance marking.')}
-            </span>
-          </div>
-          <span className="font-mono font-bold text-slate-500 shrink-0">
-            {counts.marked}/{counts.total} {isRTL ? 'ފުރިފައި' : 'Marked'}
-          </span>
-        </div>
-
-        {/* Timing / Future Date Lock Banner */}
+        {/* Single Compact Timing / Future Lock Banner (Only shown when locked) */}
         {!isSchoolClosed && !sessionEligibility.allowed && (
           <div
             id="rapid-session-time-lock-banner"
-            className={`p-4 rounded-2xl border-2 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+            className={`p-3 rounded-xl border flex items-center justify-between gap-2.5 text-xs ${
               sessionEligibility.reason === 'FUTURE_DATE'
-                ? 'bg-linear-to-r from-amber-50 via-orange-50/80 to-amber-100/50 border-amber-300 text-amber-950'
-                : 'bg-linear-to-r from-sky-50 via-indigo-50/70 to-blue-50 border-sky-300 text-sky-950'
+                ? 'bg-amber-50 border-amber-300 text-amber-950'
+                : 'bg-sky-50 border-sky-300 text-sky-950'
             }`}
           >
-            <div className="flex items-start sm:items-center gap-3.5">
-              <div
-                className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-md ${
-                  sessionEligibility.reason === 'FUTURE_DATE'
-                    ? 'bg-amber-600 text-white'
-                    : 'bg-sky-600 text-white'
-                }`}
-              >
-                <Lock className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span
-                    className={`text-xs font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${
-                      sessionEligibility.reason === 'FUTURE_DATE'
-                        ? 'bg-amber-200 text-amber-900 border-amber-300'
-                        : 'bg-sky-200 text-sky-900 border-sky-300'
-                    }`}
-                  >
-                    {sessionEligibility.reason === 'FUTURE_DATE'
-                      ? (isRTL ? 'ކުރިއަށް އޮތް ތާރީޚެއް • ހާޒިރީ ބަންދު' : 'Future Date • Attendance Locked')
-                      : (isRTL ? 'ސެޝަން އަދި ނުފެށޭ • ހާޒިރީ ބަންދު' : 'Session Not Started • Attendance Locked')}
-                  </span>
-                  <span className="text-[11px] font-bold bg-white text-slate-700 px-2 py-0.5 rounded-md border border-slate-200">
-                    {selectedDate}
-                  </span>
-                  <span className="text-[11px] font-bold bg-white text-slate-600 px-2 py-0.5 rounded-md border border-slate-200">
-                    {sessionEligibility.currentTime}
-                  </span>
-                </div>
-                <h4 className="text-sm font-extrabold mt-1">
+            <div className="flex items-center gap-2 min-w-0">
+              <Lock className="w-4 h-4 text-amber-700 shrink-0" />
+              <div className="min-w-0">
+                <span className="font-extrabold">
                   {sessionEligibility.reason === 'FUTURE_DATE'
-                    ? (isRTL
-                        ? `ކުރިއަށް އޮތް ތާރީޚަކަށް (${selectedDate}) ހާޒިރީއެއް ނުޖެހޭނެއެވެ`
-                        : `Cannot mark attendance before date arrives (${selectedDate})`)
-                    : (isRTL
-                        ? `ސެޝަން އަދި ނުފެށެއެވެ (${sessionEligibility.startTime})`
-                        : `Session roll call only opens after start time (${sessionEligibility.startTime})`)}
-                </h4>
-                <p className="text-xs mt-0.5 leading-relaxed opacity-90">
-                  {isRTL ? sessionEligibility.messageDhivehi : sessionEligibility.message}
-                </p>
+                    ? (isRTL ? 'ކުރިއަށް އޮތް ތާރީޚެއް • ހާޒިރީ ބަންދު' : 'Future Date • Roll Call Locked')
+                    : (isRTL ? `ސެޝަން އަދި ނުފެށޭ (${sessionEligibility.startTime})` : `Session starts at ${sessionEligibility.startTime}`)}
+                </span>
                 {isPrivilegedUser && sessionEligibility.reason === 'SESSION_NOT_STARTED' && (
-                  <p className="text-xs font-bold text-amber-900 mt-1.5 flex items-center gap-1.5 bg-amber-100/90 px-2.5 py-1 rounded-lg border border-amber-300">
-                    <Zap className="w-4 h-4 text-amber-600 fill-amber-600 shrink-0" />
-                    <span>
-                      {isRTL
-                        ? 'އަތްމަތީ ފޯނުން ހާޒިރީ ފުރުމުގެ އިމްތިޔާޒު ލިބިފައިވާތީ މިހާރުވެސް ހާޒިރީ ފުރޭނެއެވެ.'
-                        : 'Mobile Rapid Roll Call privilege active: early roll call attendance marking unlocked.'}
-                    </span>
-                  </p>
+                  <span className="text-[11px] font-bold text-amber-900 ml-2 inline-flex items-center gap-1 bg-amber-100 px-1.5 py-0.2 rounded border border-amber-300">
+                    <Zap className="w-3 h-3 text-amber-600 fill-amber-600" />
+                    <span>{isRTL ? 'ހަލުވި ހާޒިރީ ހުޅުވިފައި' : 'Mobile Privilege Active'}</span>
+                  </span>
                 )}
               </div>
             </div>
@@ -887,10 +718,9 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
               <button
                 type="button"
                 onClick={() => onSelectDate(maldivesToday)}
-                className="inline-flex items-center justify-center gap-2 px-3 py-1.5 rounded-xl bg-white hover:bg-amber-100 text-amber-900 border-2 border-amber-300 text-xs font-bold transition shadow-xs cursor-pointer shrink-0"
+                className="px-2.5 py-1 rounded-lg bg-white border border-amber-300 text-amber-900 text-xs font-bold hover:bg-amber-100 cursor-pointer shrink-0"
               >
-                <Calendar className="w-3.5 h-3.5 text-amber-700" />
-                <span>{isRTL ? `މިއަދަށް ދިއުމަށް (${maldivesToday})` : `Go to Today (${maldivesToday})`}</span>
+                {isRTL ? 'މިއަދަށް ދިއުމަށް' : 'Go to Today'}
               </button>
             )}
           </div>
@@ -1521,6 +1351,7 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
             {displayStudents.map((student, idx) => {
               const rec = recordsMap.get(student.id);
+              const counterpartRec = counterpartMap?.get(student.id);
               const status = rec?.status || 'UNMARKED';
               const isPresent = status === 'PRESENT';
               const isLate = status === 'LATE';
@@ -1549,7 +1380,7 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div
-                        className={`w-10 h-10 rounded-xl flex items-center justify-center font-mono font-black text-xs shrink-0 border ${
+                        className={`w-11 h-11 rounded-xl flex items-center justify-center font-mono font-black text-xs shrink-0 border ${
                           student.gender === 'MALE'
                             ? 'bg-sky-50 text-sky-800 border-sky-300'
                             : 'bg-rose-50 text-rose-800 border-rose-300'
@@ -1559,10 +1390,10 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                       </div>
 
                       <div className="min-w-0">
-                        <h4 className="font-thaana font-black text-slate-900 text-sm truncate">
+                        <h4 className="font-thaana font-black text-slate-900 text-base leading-snug truncate">
                           {student.fullNameDhivehi || student.fullName}
                         </h4>
-                        <p className="text-[11px] font-semibold text-slate-500 truncate">
+                        <p className="text-xs font-semibold text-slate-500 truncate">
                           {student.fullName}
                         </p>
                       </div>
@@ -1573,14 +1404,21 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                     </span>
                   </div>
 
-                  {/* Middle: Grade & Status Indicator */}
-                  <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
-                    <span className="px-2 py-0.5 rounded bg-sky-100 text-sky-900 text-[11px] font-black">
-                      {student.gradeLevel}
-                    </span>
+                  {/* Middle: Grade & Status Indicator + Counterpart Badge */}
+                  <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100 gap-1.5 flex-wrap">
+                    <div className="flex items-center gap-1.5">
+                      <span className="px-2 py-0.5 rounded bg-sky-100 text-sky-900 text-[11px] font-black">
+                        {student.gradeLevel}
+                      </span>
+                      {counterpartRec?.status && (
+                        <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded" title="Counterpart session attendance">
+                          {isMorning ? 'P.Break:' : 'Morning:'} {counterpartRec.status === 'PRESENT' ? '✓' : counterpartRec.status === 'LATE' ? '⏰' : counterpartRec.status === 'ABSENT' ? '✕' : '🏖️'}
+                        </span>
+                      )}
+                    </div>
 
                     <span
-                      className={`px-2 py-0.5 rounded-full text-[11px] font-black flex items-center gap-1 ${
+                      className={`px-2.5 py-1 rounded-full text-xs font-black flex items-center gap-1 ${
                         isPresent
                           ? 'bg-emerald-100 text-emerald-800'
                           : isLate
@@ -1592,10 +1430,10 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                           : 'bg-slate-100 text-slate-600'
                       }`}
                     >
-                      {isPresent && <CheckCircle className="w-3 h-3 text-emerald-600" />}
-                      {isLate && <Clock className="w-3 h-3 text-amber-600" />}
-                      {isLeave && <AlertCircle className="w-3 h-3 text-indigo-600" />}
-                      {isAbsent && <XCircle className="w-3 h-3 text-rose-600" />}
+                      {isPresent && <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />}
+                      {isLate && <Clock className="w-3.5 h-3.5 text-amber-600" />}
+                      {isLeave && <AlertCircle className="w-3.5 h-3.5 text-indigo-600" />}
+                      {isAbsent && <XCircle className="w-3.5 h-3.5 text-rose-600" />}
                       <span>
                         {isPresent
                           ? t.present
@@ -1610,15 +1448,15 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                     </span>
                   </div>
 
-                  {/* Bottom: 4 Attendance Buttons */}
+                  {/* Bottom: 4 Attendance Buttons (Thumb-friendly minimum 44px) */}
                   <div className="space-y-1.5 pt-1">
-                    <div className="grid grid-cols-4 gap-1">
+                    <div className="grid grid-cols-4 gap-1.5">
                       {/* PRESENT */}
                       <button
                         type="button"
                         disabled={!isMarkingAllowed}
                         onClick={() => handleMarkPresent(student.id, false)}
-                        className={`py-2 rounded-xl text-[11px] font-black transition flex flex-col items-center justify-center gap-0.5 ${
+                        className={`min-h-[44px] py-2 rounded-xl text-xs font-black transition flex flex-col items-center justify-center gap-0.5 active:scale-95 ${
                           !isMarkingAllowed ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
                         } ${
                           isPresent
@@ -1627,7 +1465,7 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                         }`}
                         title={!isMarkingAllowed ? sessionEligibility.message : undefined}
                       >
-                        <Check className="w-3.5 h-3.5" />
+                        <Check className="w-4 h-4" />
                         <span>{t.present}</span>
                       </button>
 
@@ -1641,7 +1479,7 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                           setActiveLateStudentId(isShowingLatePills ? null : student.id);
                           setActiveLeaveStudentId(null);
                         }}
-                        className={`py-2 rounded-xl text-[11px] font-black transition flex flex-col items-center justify-center gap-0.5 ${
+                        className={`min-h-[44px] py-2 rounded-xl text-xs font-black transition flex flex-col items-center justify-center gap-0.5 active:scale-95 ${
                           !isMarkingAllowed ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
                         } ${
                           isLate
@@ -1650,7 +1488,7 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                         }`}
                         title={!isMarkingAllowed ? sessionEligibility.message : undefined}
                       >
-                        <Clock className="w-3.5 h-3.5" />
+                        <Clock className="w-4 h-4" />
                         <span>{t.late}</span>
                       </button>
 
@@ -1664,7 +1502,7 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                           setActiveLeaveStudentId(isShowingLeavePills ? null : student.id);
                           setActiveLateStudentId(null);
                         }}
-                        className={`py-2 rounded-xl text-[11px] font-black transition flex flex-col items-center justify-center gap-0.5 ${
+                        className={`min-h-[44px] py-2 rounded-xl text-xs font-black transition flex flex-col items-center justify-center gap-0.5 active:scale-95 ${
                           !isMarkingAllowed ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
                         } ${
                           isLeave
@@ -1673,7 +1511,7 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                         }`}
                         title={!isMarkingAllowed ? sessionEligibility.message : undefined}
                       >
-                        <AlertCircle className="w-3.5 h-3.5" />
+                        <AlertCircle className="w-4 h-4" />
                         <span>{t.leave}</span>
                       </button>
 
@@ -1682,7 +1520,7 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                         type="button"
                         disabled={!isMarkingAllowed}
                         onClick={() => handleMarkAbsent(student.id, false)}
-                        className={`py-2 rounded-xl text-[11px] font-black transition flex flex-col items-center justify-center gap-0.5 ${
+                        className={`min-h-[44px] py-2 rounded-xl text-xs font-black transition flex flex-col items-center justify-center gap-0.5 active:scale-95 ${
                           !isMarkingAllowed ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
                         } ${
                           isAbsent
@@ -1691,7 +1529,7 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                         }`}
                         title={!isMarkingAllowed ? sessionEligibility.message : undefined}
                       >
-                        <XCircle className="w-3.5 h-3.5" />
+                        <XCircle className="w-4 h-4" />
                         <span>{t.absent}</span>
                       </button>
                     </div>
@@ -1704,7 +1542,7 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                             key={time}
                             type="button"
                             onClick={() => handleMarkLateWithTime(time, student.id, false)}
-                            className="flex-1 py-1 rounded-lg bg-white hover:bg-amber-100 font-mono font-bold text-[10px] text-amber-900 border border-amber-200 cursor-pointer"
+                            className="flex-1 py-1.5 rounded-lg bg-white hover:bg-amber-100 font-mono font-bold text-xs text-amber-900 border border-amber-200 cursor-pointer"
                           >
                             {time}
                           </button>
@@ -1720,12 +1558,24 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
                             key={preset.id}
                             type="button"
                             onClick={() => handleMarkLeaveWithReason(preset.id, student.id, false)}
-                            className="py-1 px-1 rounded-lg bg-white hover:bg-indigo-100 text-[10px] font-bold text-indigo-900 border border-indigo-200 cursor-pointer truncate"
+                            className="py-1 px-1 rounded-lg bg-white hover:bg-indigo-100 text-[11px] font-bold text-indigo-900 border border-indigo-200 cursor-pointer truncate"
                           >
                             {isRTL ? preset.labelDv : preset.labelEn}
                           </button>
                         ))}
                       </div>
+                    )}
+
+                    {/* Quick Parent SMS draft for Absent student */}
+                    {isAbsent && (
+                      <button
+                        type="button"
+                        onClick={() => onOpenSmsDraftModal(student)}
+                        className="w-full mt-1.5 py-1.5 px-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-95"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5 text-rose-600" />
+                        <span>{isRTL ? 'ބެލެނިވެރިޔާއަށް SMS ފޮނުވާ' : 'Draft Absence SMS to Parent'}</span>
+                      </button>
                     )}
                   </div>
                 </div>

@@ -111,8 +111,8 @@ export const ClassReportView: React.FC<ClassReportViewProps> = ({
     }
   };
 
-  const fetchClassReport = async () => {
-    setLoading(true);
+  const fetchClassReport = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     const fallbackReport = students && students.length > 0
       ? generateClientClassReport({
           grade: selectedGrade,
@@ -174,13 +174,20 @@ export const ClassReportView: React.FC<ClassReportViewProps> = ({
       console.warn('Backend reporting API offline or warm-up, utilizing instant client generator', err);
       if (fallbackReport) setClassData(fallbackReport);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchClassReport();
-  }, [selectedGrade, mode, period, year, month, weekStart, customStartDate, customEndDate, records]);
+    fetchClassReport(true);
+  }, [selectedGrade, mode, period, year, month, weekStart, customStartDate, customEndDate]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchClassReport(false);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [records]);
 
   const handlePrint = () => {
     window.print();

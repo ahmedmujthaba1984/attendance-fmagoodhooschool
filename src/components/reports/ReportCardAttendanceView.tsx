@@ -158,8 +158,8 @@ export const ReportCardAttendanceView: React.FC<ReportCardAttendanceViewProps> =
   }, []);
 
   // Fetch Report Card Attendance Data
-  const fetchReportCardData = async () => {
-    setLoading(true);
+  const fetchReportCardData = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     try {
       const params = new URLSearchParams({
         term: selectedTerm,
@@ -227,13 +227,20 @@ export const ReportCardAttendanceView: React.FC<ReportCardAttendanceViewProps> =
       });
       setReportData(fallback);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchReportCardData();
-  }, [selectedTerm, customStartDate, customEndDate, selectedGrade, termConfigs, records]);
+    fetchReportCardData(true);
+  }, [selectedTerm, customStartDate, customEndDate, selectedGrade, termConfigs]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchReportCardData(false);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [records]);
 
   // Handle Save Term Configurations
   const handleSaveTermConfigs = async (e: React.FormEvent) => {

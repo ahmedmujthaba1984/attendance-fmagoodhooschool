@@ -164,6 +164,7 @@ export const VoiceDictationModal: React.FC<VoiceDictationModalProps> = ({
         if (data?.result?.matches && data.result.matches.length > 0) {
           setParsedResult(data.result);
           setParseMode('cloud');
+          setIsProcessing(false);
           return;
         }
       }

@@ -60,8 +60,8 @@ export const WeeklyReportView: React.FC<WeeklyReportViewProps> = ({
     }
   };
 
-  const fetchWeeklyReport = async () => {
-    setLoading(true);
+  const fetchWeeklyReport = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     const fallback = generateClientWeeklyReport({
       weekStart: selectedWeekStart,
       reportMode: mode,
@@ -88,13 +88,20 @@ export const WeeklyReportView: React.FC<WeeklyReportViewProps> = ({
       console.warn('Backend weekly reporting API offline or cold start, using client generator', err);
       setWeeklyData(fallback);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchWeeklyReport();
-  }, [selectedWeekStart, mode, records]);
+    fetchWeeklyReport(true);
+  }, [selectedWeekStart, mode]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchWeeklyReport(false);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [records]);
 
   const handlePrint = () => {
     window.print();
@@ -501,7 +508,7 @@ export const WeeklyReportView: React.FC<WeeklyReportViewProps> = ({
                     className={`p-3.5 rounded-xl border transition ${
                       d.isClosed
                         ? 'bg-slate-50 border-slate-200 opacity-80'
-                        : d.rate >= 90
+                        : d.rate != null && d.rate >= 90
                         ? 'bg-emerald-50/50 border-emerald-200'
                         : 'bg-white border-slate-200'
                     }`}

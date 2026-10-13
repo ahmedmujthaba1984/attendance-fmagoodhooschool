@@ -74,7 +74,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
     let isMounted = true;
     const fetchDashboardAnalytics = async () => {
       try {
-        const res = await fetch(`/api/analytics/dashboard?date=${selectedDate}`);
+        const res = await fetch(`/api/analytics/dashboard?date=${selectedDate}&_t=${Date.now()}`);
         if (res.ok) {
           const data = await res.json();
           if (isMounted) {
@@ -87,8 +87,28 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
     };
 
     fetchDashboardAnalytics();
+
+    let channel: BroadcastChannel | null = null;
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        channel = new BroadcastChannel('school_portal_sync');
+        channel.onmessage = (e) => {
+          if (
+            e.data?.type === 'ATTENDANCE_MUTATED' ||
+            e.data?.type === 'ATTENDANCE_SINGLE_MUTATED' ||
+            e.data?.type === 'SESSION_SUBMITTED' ||
+            e.data?.type === 'SESSION_REVERTED' ||
+            e.data?.type === 'CALENDAR_UPDATED'
+          ) {
+            fetchDashboardAnalytics();
+          }
+        };
+      }
+    } catch {}
+
     return () => {
       isMounted = false;
+      channel?.close();
     };
   }, [selectedDate]);
 
@@ -720,14 +740,14 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
           </div>
         ) : (
           <div className="h-72 w-full" dir="ltr">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minHeight={288} debounce={50}>
               <LineChart data={activeTrendData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#64748b' }} />
                 <YAxis
                   domain={[
                     (dataMin: number) =>
-                      isNaN(dataMin) || dataMin == null
+                      !Number.isFinite(dataMin)
                         ? 80
                         : Math.max(0, Math.min(80, Math.floor(dataMin - 5))),
                     100,
@@ -763,8 +783,9 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                       stroke="#0284c7"
                       strokeWidth={3}
                       dot={{ r: 4, fill: '#0284c7' }}
-                      activeDot={{ r: 7 }}
-                      connectNulls={true}
+                      activeDot={{ r: 6 }}
+                      connectNulls={false}
+                      isAnimationActive={false}
                     />
                   </>
                 )}
@@ -779,8 +800,9 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                       stroke="#0d9488"
                       strokeWidth={3}
                       dot={{ r: 4, fill: '#0d9488' }}
-                      activeDot={{ r: 7 }}
-                      connectNulls={true}
+                      activeDot={{ r: 6 }}
+                      connectNulls={false}
+                      isAnimationActive={false}
                     />
                   </>
                 )}
@@ -795,8 +817,9 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                       stroke="#0284c7"
                       strokeWidth={2.5}
                       dot={{ r: 3, fill: '#0284c7' }}
-                      activeDot={{ r: 6 }}
-                      connectNulls={true}
+                      activeDot={{ r: 5 }}
+                      connectNulls={false}
+                      isAnimationActive={false}
                     />
                     <Line
                       type="monotone"
@@ -805,8 +828,9 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                       stroke="#0d9488"
                       strokeWidth={2.5}
                       dot={{ r: 3, fill: '#0d9488' }}
-                      activeDot={{ r: 6 }}
-                      connectNulls={true}
+                      activeDot={{ r: 5 }}
+                      connectNulls={false}
+                      isAnimationActive={false}
                     />
                     <Line
                       type="monotone"
@@ -815,8 +839,10 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                       stroke="#1e293b"
                       strokeWidth={1.5}
                       strokeDasharray="2 2"
-                      dot={false}
-                      connectNulls={true}
+                      dot={{ r: 3, fill: '#1e293b' }}
+                      activeDot={{ r: 5 }}
+                      connectNulls={false}
+                      isAnimationActive={false}
                     />
                   </>
                 )}
@@ -831,8 +857,9 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                       stroke="#9333ea"
                       strokeWidth={3}
                       dot={{ r: 4, fill: '#9333ea' }}
-                      activeDot={{ r: 7 }}
-                      connectNulls={true}
+                      activeDot={{ r: 6 }}
+                      connectNulls={false}
+                      isAnimationActive={false}
                     />
                   </>
                 )}
@@ -847,8 +874,9 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                       stroke="#0284c7"
                       strokeWidth={2.5}
                       dot={{ r: 3, fill: '#0284c7' }}
-                      activeDot={{ r: 6 }}
-                      connectNulls={true}
+                      activeDot={{ r: 5 }}
+                      connectNulls={false}
+                      isAnimationActive={false}
                     />
                     <Line
                       type="monotone"
@@ -857,8 +885,9 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                       stroke="#9333ea"
                       strokeWidth={2.5}
                       dot={{ r: 3, fill: '#9333ea' }}
-                      activeDot={{ r: 6 }}
-                      connectNulls={true}
+                      activeDot={{ r: 5 }}
+                      connectNulls={false}
+                      isAnimationActive={false}
                     />
                     <Line
                       type="monotone"
@@ -867,13 +896,14 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                       stroke="#059669"
                       strokeWidth={3}
                       dot={{ r: 4, fill: '#059669' }}
-                      activeDot={{ r: 7 }}
-                      connectNulls={true}
+                      activeDot={{ r: 6 }}
+                      connectNulls={false}
+                      isAnimationActive={false}
                     />
                   </>
                 )}
 
-                {/* Universal MoE 90% Benchmark Threshold (only shown if attendance exists) */}
+                {/* Universal MoE 90% Benchmark Threshold (only shown for dates where attendance exists) */}
                 <Line
                   type="monotone"
                   dataKey="baseline"
@@ -882,7 +912,8 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                   strokeDasharray="4 4"
                   strokeWidth={1.5}
                   dot={false}
-                  connectNulls={true}
+                  connectNulls={false}
+                  isAnimationActive={false}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -990,7 +1021,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
           )}
 
           <div className="h-72 w-full" dir="ltr">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minHeight={288} debounce={50}>
               {/* MODE 1: MORNING ONLY (STACKED BAR) */}
               {reportMode === 'MORNING' ? (
                 <BarChart data={gradeChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
@@ -1010,10 +1041,10 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                     ]}
                   />
                   <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
-                  <Bar dataKey="Present" name={t.present} stackId="am" fill="#0284c7" radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="Late" name={t.late} stackId="am" fill="#f59e0b" radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="Leave" name={t.leave} stackId="am" fill="#6366f1" radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="Absent" name={t.absent} stackId="am" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Present" name={t.present} stackId="am" fill="#0284c7" radius={[0, 0, 0, 0]} isAnimationActive={false} />
+                  <Bar dataKey="Late" name={t.late} stackId="am" fill="#f59e0b" radius={[0, 0, 0, 0]} isAnimationActive={false} />
+                  <Bar dataKey="Leave" name={t.leave} stackId="am" fill="#6366f1" radius={[0, 0, 0, 0]} isAnimationActive={false} />
+                  <Bar dataKey="Absent" name={t.absent} stackId="am" fill="#ef4444" radius={[4, 4, 0, 0]} isAnimationActive={false} />
                 </BarChart>
               ) : reportMode === 'AFTERNOON' ? (
                 /* MODE 2: AFTERNOON ONLY (STACKED BAR) */
@@ -1034,8 +1065,8 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                     ]}
                   />
                   <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
-                  <Bar dataKey="afternoonPresent" name={isRTL ? 'މެންދުރުފަސް ހާޒިރު' : 'Afternoon Attended'} stackId="pm" fill="#0d9488" radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="afternoonAbsent" name={isRTL ? 'މެންދުރުފަސް ޣައިރުޙާޟިރު' : 'Afternoon Absent'} stackId="pm" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="afternoonPresent" name={isRTL ? 'މެންދުރުފަސް ހާޒިރު' : 'Afternoon Attended'} stackId="pm" fill="#0d9488" radius={[0, 0, 0, 0]} isAnimationActive={false} />
+                  <Bar dataKey="afternoonAbsent" name={isRTL ? 'މެންދުރުފަސް ޣައިރުޙާޟިރު' : 'Afternoon Absent'} stackId="pm" fill="#ef4444" radius={[4, 4, 0, 0]} isAnimationActive={false} />
                 </BarChart>
               ) : reportMode === 'OFFICIAL' ? (
                 /* MODE 3: OFFICIAL (MORNING + AFTERNOON) */
@@ -1056,10 +1087,10 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                     ]}
                   />
                   <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
-                  <Bar dataKey="Present" name={t.present} stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="Late" name={t.late} stackId="a" fill="#f59e0b" radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="Leave" name={t.leave} stackId="a" fill="#6366f1" radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="Absent" name={t.absent} stackId="a" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Present" name={t.present} stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} isAnimationActive={false} />
+                  <Bar dataKey="Late" name={t.late} stackId="a" fill="#f59e0b" radius={[0, 0, 0, 0]} isAnimationActive={false} />
+                  <Bar dataKey="Leave" name={t.leave} stackId="a" fill="#6366f1" radius={[0, 0, 0, 0]} isAnimationActive={false} />
+                  <Bar dataKey="Absent" name={t.absent} stackId="a" fill="#ef4444" radius={[4, 4, 0, 0]} isAnimationActive={false} />
                 </BarChart>
               ) : reportMode === 'EXTRA_CLASS' ? (
                 /* MODE 2: EXTRA CLASS ONLY (STACKED CLINICS PARTICIPATION) */
@@ -1086,6 +1117,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                     stackId="ec"
                     fill="#10b981"
                     radius={[0, 0, 0, 0]}
+                    isAnimationActive={false}
                   />
                   <Bar
                     dataKey="extraLate"
@@ -1093,6 +1125,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                     stackId="ec"
                     fill="#f59e0b"
                     radius={[0, 0, 0, 0]}
+                    isAnimationActive={false}
                   />
                   <Bar
                     dataKey="extraLeave"
@@ -1100,6 +1133,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                     stackId="ec"
                     fill="#6366f1"
                     radius={[0, 0, 0, 0]}
+                    isAnimationActive={false}
                   />
                   <Bar
                     dataKey="extraAbsent"
@@ -1107,6 +1141,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                     stackId="ec"
                     fill="#ef4444"
                     radius={[4, 4, 0, 0]}
+                    isAnimationActive={false}
                   />
                 </BarChart>
               ) : barDisplayType === 'rates' ? (
@@ -1133,18 +1168,21 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                     name={isRTL ? 'ރަސްމީ ރޭޓް (%)' : 'Official Rate (%)'}
                     fill="#0284c7"
                     radius={[4, 4, 0, 0]}
+                    isAnimationActive={false}
                   />
                   <Bar
                     dataKey="extraClassRate"
                     name={isRTL ? 'އިތުރު ކްލާސް ރޭޓް (%)' : 'Extra Class Rate (%)'}
                     fill="#9333ea"
                     radius={[4, 4, 0, 0]}
+                    isAnimationActive={false}
                   />
                   <Bar
                     dataKey="combinedRate"
                     name={isRTL ? 'އެކުލެވޭ ޖުމްލަ ރޭޓް (%)' : 'Combined Rate (%)'}
                     fill="#059669"
                     radius={[4, 4, 0, 0]}
+                    isAnimationActive={false}
                   />
                 </BarChart>
               ) : (
@@ -1171,18 +1209,21 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                     name={isRTL ? 'ރަސްމީ ހާޒިރީ' : 'Official Present'}
                     stackId="comb"
                     fill="#0284c7"
+                    isAnimationActive={false}
                   />
                   <Bar
                     dataKey="extraAttended"
                     name={isRTL ? 'އިތުރު ކްލާސް ހާޒިރީ' : 'Extra Class Attended'}
                     stackId="comb"
                     fill="#9333ea"
+                    isAnimationActive={false}
                   />
                   <Bar
                     dataKey="combinedLeave"
                     name={isRTL ? 'ސަލާމް' : 'Leaves'}
                     stackId="comb"
                     fill="#6366f1"
+                    isAnimationActive={false}
                   />
                   <Bar
                     dataKey="combinedAbsent"
@@ -1190,6 +1231,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                     stackId="comb"
                     fill="#ef4444"
                     radius={[4, 4, 0, 0]}
+                    isAnimationActive={false}
                   />
                 </BarChart>
               )}
@@ -1246,7 +1288,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
             </div>
           ) : (
             <div className="h-56 w-full my-2" dir="ltr">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minHeight={224} debounce={50}>
                 <PieChart>
                   <Pie
                     data={currentDistributionData}
@@ -1256,6 +1298,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                     outerRadius={75}
                     paddingAngle={3}
                     dataKey="value"
+                    isAnimationActive={false}
                   >
                     {currentDistributionData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />

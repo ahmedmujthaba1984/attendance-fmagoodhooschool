@@ -260,7 +260,12 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
 
             {showStaffMenu && (
-              <div className="absolute right-0 mt-2 w-80 rounded-2xl bg-white shadow-2xl border border-slate-200 p-2 z-50 animate-in fade-in zoom-in-95">
+              <>
+                <div
+                  className="fixed inset-0 z-40 bg-transparent"
+                  onClick={() => setShowStaffMenu(false)}
+                />
+                <div className="absolute right-0 mt-2 w-80 rounded-2xl bg-white shadow-2xl border border-slate-200 p-2 z-50 animate-in fade-in zoom-in-95">
                 {/* Active User Card */}
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 mb-2">
                   <div className="text-xs font-extrabold text-slate-900 flex items-center justify-between">
@@ -402,7 +407,8 @@ export const Header: React.FC<HeaderProps> = ({
                   )}
                 </div>
               </div>
-            )}
+            </>
+          )}
           </div>
         </div>
       </div>

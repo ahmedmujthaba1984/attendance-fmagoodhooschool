@@ -1422,6 +1422,11 @@ app.put('/api/students/:id', (req, res) => {
   // Synchronize top-level students reference
   students = magoodhooSyncEngine.getStudents();
 
+  broadcastLiveSync({
+    type: 'STUDENT_UPDATED',
+    student: result.student,
+  });
+
   logAudit(
     'STUDENT_RECORD_UPDATED',
     'StudentDirectory',
@@ -2514,8 +2519,9 @@ app.post('/api/extra-classes', (req, res) => {
     notes,
   } = req.body;
 
-  if (!title || !subject || !gradeLevel || !date || !startTime || !endTime) {
-    return res.status(400).json({ error: 'Missing required extra class fields' });
+  const resolvedTitle = title || `${gradeLevel} ${subject} Extra Class`;
+  if (!subject || !gradeLevel || !date || !startTime || !endTime) {
+    return res.status(400).json({ error: 'Missing required extra class fields (subject, gradeLevel, date, startTime, endTime)' });
   }
 
   // Reject Grade 11 or Grade 12 as F. Magoodhoo School only offers LKG to Grade 10
@@ -2546,8 +2552,8 @@ app.post('/api/extra-classes', (req, res) => {
 
   const newClass: ExtraClass = sanitizeExtraClass({
     id: `ext-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-    title,
-    titleDhivehi: titleDhivehi || title,
+    title: resolvedTitle,
+    titleDhivehi: titleDhivehi || resolvedTitle,
     subject,
     subjectDhivehi: subjectDhivehi || subject,
     gradeLevel,
@@ -2577,7 +2583,7 @@ app.post('/api/extra-classes', (req, res) => {
   logAudit(
     isAuthorizedApprover ? 'EXTRA_CLASS_CREATED_APPROVED' : 'EXTRA_CLASS_REQUESTED',
     'ExtraClass',
-    `${createdByUserName} scheduled extra class "${title}" (${gradeLevel}) on ${date} [${newClass.status}]`,
+    `${createdByUserName} scheduled extra class "${resolvedTitle}" (${gradeLevel}) on ${date} [${newClass.status}]`,
     req
   );
 
@@ -2786,9 +2792,13 @@ app.get('/api/calendar', (req, res) => {
 
 app.post('/api/calendar/toggle', (req, res) => {
   const { date, description, descriptionDhivehi } = req.body;
-  const dayType = req.body.dayType || req.body.type;
-  if (!date || !dayType) {
-    return res.status(400).json({ error: 'Date and dayType required' });
+  let dayType = req.body.dayType || req.body.type;
+  if (!date) {
+    return res.status(400).json({ error: 'Date is required' });
+  }
+  if (!dayType) {
+    const closed = checkSchoolClosed(date);
+    dayType = closed.isClosed ? 'REGULAR_TEACHING_DAY' : 'SCHOOL_CLOSED';
   }
 
   const index = academicCalendar.findIndex((d) => d.date === date);

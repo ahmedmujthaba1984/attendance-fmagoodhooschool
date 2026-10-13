@@ -232,16 +232,16 @@ function MainApp() {
     initData();
   }, []);
 
-  // 2. Refresh attendance & stats whenever date, grade, or session changes
+  // 2. Refresh attendance & stats whenever date or session changes
   useEffect(() => {
     fetchAttendance();
-    fetchMoEStats();
-  }, [selectedDate, selectedGrade, selectedSession]);
+    fetchMoEStats(true);
+  }, [selectedDate, selectedSession]);
 
   // 2b. Re-fetch stats & attendance whenever switching to reports tab
   useEffect(() => {
     if (activeTab === 'reports') {
-      fetchMoEStats();
+      fetchMoEStats(true);
       fetchAttendance();
     }
   }, [activeTab]);
@@ -257,6 +257,7 @@ function MainApp() {
       afternoon,
       temporaryOverrides: Array.isArray(incoming.temporaryOverrides) ? incoming.temporaryOverrides : [],
     };
+    let didChange = false;
     setSessionTimings((prev) => {
       if (
         prev?.morning?.startTime === normalized.morning.startTime &&
@@ -267,11 +268,14 @@ function MainApp() {
       ) {
         return prev;
       }
+      didChange = true;
       return normalized;
     });
-    safeLocalStorage.setItem('school_session_timings', JSON.stringify(normalized));
-    setIsLiveSyncActive(true);
-    setLastSyncTime(new Date());
+    if (didChange) {
+      safeLocalStorage.setItem('school_session_timings', JSON.stringify(normalized));
+      setIsLiveSyncActive(true);
+      setLastSyncTime(new Date());
+    }
   };
 
   const isFetchingTimingsRef = useRef<boolean>(false);
@@ -338,9 +342,8 @@ function MainApp() {
   const fetchAttendanceSilent = async () => {
     try {
       const curDate = selectedDateRef.current;
-      const curGrade = selectedGradeRef.current;
       const curSession = selectedSessionRef.current;
-      const url = `/api/attendance?date=${curDate}&grade=${curGrade}&session=${curSession}&_t=${Date.now()}`;
+      const url = `/api/attendance?date=${curDate}&grade=ALL&session=${curSession}&_t=${Date.now()}`;
       const res = await fetch(url, {
         cache: 'no-store',
         headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
@@ -348,10 +351,41 @@ function MainApp() {
       if (res.ok) {
         const data = await res.json();
         if (data.records && curDate === selectedDateRef.current && curSession === selectedSessionRef.current) {
-          setAttendanceRecords(data.records);
-          setCounterpartRecords(data.counterpartRecords || []);
-          setIsSchoolClosed(Boolean(data.isSchoolClosed));
-          setIsSessionSubmitted(Boolean(data.isSessionSubmitted));
+          setAttendanceRecords((prev) => {
+            if (prev.length === data.records.length) {
+              let isSame = true;
+              for (let i = 0; i < prev.length; i++) {
+                const a = prev[i];
+                const b = data.records[i];
+                if (a.id !== b.id || a.status !== b.status || a.leaveReason !== b.leaveReason || a.arrivalTime !== b.arrivalTime) {
+                  isSame = false;
+                  break;
+                }
+              }
+              if (isSame) return prev;
+            }
+            return data.records;
+          });
+          setCounterpartRecords((prev) => {
+            const next = data.counterpartRecords || [];
+            if (prev.length === next.length) {
+              let isSame = true;
+              for (let i = 0; i < prev.length; i++) {
+                const a = prev[i];
+                const b = next[i];
+                if (a.id !== b.id || a.status !== b.status || a.leaveReason !== b.leaveReason || a.arrivalTime !== b.arrivalTime) {
+                  isSame = false;
+                  break;
+                }
+              }
+              if (isSame) return prev;
+            }
+            return next;
+          });
+          const closedVal = Boolean(data.isSchoolClosed);
+          setIsSchoolClosed((prev) => (prev === closedVal ? prev : closedVal));
+          const submittedVal = Boolean(data.isSessionSubmitted);
+          setIsSessionSubmitted((prev) => (prev === submittedVal ? prev : submittedVal));
         }
       }
     } catch {}
@@ -388,6 +422,17 @@ function MainApp() {
               setAttendanceRecords((prev) => {
                 const idx = prev.findIndex((r) => r.studentId === data.record.studentId);
                 if (idx >= 0) {
+                  const curr = prev[idx];
+                  if (
+                    curr.status === data.record.status &&
+                    curr.leaveReason === data.record.leaveReason &&
+                    curr.absenceReason === data.record.absenceReason &&
+                    curr.notes === data.record.notes &&
+                    curr.arrivedAt === data.record.arrivedAt &&
+                    curr.markedByUserId === data.record.markedByUserId
+                  ) {
+                    return prev;
+                  }
                   const copy = [...prev];
                   copy[idx] = data.record;
                   return copy;
@@ -396,9 +441,15 @@ function MainApp() {
               });
               fetchMoEStats();
             }
-          } else if (data?.type === 'ATTENDANCE_MUTATED' || data?.type === 'CALENDAR_UPDATED') {
+          } else if (
+            data?.type === 'ATTENDANCE_MUTATED' ||
+            data?.type === 'ATTENDANCE_RECORD_REVERTED' ||
+            data?.type === 'CALENDAR_UPDATED'
+          ) {
             fetchAttendanceSilent();
             fetchMoEStats();
+          } else if (data?.type === 'STUDENT_UPDATED' && data.student) {
+            setStudents((prev) => prev.map((s) => (s.id === data.student.id ? data.student : s)));
           }
         };
       }
@@ -450,6 +501,17 @@ function MainApp() {
                   setAttendanceRecords((prev) => {
                     const idx = prev.findIndex((r) => r.studentId === data.record.studentId);
                     if (idx >= 0) {
+                      const curr = prev[idx];
+                      if (
+                        curr.status === data.record.status &&
+                        curr.leaveReason === data.record.leaveReason &&
+                        curr.absenceReason === data.record.absenceReason &&
+                        curr.notes === data.record.notes &&
+                        curr.arrivedAt === data.record.arrivedAt &&
+                        curr.markedByUserId === data.record.markedByUserId
+                      ) {
+                        return prev;
+                      }
                       const copy = [...prev];
                       copy[idx] = data.record;
                       return copy;
@@ -465,6 +527,8 @@ function MainApp() {
               ) {
                 fetchAttendanceSilent();
                 fetchMoEStats();
+              } else if (data.type === 'STUDENT_UPDATED' && data.student) {
+                setStudents((prev) => prev.map((s) => (s.id === data.student.id ? data.student : s)));
               }
             } catch {}
           };
@@ -481,13 +545,13 @@ function MainApp() {
 
     setupSSE();
 
-    // Fast live polling interval (every 1.5 seconds) ensuring incognito & external windows sync live
+    // Background sync polling interval (every 12 seconds) as fallback alongside SSE & BroadcastChannel
     const interval = setInterval(() => {
       fetchSessionTimings();
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         fetchAttendanceSilent();
       }
-    }, 1500);
+    }, 12000);
 
     const handleFocus = () => {
       fetchSessionTimings();
@@ -649,16 +713,14 @@ function MainApp() {
 
   const fetchAttendance = async () => {
     try {
-      // First flush any pending offline-queued attendance records if online
+      // Non-blocking background sync flush so UI date-switching is immediate
       if (typeof navigator !== 'undefined' && navigator.onLine) {
-        try {
-          await syncEngine.flushQueue();
-        } catch (e) {
+        syncEngine.flushQueue().catch((e) => {
           console.warn('Pre-fetch sync flush deferred:', e);
-        }
+        });
       }
 
-      const url = `/api/attendance?date=${selectedDate}&grade=${selectedGrade}&session=${selectedSession}&_t=${Date.now()}`;
+      const url = `/api/attendance?date=${selectedDate}&grade=ALL&session=${selectedSession}&_t=${Date.now()}`;
       const res = await fetch(url, {
         cache: 'no-store',
         headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
@@ -707,27 +769,64 @@ function MainApp() {
     }
   };
 
-  const fetchMoEStats = async () => {
-    try {
-      const res = await fetch(`/api/reports/moe?date=${selectedDate}`);
-      if (res.ok) {
-        const data = await res.json();
-        setStats(data);
+  const fetchMoEStatsTimeoutRef = useRef<any>(null);
+  const fetchMoEStats = async (immediate = false, dateParam?: string): Promise<void> => {
+    if (fetchMoEStatsTimeoutRef.current) {
+      clearTimeout(fetchMoEStatsTimeoutRef.current);
+    }
+    const runFetch = async () => {
+      const targetDate = dateParam || selectedDateRef.current;
+      try {
+        const res = await fetch(`/api/reports/moe?date=${targetDate}&_t=${Date.now()}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (targetDate === selectedDateRef.current) {
+            setStats(data);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch MoE stats:', err);
       }
-    } catch (err) {
-      console.error('Failed to fetch MoE stats:', err);
+    };
+
+    if (immediate) {
+      return runFetch();
+    } else {
+      return new Promise<void>((resolve) => {
+        fetchMoEStatsTimeoutRef.current = setTimeout(async () => {
+          await runFetch();
+          resolve();
+        }, 200);
+      });
     }
   };
 
-  const fetchAuditLogs = async () => {
-    try {
-      const res = await fetch('/api/audit-logs');
-      if (res.ok) {
-        const data = await res.json();
-        setAuditLogs(data.logs || []);
+  const fetchAuditLogsTimeoutRef = useRef<any>(null);
+  const fetchAuditLogs = async (immediate = false): Promise<void> => {
+    if (fetchAuditLogsTimeoutRef.current) {
+      clearTimeout(fetchAuditLogsTimeoutRef.current);
+    }
+    const runFetch = async () => {
+      try {
+        const res = await fetch(`/api/audit-logs?_t=${Date.now()}`);
+        if (res.ok) {
+          const data = await res.json();
+          setAuditLogs(data.logs || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch audit logs:', err);
       }
-    } catch (err) {
-      console.error('Failed to fetch audit logs:', err);
+    };
+
+    if (immediate) {
+      return runFetch();
+    } else {
+      return new Promise<void>((resolve) => {
+        fetchAuditLogsTimeoutRef.current = setTimeout(async () => {
+          await runFetch();
+          resolve();
+        }, 400);
+      });
     }
   };
 
@@ -847,7 +946,7 @@ function MainApp() {
 
     const updatedRecords: AttendanceRecord[] = relevantStudents.map((st) => {
       const existing = currentRecordsMap.get(st.id);
-      if (onlyUnmarked && existing && (existing.status === 'ABSENT' || existing.status === 'LATE' || existing.status === 'LEAVE')) {
+      if (onlyUnmarked && existing && existing.status) {
         return existing;
       }
       return {
@@ -1526,9 +1625,15 @@ function MainApp() {
 
     for (const match of matches) {
       const student = students.find((s) => {
-        const matchName = s.fullName.toLowerCase();
-        const queryName = match.studentName.toLowerCase();
-        return matchName.includes(queryName) || queryName.includes(matchName);
+        const matchNameEn = s.fullName.toLowerCase();
+        const matchNameDv = (s.fullNameDhivehi || '').trim();
+        const queryName = match.studentName.trim().toLowerCase();
+        const queryNameRaw = match.studentName.trim();
+        return (
+          matchNameEn.includes(queryName) ||
+          queryName.includes(matchNameEn) ||
+          (matchNameDv && (matchNameDv.includes(queryNameRaw) || queryNameRaw.includes(matchNameDv)))
+        );
       });
 
       if (student) {

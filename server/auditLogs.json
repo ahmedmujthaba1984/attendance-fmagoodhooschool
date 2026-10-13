@@ -1,5 +1,135 @@
 [
   {
+    "id": "audit-1791823553434-sd8wrm",
+    "timestamp": "2026-10-12T16:45:53.434Z",
+    "userId": "stf-01",
+    "userName": "Mohamed Fayaz",
+    "actionType": "CALENDAR_OVERRIDE",
+    "entityAffected": "AcademicCalendarDay",
+    "ipAddress": "127.0.0.1",
+    "details": "Calendar override for 2026-10-14 set to REGULAR_TEACHING_DAY ()"
+  },
+  {
+    "id": "audit-1791823553411-k89olp",
+    "timestamp": "2026-10-12T16:45:53.411Z",
+    "userId": "stf-01",
+    "userName": "Mohamed Fayaz",
+    "actionType": "CALENDAR_OVERRIDE",
+    "entityAffected": "AcademicCalendarDay",
+    "ipAddress": "127.0.0.1",
+    "details": "Calendar override for 2026-10-14 set to SCHOOL_CLOSED ()"
+  },
+  {
+    "id": "audit-1791823488327-ey78u6",
+    "timestamp": "2026-10-12T16:44:48.327Z",
+    "userId": "stf-01",
+    "userName": "Mohamed Fayaz",
+    "actionType": "HOLIDAY_DELETED",
+    "entityAffected": "AcademicCalendarDay",
+    "ipAddress": "127.0.0.1",
+    "details": "Deleted holiday \"Island Sports Meet\" (2026-11-01)"
+  },
+  {
+    "id": "audit-1791823488311-lsqwph",
+    "timestamp": "2026-10-12T16:44:48.311Z",
+    "userId": "stf-01",
+    "userName": "Mohamed Fayaz",
+    "actionType": "HOLIDAY_SAVED",
+    "entityAffected": "AcademicCalendarDay",
+    "ipAddress": "127.0.0.1",
+    "details": "Saved official holiday/schedule event: \"Island Sports Meet\" on 2026-11-01 (SPECIAL_ACTIVITY_DAY)"
+  },
+  {
+    "id": "audit-1791823456692-utbriw",
+    "timestamp": "2026-10-12T16:44:16.692Z",
+    "userId": "stf-01",
+    "userName": "Mohamed Fayaz",
+    "actionType": "EXTRA_CLASS_DELETED",
+    "entityAffected": "ExtraClass",
+    "ipAddress": "127.0.0.1",
+    "details": "Deleted extra class \"Grade 4 Quran Recitation Extra Class\" (Grade 4) on 2026-10-12"
+  },
+  {
+    "id": "audit-1791823456689-uaw6lx",
+    "timestamp": "2026-10-12T16:44:16.689Z",
+    "userId": "stf-01",
+    "userName": "Mohamed Fayaz",
+    "actionType": "EXTRA_CLASS_ATTENDANCE_MARKED",
+    "entityAffected": "ExtraClass",
+    "ipAddress": "127.0.0.1",
+    "details": "Ahmed Mujthaba submitted attendance for extra class \"Grade 4 Quran Recitation Extra Class\" (1/1 present)"
+  },
+  {
+    "id": "audit-1791823456682-yvpmnl",
+    "timestamp": "2026-10-12T16:44:16.682Z",
+    "userId": "stf-01",
+    "userName": "Mohamed Fayaz",
+    "actionType": "EXTRA_CLASS_APPROVED",
+    "entityAffected": "ExtraClass",
+    "ipAddress": "127.0.0.1",
+    "details": "Ahmed Mujthaba approved extra class \"Grade 4 Quran Recitation Extra Class\" (Grade 4)"
+  },
+  {
+    "id": "audit-1791823456665-800tic",
+    "timestamp": "2026-10-12T16:44:16.665Z",
+    "userId": "stf-01",
+    "userName": "Mohamed Fayaz",
+    "actionType": "EXTRA_CLASS_REQUESTED",
+    "entityAffected": "ExtraClass",
+    "ipAddress": "127.0.0.1",
+    "details": "undefined scheduled extra class \"Grade 4 Quran Recitation Extra Class\" (Grade 4) on 2026-10-12 [PENDING_APPROVAL]"
+  },
+  {
+    "id": "audit-1791823407434-8frk25",
+    "timestamp": "2026-10-12T16:43:27.434Z",
+    "userId": "stf-01",
+    "userName": "Mohamed Fayaz",
+    "actionType": "EXTRA_CLASS_DELETED",
+    "entityAffected": "ExtraClass",
+    "ipAddress": "127.0.0.1",
+    "details": "Deleted extra class \"Grade 4 Quran Recitation Extra Class\" (Grade 4) on 2026-10-12"
+  },
+  {
+    "id": "audit-1791823407388-crrkkx",
+    "timestamp": "2026-10-12T16:43:27.388Z",
+    "userId": "stf-01",
+    "userName": "Mohamed Fayaz",
+    "actionType": "EXTRA_CLASS_REQUESTED",
+    "entityAffected": "ExtraClass",
+    "ipAddress": "127.0.0.1",
+    "details": "undefined scheduled extra class \"Grade 4 Quran Recitation Extra Class\" (Grade 4) on 2026-10-12 [PENDING_APPROVAL]"
+  },
+  {
+    "id": "audit-1791823339694-kptnry",
+    "timestamp": "2026-10-12T16:42:19.694Z",
+    "userId": "stf-01",
+    "userName": "Mohamed Fayaz",
+    "actionType": "SUBSTITUTE_DELETED",
+    "entityAffected": "ClassDelegation",
+    "ipAddress": "127.0.0.1",
+    "details": "Deleted substitute delegation del-1791823339670 (Grade 4 - Sub: staff-2 for staff-1 on 2026-10-12)"
+  },
+  {
+    "id": "audit-1791823339688-qysuua",
+    "timestamp": "2026-10-12T16:42:19.688Z",
+    "userId": "stf-01",
+    "userName": "Mohamed Fayaz",
+    "actionType": "SUBSTITUTE_UPDATED",
+    "entityAffected": "ClassDelegation",
+    "ipAddress": "127.0.0.1",
+    "details": "Updated substitute delegation del-1791823339670: staff-2 covering Grade 4 for staff-1 on 2026-10-12"
+  },
+  {
+    "id": "audit-1791823339670-r4twqc",
+    "timestamp": "2026-10-12T16:42:19.670Z",
+    "userId": "stf-01",
+    "userName": "Mohamed Fayaz",
+    "actionType": "SUBSTITUTE_ASSIGNED",
+    "entityAffected": "ClassDelegation",
+    "ipAddress": "127.0.0.1",
+    "details": "Assigned substitute staff-2 to cover Grade 4 for staff-1 on 2026-10-12"
+  },
+  {
     "id": "audit-1791462760017-owewkp",
     "timestamp": "2026-10-08T12:32:40.017Z",
     "userId": "stf-01",

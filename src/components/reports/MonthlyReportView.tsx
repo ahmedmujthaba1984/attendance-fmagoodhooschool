@@ -60,8 +60,8 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
     }
   };
 
-  const fetchMonthlyReport = async () => {
-    setLoading(true);
+  const fetchMonthlyReport = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     const fallback = generateClientMonthlyReport({
       year: selectedYear,
       month: selectedMonth,
@@ -90,13 +90,20 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
       console.warn('Backend monthly report API offline or cold start, using client generator', err);
       setMonthlyData(fallback);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchMonthlyReport();
-  }, [selectedMonth, selectedYear, mode, records]);
+    fetchMonthlyReport(true);
+  }, [selectedMonth, selectedYear, mode]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchMonthlyReport(false);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [records]);
 
   const handlePrint = () => {
     window.print();
@@ -495,14 +502,14 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
                   <div key={idx} className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
                     <div className="flex items-center justify-between text-xs mb-1.5">
                       <span className="font-bold text-slate-800">{w.weekLabel}</span>
-                      <span className="font-black text-sky-900">{w.rate}%</span>
+                      <span className="font-black text-sky-900">{w.rate != null ? `${w.rate}%` : '-'}</span>
                     </div>
                     <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full ${
-                          w.rate >= 90 ? 'bg-emerald-600' : w.rate >= 80 ? 'bg-sky-600' : 'bg-rose-500'
+                          (w.rate ?? 0) >= 90 ? 'bg-emerald-600' : (w.rate ?? 0) >= 80 ? 'bg-sky-600' : 'bg-rose-500'
                         }`}
-                        style={{ width: `${Math.min(100, w.rate)}%` }}
+                        style={{ width: `${Math.min(100, w.rate || 0)}%` }}
                       />
                     </div>
                     <span className="text-[10px] text-slate-400 block mt-1.5 font-medium">

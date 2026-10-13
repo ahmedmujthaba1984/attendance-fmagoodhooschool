@@ -388,6 +388,18 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
     return map;
   }, [counterpartRecords]);
 
+  // Map staff by id/staffId for O(1) attribution badge lookup
+  const staffMap = useMemo(() => {
+    const map = new Map<string, User>();
+    if (staffList) {
+      staffList.forEach((s) => {
+        if (s.id) map.set(s.id, s);
+        if (s.staffId) map.set(s.staffId, s);
+      });
+    }
+    return map;
+  }, [staffList]);
+
   // Calculate live counters for current roster
   const currentCounters = useMemo(() => {
     let present = 0;
@@ -539,7 +551,7 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
     onUpdateRecord(updated);
   };
 
-  const handleBulkMarkPresentClicked = (onlyUnmarked: boolean = false) => {
+  const handleBulkMarkPresentClicked = (onlyUnmarked?: boolean | React.MouseEvent) => {
     if (isSchoolClosed) return;
     const isEarlyAllowed = isMobileOrPrivileged && sessionEligibility.reason === 'SESSION_NOT_STARTED';
     if (!sessionEligibility.allowed && !isEarlyAllowed) {
@@ -550,7 +562,8 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
       setShowLockedNoticeModal(true);
       return;
     }
-    onBulkMarkPresent(onlyUnmarked);
+    const isOnlyUnmarked = typeof onlyUnmarked === 'boolean' ? onlyUnmarked : false;
+    onBulkMarkPresent(isOnlyUnmarked);
   };
 
   const handleVoiceModalClicked = () => {
@@ -1645,7 +1658,7 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
                         <span
                           className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200 shadow-2xs"
                           title={`Marked by ${
-                            staffList?.find((s) => s.id === rec.markedByUserId || s.staffId === rec.markedByUserId)?.fullName ||
+                            staffMap.get(rec.markedByUserId)?.fullName ||
                             rec.markedByUserName ||
                             rec.markedByUserId
                           }`}
@@ -1654,7 +1667,7 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
                           <span>
                             {isRTL ? 'ފުރީ:' : 'By:'}{' '}
                             {(() => {
-                              const m = staffList?.find((s) => s.id === rec.markedByUserId || s.staffId === rec.markedByUserId);
+                              const m = staffMap.get(rec.markedByUserId);
                               if (m) {
                                 return isRTL ? (m.fullNameDhivehi || m.fullName) : m.fullName;
                               }

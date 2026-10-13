@@ -78,8 +78,8 @@ export const YearlyReportView: React.FC<YearlyReportViewProps> = ({
     }
   };
 
-  const fetchYearlyReport = async () => {
-    setLoading(true);
+  const fetchYearlyReport = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     const fallback = generateClientYearlyReport({
       academicYear: selectedYear,
       reportMode: mode,
@@ -106,13 +106,20 @@ export const YearlyReportView: React.FC<YearlyReportViewProps> = ({
       console.warn('Backend yearly report API offline or cold start, using client generator', err);
       setYearlyData(fallback);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchYearlyReport();
-  }, [selectedYear, mode, records]);
+    fetchYearlyReport(true);
+  }, [selectedYear, mode]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchYearlyReport(false);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [records]);
 
   const handlePrint = () => {
     window.print();

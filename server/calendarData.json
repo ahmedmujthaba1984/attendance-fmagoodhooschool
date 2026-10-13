@@ -120,6 +120,15 @@
     "isManualOverride": false
   },
   {
+    "id": "cal-custom-1789922915305",
+    "date": "2026-09-22",
+    "dayType": "SPECIAL_ACTIVITY",
+    "description": "Special Override",
+    "descriptionDhivehi": "ޚާއްޞަ ބަދަލު",
+    "isManualOverride": true,
+    "updatedByUserId": "stf-32"
+  },
+  {
     "id": "cal-17",
     "date": "2026-11-03",
     "dayType": "PUBLIC_HOLIDAY",
@@ -136,12 +145,12 @@
     "isManualOverride": false
   },
   {
-    "id": "cal-custom-1789922915305",
-    "date": "2026-09-22",
-    "dayType": "SPECIAL_ACTIVITY",
+    "id": "cal-custom-1791823553411",
+    "date": "2026-10-14",
+    "dayType": "REGULAR_TEACHING_DAY",
     "description": "Special Override",
     "descriptionDhivehi": "ޚާއްޞަ ބަދަލު",
     "isManualOverride": true,
-    "updatedByUserId": "stf-32"
+    "updatedByUserId": "stf-01"
   }
 ]

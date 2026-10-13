@@ -154,7 +154,13 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10',
     ];
 
-    const todayRecords = records.filter((r) => r.date === selectedDate);
+    const todayMap = new Map<string, AttendanceRecord>();
+    records.forEach((r) => {
+      if (r.date === selectedDate) {
+        todayMap.set(`${r.studentId}_${r.sessionType}`, r);
+      }
+    });
+
     return ALL_GRADES_LIST.map((grade) => {
       const gradeStudents = students.filter((s) => s.gradeLevel === grade);
       const totalEnrolled = gradeStudents.length || 1;
@@ -168,8 +174,8 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       let recCount = 0;
 
       gradeStudents.forEach((st) => {
-        const mRec = todayRecords.find((r) => r.studentId === st.id && r.sessionType === 'MORNING_BEFORE_BREAK');
-        const pRec = todayRecords.find((r) => r.studentId === st.id && r.sessionType === 'POST_BREAK');
+        const mRec = todayMap.get(`${st.id}_MORNING_BEFORE_BREAK`);
+        const pRec = todayMap.get(`${st.id}_POST_BREAK`);
 
         if (mRec && mRec.status) {
           recCount++;

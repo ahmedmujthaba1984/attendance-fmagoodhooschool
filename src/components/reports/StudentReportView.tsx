@@ -111,9 +111,9 @@ export const StudentReportView: React.FC<StudentReportViewProps> = ({
   };
 
   // Fetch student report
-  const fetchStudentReport = async () => {
+  const fetchStudentReport = async (showLoading = true) => {
     if (!selectedStudentId || !currentStudent) return;
-    setLoading(true);
+    if (showLoading) setLoading(true);
 
     // Immediately provide local computation so the UI never displays blank
     const fallbackReport = generateClientStudentReport({
@@ -191,13 +191,20 @@ export const StudentReportView: React.FC<StudentReportViewProps> = ({
       console.warn('Backend reporting API offline or warm-up, utilizing instant client generator', err);
       setReportData(fallbackReport);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchStudentReport();
-  }, [selectedStudentId, mode, period, year, month, weekStart, customStartDate, customEndDate, records]);
+    fetchStudentReport(true);
+  }, [selectedStudentId, mode, period, year, month, weekStart, customStartDate, customEndDate]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchStudentReport(false);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [records]);
 
   const handlePrint = () => {
     window.print();

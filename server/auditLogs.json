@@ -1,5 +1,35 @@
 [
   {
+    "id": "audit-1791976061624-3u3ff3",
+    "timestamp": "2026-10-14T11:07:41.624Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "OFFLINE_QUEUE_FLUSH",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "BullMQ Worker synced 1 queued attendance payloads (0 conflicts resolved)"
+  },
+  {
+    "id": "audit-1791976054383-x4k1l6",
+    "timestamp": "2026-10-14T11:07:34.383Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "OFFLINE_QUEUE_FLUSH",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "BullMQ Worker synced 1 queued attendance payloads (0 conflicts resolved)"
+  },
+  {
+    "id": "audit-1791975978569-8tlsvr",
+    "timestamp": "2026-10-14T11:06:18.569Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "OFFLINE_QUEUE_FLUSH",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "BullMQ Worker synced 0 queued attendance payloads (0 conflicts resolved)"
+  },
+  {
     "id": "audit-1791886811107-jgsghl",
     "timestamp": "2026-10-13T10:20:11.107Z",
     "userId": "stf-32",

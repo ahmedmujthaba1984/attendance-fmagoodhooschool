@@ -9,7 +9,7 @@ class SyncEngine {
   private currentState: SyncState = 'online_synced';
   private syncInProgress: boolean = false;
   private isProcessing: boolean = false;
-  private queuedPromise: Promise<{ success: boolean; syncedCount: number }> | null = null;
+  private queuedPromise: Promise<{ success: boolean; syncedCount: number; error?: string }> | null = null;
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -135,7 +135,7 @@ class SyncEngine {
   /**
    * Process all queued payloads to server using a continuous draining loop
    */
-  public async flushQueue(): Promise<{ success: boolean; syncedCount: number }> {
+  public async flushQueue(): Promise<{ success: boolean; syncedCount: number; error?: string }> {
     if (this.isProcessing) {
       if (!this.queuedPromise) {
         this.queuedPromise = (async () => {
@@ -181,10 +181,15 @@ class SyncEngine {
 
         // Mark local records as SYNCED
         for (const item of queue) {
-          const local = await offlineDb.attendance.get(item.payload.id);
-          if (local) {
-            local.syncStatus = 'SYNCED';
-            await offlineDb.attendance.put(local);
+          try {
+            const key = item.payload.id || item.clientSyncId;
+            const local = await offlineDb.attendance.get(key);
+            if (local) {
+              local.syncStatus = 'SYNCED';
+              await offlineDb.attendance.put(local);
+            }
+          } catch (dbErr) {
+            console.warn('Non-fatal error updating local record syncStatus:', dbErr);
           }
         }
 
@@ -193,14 +198,66 @@ class SyncEngine {
 
       this.isProcessing = false;
       this.syncInProgress = false;
-      this.notify();
+      await this.notify();
       return { success: true, syncedCount: totalSynced };
-    } catch (err) {
+    } catch (err: any) {
       console.warn('Sync flush postponed: offline or server unavailable', err);
       this.isProcessing = false;
       this.syncInProgress = false;
-      this.notify();
-      return { success: false, syncedCount: totalSynced };
+      await this.notify();
+      return { success: false, syncedCount: totalSynced, error: err?.message || 'Server unavailable' };
+    }
+  }
+
+  /**
+   * Return all items currently waiting in the offline queue
+   */
+  public async getPendingItems(): Promise<OfflineQueueItem[]> {
+    try {
+      return await offlineDb.syncQueue.toArray();
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Force clear the offline queue (e.g. if records are already verified on server)
+   */
+  public async clearQueue(): Promise<number> {
+    try {
+      const count = await offlineDb.syncQueue.count();
+      await offlineDb.syncQueue.clear();
+      await this.notify();
+      return count;
+    } catch {
+      return 0;
+    }
+  }
+
+  /**
+   * Force mark all pending records as SYNCED locally and clear queue
+   */
+  public async forceMarkAllSynced(): Promise<number> {
+    try {
+      const queue = await offlineDb.syncQueue.toArray();
+      const count = queue.length;
+      for (const item of queue) {
+        try {
+          const key = item.payload.id || item.clientSyncId;
+          const local = await offlineDb.attendance.get(key);
+          if (local) {
+            local.syncStatus = 'SYNCED';
+            await offlineDb.attendance.put(local);
+          }
+        } catch {
+          // ignore individual item errors
+        }
+      }
+      await offlineDb.syncQueue.clear();
+      await this.notify();
+      return count;
+    } catch {
+      return 0;
     }
   }
 

@@ -29,6 +29,7 @@ import { useLanguage } from '../i18n/LanguageContext';
 import { PWAInstallButton } from './PWAInstallButton';
 import { syncEngine, SyncState } from '../lib/syncEngine';
 import { User } from '../types';
+import { OfflineQueueModal } from './OfflineQueueModal';
 
 interface HeaderProps {
   activeTab: string;
@@ -70,6 +71,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [pendingCount, setPendingCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const [showStaffMenu, setShowStaffMenu] = useState(false);
+  const [showQueueModal, setShowQueueModal] = useState(false);
 
   useEffect(() => {
     const unsubscribe = syncEngine.subscribe((state, count) => {
@@ -85,8 +87,13 @@ export const Header: React.FC<HeaderProps> = ({
       if (onManualSync) {
         await onManualSync();
       } else {
-        await syncEngine.flushQueue();
+        const res = await syncEngine.flushQueue();
+        if (!res.success) {
+          setShowQueueModal(true);
+        }
       }
+    } catch {
+      setShowQueueModal(true);
     } finally {
       setIsSyncing(false);
     }
@@ -146,17 +153,19 @@ export const Header: React.FC<HeaderProps> = ({
                   : `${pendingCount} attendance records safely saved offline in browser. Click Sync to upload to server.`
               }
             >
-              <span
-                className="flex items-center gap-1 text-amber-400 font-medium text-[11px]"
+              <button
+                type="button"
+                onClick={() => setShowQueueModal(true)}
+                className="flex items-center gap-1 text-amber-400 font-bold text-[11px] hover:text-amber-300 transition cursor-pointer px-1 py-0.5 rounded hover:bg-slate-800"
                 title={
                   isRTL
-                    ? `އޮފްލައިންކޮށް ރައްކާކުރެވިފައިވާ ${pendingCount} ރެކޯޑް`
-                    : `${pendingCount} records stored locally offline`
+                    ? `އޮފްލައިންކޮށް ރައްކާކުރެވިފައިވާ ${pendingCount} ރެކޯޑް. ތަފްޞީލް ބައްލަވާލައްވަން މިތަނަށް ފިއްތަވާ`
+                    : `${pendingCount} records stored locally offline. Click to manage or clear queue.`
                 }
               >
                 <WifiOff className="w-3.5 h-3.5 shrink-0" />
                 <span>{pendingCount}</span>
-              </span>
+              </button>
               <button
                 type="button"
                 onClick={handleManualSync}
@@ -482,6 +491,18 @@ export const Header: React.FC<HeaderProps> = ({
           })}
         </nav>
       </div>
+
+      {/* Offline Attendance Queue Manager Modal */}
+      <OfflineQueueModal
+        isOpen={showQueueModal}
+        onClose={() => setShowQueueModal(false)}
+        pendingCount={pendingCount}
+        onSyncComplete={async () => {
+          if (onManualSync) {
+            await onManualSync();
+          }
+        }}
+      />
     </header>
   );
 };

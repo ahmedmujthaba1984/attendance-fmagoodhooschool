@@ -931,14 +931,21 @@ function logAudit(actionType: string, entityAffected: string, details: string, r
     (actorUserId ? staffMembers.find((u) => u.id === actorUserId || u.staffId === actorUserId) : null) ||
     staffMembers.find((u) => u.id === currentActiveUserId) ||
     staffMembers[0];
+  const ip = req
+    ? (req.headers?.['x-forwarded-for'] as string) ||
+      (req.headers?.['x-real-ip'] as string) ||
+      req.ip ||
+      req.socket?.remoteAddress ||
+      '127.0.0.1'
+    : '127.0.0.1';
   const log: AuditLog = {
     id: `audit-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
     timestamp: new Date().toISOString(),
-    userId: currentUser.id,
-    userName: currentUser.fullName,
+    userId: currentUser?.id || 'usr-admin',
+    userName: currentUser?.fullName || 'System Admin',
     actionType,
     entityAffected,
-    ipAddress: req ? (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress : '127.0.0.1',
+    ipAddress: ip,
     details,
   };
   auditLogs.unshift(log);
@@ -2302,76 +2309,103 @@ app.post('/api/school/reopen-day', (req, res) => {
 // 4. Background Sync Queue (BullMQ Pattern Representation)
 // Processes batch items written while offline in Dexie.js
 app.post('/api/attendance/sync-queue', (req, res) => {
-  const { items } = req.body as { items: AttendanceRecord[] };
-  if (!Array.isArray(items)) {
-    return res.status(400).json({ error: 'Payload items must be an array' });
-  }
+  try {
+    const rawBody = req.body;
+    const body = typeof rawBody === 'string' ? JSON.parse(rawBody) : rawBody || {};
+    const items = Array.isArray(body) ? body : (body.items || []);
 
-  let conflictsResolved = 0;
-  let syncedCount = 0;
-  let rejectedCount = 0;
-  const now = new Date().toISOString();
-
-  const isMobileClient = Boolean(
-    req.body.hasRapidRollCallPrivilege ||
-    req.body.loginViaMobile ||
-    /Android|iPhone|iPad|Mobile/i.test(req.headers['user-agent'] || '')
-  );
-
-  items.forEach((item) => {
-    // 1. Never accept records for future dates or sessions not yet started (allow early for mobile rapid roll call)
-    const eligibility = checkSessionStartEligibility(item.date, item.sessionType);
-    const isEarlyAllowed = isMobileClient && eligibility.error === 'SESSION_NOT_STARTED';
-    if (!eligibility.allowed && !isEarlyAllowed) {
-      rejectedCount++;
-      return;
+    if (!Array.isArray(items)) {
+      return res.status(400).json({ error: 'Payload items must be an array', success: false });
     }
 
-    // 2. Never accept records on school closed days
-    const closed = checkSchoolClosed(item.date);
-    if (closed.isClosed) {
-      rejectedCount++;
-      return;
+    if (items.length === 0) {
+      return res.json({
+        success: true,
+        syncedCount: 0,
+        conflictsResolved: 0,
+        serverTimestamp: new Date().toISOString(),
+      });
     }
 
-    const key = `${item.studentId}_${item.date}_${item.sessionType}`;
-    const existing = attendanceStore.get(key);
+    let conflictsResolved = 0;
+    let syncedCount = 0;
+    let rejectedCount = 0;
+    const now = new Date().toISOString();
+    const todayStr = now.split('T')[0];
 
-    // Conflict resolution: Last-write-wins based on updatedAt timestamp
-    if (existing && new Date(existing.updatedAt).getTime() > new Date(item.updatedAt).getTime()) {
-      conflictsResolved++;
-      return; // Keep existing server version
-    }
+    items.forEach((item) => {
+      if (!item || !item.studentId || !item.date || !item.sessionType) {
+        rejectedCount++;
+        return;
+      }
 
-    attendanceStore.set(key, {
-      ...item,
-      syncStatus: 'SYNCED',
-      updatedAt: now,
+      // Offline queue records: accept all records for today or past days.
+      // Only reject if it's explicitly for a distant future date.
+      if (item.date > todayStr) {
+        const eligibility = checkSessionStartEligibility(item.date, item.sessionType);
+        if (!eligibility.allowed) {
+          rejectedCount++;
+          return;
+        }
+      }
+
+      // School closure check
+      const closed = checkSchoolClosed(item.date);
+      if (closed.isClosed) {
+        rejectedCount++;
+        return;
+      }
+
+      const key = `${item.studentId}_${item.date}_${item.sessionType}`;
+      const existing = attendanceStore.get(key);
+
+      // Conflict resolution: Last-write-wins based on updatedAt timestamp
+      if (existing && item.updatedAt && existing.updatedAt && new Date(existing.updatedAt).getTime() > new Date(item.updatedAt).getTime()) {
+        conflictsResolved++;
+        return; // Keep existing server version
+      }
+
+      attendanceStore.set(key, {
+        ...item,
+        syncStatus: 'SYNCED',
+        updatedAt: now,
+      });
+      syncedCount++;
     });
-    syncedCount++;
-  });
 
-  if (syncedCount > 0) {
-    saveAttendanceToDisk(attendanceStore);
-    broadcastLiveSync({
-      type: 'ATTENDANCE_MUTATED',
-      count: syncedCount,
+    if (syncedCount > 0) {
+      saveAttendanceToDisk(attendanceStore);
+      broadcastLiveSync({
+        type: 'ATTENDANCE_MUTATED',
+        count: syncedCount,
+      });
+    }
+
+    try {
+      logAudit(
+        'OFFLINE_QUEUE_FLUSH',
+        'AttendanceSession',
+        `BullMQ Worker synced ${syncedCount} queued attendance payloads (${conflictsResolved} conflicts resolved, ${rejectedCount} rejected)`,
+        req
+      );
+    } catch (auditErr) {
+      console.warn('logAudit non-fatal failure:', auditErr);
+    }
+
+    return res.json({
+      success: true,
+      syncedCount,
+      conflictsResolved,
+      rejectedCount,
+      serverTimestamp: now,
+    });
+  } catch (err: any) {
+    console.error('Error in /api/attendance/sync-queue:', err);
+    return res.status(500).json({
+      success: false,
+      error: err?.message || 'Internal server error while syncing offline queue',
     });
   }
-
-  logAudit(
-    'OFFLINE_QUEUE_FLUSH',
-    'AttendanceSession',
-    `BullMQ Worker synced ${syncedCount} queued attendance payloads (${conflictsResolved} conflicts resolved)`,
-    req
-  );
-
-  res.json({
-    success: true,
-    syncedCount,
-    conflictsResolved,
-    serverTimestamp: now,
-  });
 });
 
 // 5. Substitutions / Class Delegation API

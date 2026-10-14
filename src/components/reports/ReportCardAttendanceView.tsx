@@ -437,7 +437,7 @@ export const ReportCardAttendanceView: React.FC<ReportCardAttendanceViewProps> =
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={fetchReportCardData}
+            onClick={() => fetchReportCardData()}
             disabled={loading}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-800 text-xs font-bold transition cursor-pointer border border-sky-200 shadow-2xs active:scale-95 disabled:opacity-50"
             title="Refresh Attendance Data"

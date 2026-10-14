@@ -140,6 +140,7 @@ function MainApp() {
       lateEntriesCount: 0,
       notInIslandCount: 0,
       sickLeaveCount: 0,
+      pendingOfflineCount: 0,
       gradeStats: [],
     };
   });
@@ -1874,10 +1875,13 @@ function MainApp() {
               setSelectedDate(d);
               setActiveTab('attendance');
             }}
+            onClose={() => setActiveTab('attendance')}
           />
         )}
 
-        {activeTab === 'ai' && <AIAssistantDrawer />}
+        {activeTab === 'ai' && (
+          <AIAssistantDrawer onClose={() => setActiveTab('attendance')} />
+        )}
 
         {activeTab === 'audit' && (
           <AuditLogViewer logs={auditLogs} onRefresh={fetchAuditLogs} />
@@ -1913,7 +1917,29 @@ function MainApp() {
         onOpenTimingsModal={() => setIsTimingsModalOpen(true)}
         onLogout={handleLogout}
         onManualSync={async () => {
-          await syncEngine.flushQueue();
+          const res = await syncEngine.flushQueue();
+          if (res.syncedCount > 0) {
+            showNotification(
+              isRTL
+                ? `${res.syncedCount} ހާޒިރީ ރެކޯޑް ކާމިޔާބުކަމާއެކު ސާވަރަށް ސިންކްކުރެވިއްޖެ!`
+                : `Successfully synced ${res.syncedCount} attendance records to server!`,
+              'info'
+            );
+            await fetchAttendance();
+            await fetchMoEStats();
+          } else if (res.success) {
+            showNotification(
+              isRTL ? 'ހުރިހާ ރެކޯޑެއް ވަނީ ސިންކްވެފައި' : 'All records are already up to date!',
+              'info'
+            );
+          } else {
+            showNotification(
+              isRTL
+                ? 'ސާވަރާ ގުޅުމުގައި މައްސަލައެއް. އަލުން މަސައްކަތްކުރައްވާ.'
+                : 'Unable to connect to server. Your records remain safe offline.',
+              'warning'
+            );
+          }
         }}
       />
 

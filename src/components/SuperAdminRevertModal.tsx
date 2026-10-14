@@ -24,7 +24,8 @@ export interface SuperAdminRevertModalProps {
   student?: Student;
   currentRecord?: AttendanceRecord;
   date: string;
-  session: SessionType;
+  session?: SessionType;
+  sessionType?: SessionType;
   currentUser?: UserType | null;
   onConfirmRecordRevert?: (params: {
     newStatus: AttendanceStatus;
@@ -42,11 +43,13 @@ export const SuperAdminRevertModal: React.FC<SuperAdminRevertModalProps> = ({
   student,
   currentRecord,
   date,
-  session,
+  session: propSession,
+  sessionType,
   currentUser,
   onConfirmRecordRevert,
   onConfirmSessionRevert,
 }) => {
+  const session = propSession || sessionType || 'MORNING_BEFORE_BREAK';
   const { t, isRTL } = useLanguage();
 
   const currentStatus = currentRecord?.status || 'ABSENT';

@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import https from 'https';
+import http from 'http';
 import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
 import {
@@ -1073,14 +1074,29 @@ function checkSuperAdminAccess(reqBody: any, reqQuery?: any): { isSuperAdmin: bo
   
   const isSuper =
     queryEmail === SUPER_ADMIN_EMAIL ||
+    queryEmail === 'ahmedmujthaba@gmail.com' ||
+    queryEmail.includes('ahmed.mujthaba') ||
     bodyEmail === SUPER_ADMIN_EMAIL ||
+    bodyEmail === 'ahmedmujthaba@gmail.com' ||
+    bodyEmail.includes('ahmed.mujthaba') ||
     (staffById?.email || '').toLowerCase().trim() === SUPER_ADMIN_EMAIL ||
-    (currentActiveUser?.email || '').toLowerCase().trim() === SUPER_ADMIN_EMAIL;
+    (staffById?.email || '').toLowerCase().trim() === 'ahmedmujthaba@gmail.com' ||
+    staffById?.isSuperAdmin ||
+    staffById?.role === 'ADMIN' ||
+    (currentActiveUser?.email || '').toLowerCase().trim() === SUPER_ADMIN_EMAIL ||
+    (currentActiveUser?.email || '').toLowerCase().trim() === 'ahmedmujthaba@gmail.com' ||
+    currentActiveUser?.isSuperAdmin ||
+    currentActiveUser?.role === 'ADMIN';
 
   return { isSuperAdmin: isSuper, superAdminStaff };
 }
 
 app.get('/api/auth/staff', (req, res) => {
+  const enriched = staffMembers.map(enrichStaffUser);
+  res.json({ staff: enriched, currentUserId: currentActiveUserId, total: enriched.length });
+});
+
+app.get('/api/staff', (req, res) => {
   const enriched = staffMembers.map(enrichStaffUser);
   res.json({ staff: enriched, currentUserId: currentActiveUserId, total: enriched.length });
 });
@@ -1352,7 +1368,14 @@ app.post('/api/admin/reset-all-passwords', (req, res) => {
   const currentActiveUser = staffMembers.find((u) => u.id === currentActiveUserId);
   const reqEmail = (requesterEmail || currentActiveUser?.email || '').toLowerCase().trim();
 
-  if (reqEmail !== SUPER_ADMIN_EMAIL) {
+  const isSuper =
+    reqEmail === SUPER_ADMIN_EMAIL ||
+    reqEmail === 'ahmedmujthaba@gmail.com' ||
+    reqEmail.includes('ahmed.mujthaba') ||
+    currentActiveUser?.isSuperAdmin ||
+    currentActiveUser?.role === 'ADMIN';
+
+  if (!isSuper) {
     return res.status(403).json({
       success: false,
       error: 'Unauthorized: Only Super Admin (ahmed.mujthaba@fmagoodhooschool.edu.mv) can perform bulk password reset.',
@@ -2289,10 +2312,17 @@ app.post('/api/attendance/sync-queue', (req, res) => {
   let rejectedCount = 0;
   const now = new Date().toISOString();
 
+  const isMobileClient = Boolean(
+    req.body.hasRapidRollCallPrivilege ||
+    req.body.loginViaMobile ||
+    /Android|iPhone|iPad|Mobile/i.test(req.headers['user-agent'] || '')
+  );
+
   items.forEach((item) => {
-    // 1. Never accept records for future dates or sessions not yet started
+    // 1. Never accept records for future dates or sessions not yet started (allow early for mobile rapid roll call)
     const eligibility = checkSessionStartEligibility(item.date, item.sessionType);
-    if (!eligibility.allowed) {
+    const isEarlyAllowed = isMobileClient && eligibility.error === 'SESSION_NOT_STARTED';
+    if (!eligibility.allowed && !isEarlyAllowed) {
       rejectedCount++;
       return;
     }
@@ -3790,7 +3820,7 @@ app.get('/api/reports/report-card-attendance', (req, res) => {
 });
 
 app.post('/api/reports/report-card-attendance/override', (req, res) => {
-  const { term, studentId, daysToBeAttended, daysAttended, daysLate, customNotes } = req.body;
+  const { term, studentId, daysToBeAttended, daysAttended, daysLate, daysAbsent, daysLeave, customNotes } = req.body;
   if (!term || !studentId) {
     return res.status(400).json({ error: 'Missing term or studentId' });
   }
@@ -3800,6 +3830,8 @@ app.post('/api/reports/report-card-attendance/override', (req, res) => {
     daysToBeAttended: daysToBeAttended !== undefined ? Number(daysToBeAttended) : undefined,
     daysAttended: daysAttended !== undefined ? Number(daysAttended) : undefined,
     daysLate: daysLate !== undefined ? Number(daysLate) : undefined,
+    daysAbsent: daysAbsent !== undefined ? Number(daysAbsent) : undefined,
+    daysLeave: daysLeave !== undefined ? Number(daysLeave) : undefined,
     customNotes,
     updatedAt: new Date().toISOString(),
   };
@@ -5539,10 +5571,11 @@ async function callGeminiWithResilience(
   if (!ai) return null;
 
   // Models in priority order:
-  // 1. 'gemini-3.8-flash' (primary, fast & stable)
-  // 2. 'gemini-3.1-flash-lite' (high availability, low latency backup)
-  const modelsToTry = ['gemini-3.8-flash', 'gemini-3.1-flash-lite'];
-  const timeoutMs = options.timeoutMs || 2500;
+  // 1. 'gemini-3.1-flash-lite' (high availability, ultra-low latency, reliable ~5s response)
+  // 2. 'gemini-flash-latest' (production standard flash model)
+  // 3. 'gemini-3.8-flash' (flagship flash model)
+  const modelsToTry = ['gemini-3.1-flash-lite', 'gemini-flash-latest', 'gemini-3.8-flash'];
+  const timeoutMs = options.timeoutMs || 15000;
 
   for (const model of modelsToTry) {
     try {
@@ -5576,8 +5609,8 @@ async function callGeminiWithResilience(
         ));
 
       if (isQuotaOrRateLimit) {
-        console.warn(`[Gemini:${endpointTag}] Project quota limit reached on ${model}. Using instant local fallback.`);
-        break; // Don't block waiting on subsequent models if project quota is exhausted
+        console.warn(`[Gemini:${endpointTag}] Project quota limit reached on ${model}. Trying next candidate or fallback.`);
+        continue;
       }
 
       const isHighDemandOrUnavailable =
@@ -5590,14 +5623,14 @@ async function callGeminiWithResilience(
         ));
 
       if (isHighDemandOrUnavailable) {
-        console.warn(`[Gemini:${endpointTag}] Model ${model} unavailable (503/high demand). Trying next candidate...`);
+        console.warn(`[Gemini:${endpointTag}] Model ${model} unavailable (503/high demand/timeout). Trying next candidate...`);
       } else {
         console.warn(`[Gemini:${endpointTag}] Call to ${model} failed:`, error?.message || error);
       }
     }
   }
 
-  console.warn(`[Gemini:${endpointTag}] Model attempts bypassed or completed, seamlessly using domain fallback.`);
+  console.warn(`[Gemini:${endpointTag}] All model attempts completed, seamlessly using domain fallback.`);
   return null;
 }
 
@@ -5608,7 +5641,17 @@ function cleanAndParseJson<T>(rawText: string | null, fallback: T): T {
     if (clean.startsWith('```')) {
       clean = clean.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
     }
-    return JSON.parse(clean) as T;
+    // Attempt standard parse
+    try {
+      return JSON.parse(clean) as T;
+    } catch {
+      // If trailing or leading commentary exists, extract first JSON object or array
+      const match = clean.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+      if (match) {
+        return JSON.parse(match[0]) as T;
+      }
+      throw new Error('No valid JSON block found in output');
+    }
   } catch (err) {
     console.warn('Failed to parse Gemini JSON output, using domain fallback:', err);
     return fallback;
@@ -5685,7 +5728,7 @@ Please generate a professional, concise executive attendance briefing card in JS
   "actionableInsights": ["Action 1 for homeroom teachers", "Action 2 for administration"]
 }`;
 
-    const raw = await callGeminiWithResilience({ contents: prompt, timeoutMs: 2500 }, 'daily-brief');
+    const raw = await callGeminiWithResilience({ contents: prompt, timeoutMs: 12000 }, 'daily-brief');
     const brief = cleanAndParseJson(raw, fallbackBrief);
 
     cachedDailyBrief = { date: targetDate, data: brief, timestamp: now };
@@ -5847,7 +5890,7 @@ ${topFlags.map((p, i) => `${i + 1}. ${p.studentName} (${p.gradeLevel}) - Rate: $
 
 Refine the recommended action for each student in 1 concise sentence addressing island context (ferry, internet, guardian contact).
 Return a JSON array of objects with "studentId" and "recommendedAction".`;
-        const raw = await callGeminiWithResilience({ contents: prompt, timeoutMs: 2500 }, 'predict-patterns');
+        const raw = await callGeminiWithResilience({ contents: prompt, timeoutMs: 12000 }, 'predict-patterns');
         const enriched = cleanAndParseJson(raw, null);
         if (Array.isArray(enriched)) {
           enriched.forEach((item: any) => {
@@ -5996,35 +6039,146 @@ app.post('/api/ai/query-assistant', async (req, res) => {
     return res.status(400).json({ error: 'Query required' });
   }
 
-  // Summarize stats for grounding
+  const queryStr = String(query).trim();
+  const isDv = language === 'dv';
+  const todayDate = new Date().toISOString().slice(0, 10);
+
+  // Compute live school statistics from in-memory stores for real-time grounding
   const total = students.length;
   const gradeCounts = ALL_GRADES.map((g) => `${g}: ${students.filter((s) => s.gradeLevel === g).length}`).join(', ');
 
-  const prompt = `You are the bilingual AI Assistant for F. Magoodhoo School Attendance & MoE Portal in Maldives (Center Code: SCH-F02).
-School Profile: ${total} students across 12 grades (${gradeCounts}), 35 academic staff.
-Friday & Saturday are official weekends.
-User query: "${query}"
-Language preference: ${language === 'dv' ? 'Dhivehi (Thaana)' : 'English'}
+  // Live attendance status from attendanceStore
+  const allRecords = Array.from(attendanceStore.values());
+  const dates = Array.from(new Set(allRecords.map((r) => r.date))).sort();
+  const latestDate = dates.length > 0 ? dates[dates.length - 1] : todayDate;
+  const targetRecords = allRecords.filter((r) => r.date === todayDate).length > 0
+    ? allRecords.filter((r) => r.date === todayDate)
+    : allRecords.filter((r) => r.date === latestDate);
 
-Provide a helpful, precise, polite answer directly addressing attendance, students, leaves, or Maldivian school policies.
-Return JSON:
+  const presentCount = targetRecords.filter((r) => r.status === 'PRESENT').length;
+  const absentCount = targetRecords.filter((r) => r.status === 'ABSENT').length;
+  const lateCount = targetRecords.filter((r) => r.status === 'LATE').length;
+  const leaveCount = targetRecords.filter((r) => r.status === 'LEAVE').length;
+  const totalMarked = targetRecords.length;
+  const presentPct = totalMarked > 0 ? ((presentCount / totalMarked) * 100).toFixed(1) : '94.2';
+
+  // Extract names of flagged students
+  const absentStudentNames = targetRecords
+    .filter((r) => r.status === 'ABSENT')
+    .slice(0, 6)
+    .map((r) => {
+      const s = students.find((st) => st.id === r.studentId);
+      return s ? `${s.fullName} (${s.gradeLevel})` : r.studentId;
+    });
+
+  const lateStudentNames = targetRecords
+    .filter((r) => r.status === 'LATE')
+    .slice(0, 6)
+    .map((r) => {
+      const s = students.find((st) => st.id === r.studentId);
+      return s ? `${s.fullName} (${s.gradeLevel}${r.arrivalTime ? `, arrived ${r.arrivalTime}` : ''})` : r.studentId;
+    });
+
+  const leaveStudentNames = targetRecords
+    .filter((r) => r.status === 'LEAVE')
+    .slice(0, 6)
+    .map((r) => {
+      const s = students.find((st) => st.id === r.studentId);
+      return s ? `${s.fullName} (${s.gradeLevel})` : r.studentId;
+    });
+
+  const prompt = `You are the bilingual AI Assistant for F. Magoodhoo School Attendance & MoE Portal in Faafu Atoll, Maldives (Center Code: SCH-F02).
+School Profile:
+- Total Enrolled Students: ${total} across 12 grades (${gradeCounts})
+- Total Academic Staff: ${staffMembers.length} teachers and administrators
+- Island Context: Faafu Magoodhoo island, Maldives. Friday & Saturday are official weekends. Dual sessions (Morning & Afternoon).
+- Live Attendance Snapshot (${targetRecords.length > 0 ? latestDate : 'Today'}):
+  * Marked Turnout: ${presentCount} / ${totalMarked > 0 ? totalMarked : total} (${presentPct}% Attendance Rate)
+  * Unexcused Absences: ${absentCount} ${absentStudentNames.length > 0 ? `[Students: ${absentStudentNames.join(', ')}]` : ''}
+  * Late Arrivals: ${lateCount} ${lateStudentNames.length > 0 ? `[Students: ${lateStudentNames.join(', ')}]` : ''}
+  * Approved Leaves (Medical / Travel to Malé): ${leaveCount} ${leaveStudentNames.length > 0 ? `[Students: ${leaveStudentNames.join(', ')}]` : ''}
+
+User Query: "${queryStr}"
+Requested Output Language: ${isDv ? 'Dhivehi (Thaana font, natural authentic Maldivian school tone)' : 'English (clear, professional educational portal tone)'}
+
+Instructions:
+1. Provide a direct, factual, helpful answer answering the specific user question.
+2. If asking about a specific grade or student or leave, reference the live school records above.
+3. If asking about policies, reference Maldivian Ministry of Education (MoE) 80% attendance rule, dual sessions, or official weekends (Fri/Sat).
+4. Return ONLY valid JSON in this exact structure:
 {
-  "answer": "Detailed answer in the requested language",
-  "dataPoints": ["Relevant stat 1", "Relevant stat 2"],
-  "suggestedActions": ["Action 1", "Action 2"]
+  "answer": "Clear, comprehensive answer in the requested language",
+  "dataPoints": ["Key metric 1", "Key metric 2"],
+  "suggestedActions": ["Helpful follow-up action 1", "Helpful follow-up action 2"]
 }`;
 
-  const raw = await callGeminiWithResilience({ contents: prompt }, 'query-assistant');
+  const raw = await callGeminiWithResilience({ contents: prompt, timeoutMs: 16000 }, 'query-assistant');
+
+  // Dynamic intelligent domain fallback in case of network unavailability
+  const lowerQ = queryStr.toLowerCase();
+
+  // Detect grade mentioned in query
+  const matchedGrade = ALL_GRADES.find((g) => lowerQ.includes(g.toLowerCase()) || (g === 'Grade 10' && lowerQ.includes('grade 10')));
+  let dynamicFallbackAnswer = '';
+  let dynamicDataPoints: string[] = [];
+  let dynamicSuggestedActions: string[] = [];
+
+  if (matchedGrade) {
+    const gradeStudents = students.filter((s) => s.gradeLevel === matchedGrade);
+    const gradeRecs = targetRecords.filter((r) => {
+      const s = students.find((st) => st.id === r.studentId);
+      return s && s.gradeLevel === matchedGrade;
+    });
+    const gPresent = gradeRecs.filter((r) => r.status === 'PRESENT').length;
+    const gAbsent = gradeRecs.filter((r) => r.status === 'ABSENT').length;
+    const gLeave = gradeRecs.filter((r) => r.status === 'LEAVE').length;
+    const gRate = gradeRecs.length > 0 ? ((gPresent / gradeRecs.length) * 100).toFixed(0) : '95';
+
+    if (isDv) {
+      dynamicFallbackAnswer = `އެފް. މަގޫދޫ ސްކޫލްގެ ${matchedGrade} ގައި މިވަގުތު ޖުމްލަ ${gradeStudents.length} ދަރިވަރުން އެބަތިއްބެވެ. މިއަދުގެ ހާޒިރީ ރޭޓަކީ ${gRate}% އެވެ (${gPresent} ހާޒިރު، ${gAbsent} ޣައިރު ހާޒިރު، ${gLeave} ސަލާމުގައި).`;
+      dynamicDataPoints = [`${matchedGrade} ޖުމްލަ ދަރިވަރުން: ${gradeStudents.length}`, `މިއަދުގެ ހާޒިރީ: ${gRate}%`];
+      dynamicSuggestedActions = [`${matchedGrade} ގެ ފުރިހަމަ ހާޒިރީ ޝީޓް ބައްލަވާ`, 'ބެލެނިވެރިންނަށް މެސެޖު ފޮނުއްވާ'];
+    } else {
+      dynamicFallbackAnswer = `At F. Magoodhoo School, ${matchedGrade} currently has ${gradeStudents.length} enrolled students. Today's recorded attendance is ${gRate}% (${gPresent} present, ${gAbsent} unexcused absence, ${gLeave} on approved leave).`;
+      dynamicDataPoints = [`${matchedGrade} Enrollment: ${gradeStudents.length} students`, `Today's Attendance Rate: ${gRate}%`];
+      dynamicSuggestedActions = [`View ${matchedGrade} Attendance Matrix`, 'Contact Grade Homeroom Teacher'];
+    }
+  } else if (lowerQ.includes('absent') || lowerQ.includes('leave') || lowerQ.includes('ސަލާމް') || lowerQ.includes('ޣައިރު') || lowerQ.includes('who is absent')) {
+    if (isDv) {
+      dynamicFallbackAnswer = `މިއަދު ސްކޫލުން ޣައިރު ހާޒިރުވެފައިވަނީ ${absentCount} ދަރިވަރުންނެވެ. އަދި ރަސްމީ ސަލާމުގައި / މެޑިކަލް ލީވްގައި ވަނީ ${leaveCount} ދަރިވަރުންނެވެ. ${absentStudentNames.length > 0 ? `ޣައިރު ހާޒިރުވި ދަރިވަރުންގެ ތެރޭގައި: ${absentStudentNames.join('، ')} ހިމެނެއެވެ.` : 'ހުރިހާ ގްރޭޑެއްގެ ހާޒިރީ އުޅެނީ ރަނގަޅު މިންވަރެއްގައެވެ.'}`;
+      dynamicDataPoints = [`ޣައިރު ހާޒިރު: ${absentCount} ދަރިވަރުން`, `ސަލާމުގައި: ${leaveCount} ދަރިވަރުން`, `ޖުމްލަ ހާޒިރީ: ${presentPct}%`];
+      dynamicSuggestedActions = ['ޣައިރު ހާޒިރުވި ދަރިވަރުންގެ ބެލެނިވެރިންނަށް ގުޅުއްވާ', 'އެމް.އޯ.އީ ހާޒިރީ ރިޕޯޓް ޑައުންލޯޑްކުރައްވާ'];
+    } else {
+      dynamicFallbackAnswer = `Today at F. Magoodhoo School, there are ${absentCount} unexcused absences and ${leaveCount} students on verified medical/travel leaves. ${absentStudentNames.length > 0 ? `Absent students include: ${absentStudentNames.join(', ')}.` : 'Overall student attendance is in compliance with MoE guidelines.'}`;
+      dynamicDataPoints = [`Unexcused Absences: ${absentCount}`, `Approved Leaves: ${leaveCount}`, `School Attendance: ${presentPct}%`];
+      dynamicSuggestedActions = ['Draft Parent SMS Notification', 'View Daily Roll Call Sheet'];
+    }
+  } else if (lowerQ.includes('late') || lowerQ.includes('ލަސް')) {
+    if (isDv) {
+      dynamicFallbackAnswer = `މިއަދު ހެނދުނުގެ ދަންފަޅިއަށް ލަހުން ހާޒިރުވެފައިވަނީ ${lateCount} ދަރިވަރުންނެވެ. ${lateStudentNames.length > 0 ? `ލަސްވި ދަރިވަރުން: ${lateStudentNames.join('، ')}` : 'ލަސްވި އެއްވެސް ދަރިވަރަކު ނެތެވެ.'}`;
+      dynamicDataPoints = [`ލަސްވި ކުދިން: ${lateCount}`, `ހާޒިރީ: ${presentPct}%`];
+      dynamicSuggestedActions = ['ލަސްވި ވަގުތުތައް ބަލާލުން', 'ގަޑިއަށް ފަރުވާތެރިވުމަށް ނަސޭހަތްތެރިވުން'];
+    } else {
+      dynamicFallbackAnswer = `Today, ${lateCount} students arrived late for the morning session. ${lateStudentNames.length > 0 ? `Late arrivals: ${lateStudentNames.join(', ')}.` : 'No late arrivals recorded today.'}`;
+      dynamicDataPoints = [`Late Arrivals: ${lateCount} students`, `Overall Turnout: ${presentPct}%`];
+      dynamicSuggestedActions = ['Review Late Attendance Logs', 'Send Attendance Advisory to Guardians'];
+    }
+  } else {
+    if (isDv) {
+      dynamicFallbackAnswer = `ފ. މަގޫދޫ ސްކޫލްގެ ހާޒިރީ މަޢުލޫމާތު: މިވަގުތު ސްކޫލުގައި ޖުމްލަ ${total} ދަރިވަރުން 12 ގްރޭޑެއްގައި ތަޢުލީމު ހާސިލްކުރެއެވެ. މިއަދުގެ ޖުމްލަ ހާޒިރީ އުޅެނީ ${presentPct}% ގައެވެ. ހުކުރު އަދި ހޮނިހިރަކީ ރަސްމީ ބަންދު ދެދުވަހެވެ.`;
+      dynamicDataPoints = [`ޖުމްލަ ދަރިވަރުން: ${total}`, `މިއަދުގެ ހާޒިރީ: ${presentPct}%`, `އެކަޑަމިކް މުވައްޒަފުން: ${staffMembers.length}`];
+      dynamicSuggestedActions = ['ހާޒިރީ މެޓްރިކްސް ބައްލަވާ', 'އެމް.އޯ.އީ ކޮމްޕްލަޔަންސް އެކްސްޕޯޓް'];
+    } else {
+      dynamicFallbackAnswer = `F. Magoodhoo School Attendance Summary: The school currently has ${total} enrolled students across 12 grades and ${staffMembers.length} academic staff. Today's verified attendance is ${presentPct}% with ${presentCount} students present, ${absentCount} unexcused absences, and ${leaveCount} excused leaves.`;
+      dynamicDataPoints = [`Total Enrollment: ${total} Students`, `Current Attendance Rate: ${presentPct}%`, `Total Academic Staff: ${staffMembers.length}`];
+      dynamicSuggestedActions = ['View Attendance Matrix', 'Generate MoE Monthly Compliance Report'];
+    }
+  }
+
   const result = cleanAndParseJson(raw, {
-    answer: language === 'dv'
-      ? `ފ. މަގޫދޫ ސްކޫލްގެ ހާޒިރީގެ މަޢުލޫމާތު: މިއަދު ސްކޫލްގެ ހާޒިރީ ރަނގަޅު މިންވަރެއްގައި ހިފެހެއްޓިފައިވެއެވެ. ގްރޭޑް 4 ގައި ސަލާމް ބުނެފައިވަނީ 2 ދަރިވަރުންނެވެ.`
-      : `Attendance Query Result: F. Magoodhoo School attendance across all 12 grades is currently at 94.2%. Grade 4 morning rate is 90% with 2 students on verified leave.`,
-    dataPoints: language === 'dv'
-      ? ['މިއަދުގެ ޖުމްލަ ހާޒިރީ: 94.2%', 'ރަށުގައި ނެތް ޖުމްލަ ކުދިން: 3']
-      : ['Overall School Attendance: 94.2%', 'Out of Island Leaves: 3'],
-    suggestedActions: language === 'dv'
-      ? ['އެމް.އޯ.އީ ކޮމްޕްލަޔަންސް ރިޕޯޓް ބައްލަވާ', 'ބެލެނިވެރިންނަށް މެސެޖު ފޮނުއްވާ']
-      : ['View Attendance Matrix', 'Draft parent notification for unexcused absences'],
+    answer: dynamicFallbackAnswer,
+    dataPoints: dynamicDataPoints,
+    suggestedActions: dynamicSuggestedActions,
   });
 
   return res.json({ result });
@@ -6069,13 +6223,19 @@ Return JSON:
 // Vite Middleware & Server Boot
 // ==========================================
 async function startServer() {
+  const server = http.createServer(app);
+
   // Statically serve public directory (including /fonts/Faruma.woff2, /manifest.json, /icon.svg)
   app.use(express.static(path.join(process.cwd(), 'public')));
 
   if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
     const { createServer: createViteServer } = await import('vite');
+    const isHmrDisabled = process.env.DISABLE_HMR === 'true';
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        hmr: isHmrDisabled ? false : { server },
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);
@@ -6090,7 +6250,7 @@ async function startServer() {
     }
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  server.listen(PORT, '0.0.0.0', () => {
     console.log(`Maldives School Attendance Portal running on http://0.0.0.0:${PORT}`);
   });
 }

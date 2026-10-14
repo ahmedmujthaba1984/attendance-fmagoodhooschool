@@ -1,5 +1,95 @@
 [
   {
+    "id": "audit-1791886811107-jgsghl",
+    "timestamp": "2026-10-13T10:20:11.107Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "STAFF_LOGIN",
+    "entityAffected": "User",
+    "ipAddress": "127.0.0.1",
+    "details": "Ahmed Mujthaba (ahmed.mujthaba@fmagoodhooschool.edu.mv) logged in successfully"
+  },
+  {
+    "id": "audit-1791883747587-qgg5e0",
+    "timestamp": "2026-10-13T09:29:07.587Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "USER_SWITCH",
+    "entityAffected": "User",
+    "ipAddress": "203.104.27.154, 169.254.169.126",
+    "details": "Active staff switched to Ahmed Mujthaba (ADMIN)"
+  },
+  {
+    "id": "audit-1791883747067-yf9rjr",
+    "timestamp": "2026-10-13T09:29:07.067Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "STAFF_LOGIN",
+    "entityAffected": "User",
+    "ipAddress": "203.104.27.154, 169.254.169.126",
+    "details": "Ahmed Mujthaba (ahmed.mujthaba@fmagoodhooschool.edu.mv) logged in successfully"
+  },
+  {
+    "id": "audit-1791883708411-mhxe3n",
+    "timestamp": "2026-10-13T09:28:28.411Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "STAFF_LOGOUT",
+    "entityAffected": "User",
+    "ipAddress": "203.104.27.154, 169.254.169.126",
+    "details": "Ahmed Mujthaba logged out"
+  },
+  {
+    "id": "audit-1791883699566-70towo",
+    "timestamp": "2026-10-13T09:28:19.566Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "USER_SWITCH",
+    "entityAffected": "User",
+    "ipAddress": "203.104.27.154, 169.254.169.126",
+    "details": "Active staff switched to Ahmed Mujthaba (ADMIN)"
+  },
+  {
+    "id": "audit-1791883698714-nm2w3f",
+    "timestamp": "2026-10-13T09:28:18.714Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "PASSWORD_CHANGED",
+    "entityAffected": "User",
+    "ipAddress": "203.104.27.154, 169.254.169.126",
+    "details": "Ahmed Mujthaba changed their portal password"
+  },
+  {
+    "id": "audit-1791883666090-li0gj3",
+    "timestamp": "2026-10-13T09:27:46.090Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "STAFF_LOGIN",
+    "entityAffected": "User",
+    "ipAddress": "203.104.27.154, 169.254.169.126",
+    "details": "Ahmed Mujthaba (ahmed.mujthaba@fmagoodhooschool.edu.mv) logged in successfully"
+  },
+  {
+    "id": "audit-1791883633204-7oj11c",
+    "timestamp": "2026-10-13T09:27:13.204Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "STAFF_LOGOUT",
+    "entityAffected": "User",
+    "ipAddress": "203.104.27.154, 169.254.169.126",
+    "details": "Ahmed Mujthaba logged out"
+  },
+  {
+    "id": "audit-1791877270344-5if4lx",
+    "timestamp": "2026-10-13T07:41:10.344Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "STAFF_LOGIN",
+    "entityAffected": "User",
+    "ipAddress": "127.0.0.1",
+    "details": "Ahmed Mujthaba (ahmed.mujthaba@fmagoodhooschool.edu.mv) logged in successfully"
+  },
+  {
     "id": "audit-1791823553434-sd8wrm",
     "timestamp": "2026-10-12T16:45:53.434Z",
     "userId": "stf-01",

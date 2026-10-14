@@ -24,6 +24,17 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thaana:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <script>
+      // Gracefully prevent unhandled WebSocket closure error events in preview/iframe environments
+      window.addEventListener('unhandledrejection', function(event) {
+        if (event && event.reason && (
+          (typeof event.reason === 'string' && event.reason.includes('WebSocket')) ||
+          (event.reason.message && event.reason.message.includes('WebSocket'))
+        )) {
+          event.preventDefault();
+        }
+      });
+    </script>
   </head>
   <body class="bg-slate-50 text-slate-900 antialiased selection:bg-teal-500 selection:text-white">
     <div id="root"></div>

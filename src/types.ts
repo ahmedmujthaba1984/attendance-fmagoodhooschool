@@ -20,18 +20,22 @@ export type AcademicDayType = DayType;
 
 export type SessionType = 'MORNING_BEFORE_BREAK' | 'POST_BREAK';
 
-export type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'LATE' | 'LEAVE' | 'SCHOOL_CLOSED';
+export type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'LATE' | 'LEAVE' | 'SCHOOL_CLOSED' | 'UNMARKED';
 
 export type SessionAttendanceStatus = 'PENDING' | 'SUBMITTED' | 'CLOSED';
 
 export interface PendingAttendanceSession {
   date: string; // YYYY-MM-DD
-  sessionType: SessionType;
-  gradeLevel: GradeLevel | 'ALL';
-  sessionName: string;
-  sessionNameDhivehi: string;
-  reason: string;
-  reasonDhivehi: string;
+  sessionType?: SessionType;
+  session?: SessionType;
+  sessionLabel?: string;
+  gradeLevel?: GradeLevel | 'ALL' | string;
+  grade?: string;
+  unmarkedCount?: number;
+  sessionName?: string;
+  sessionNameDhivehi?: string;
+  reason?: string;
+  reasonDhivehi?: string;
 }
 
 export type LeaveReason =
@@ -158,6 +162,9 @@ export interface AttendanceRecord {
   markedByUserName?: string;
   arrivalTime?: string; // e.g. "07:55"
   remarks?: string;
+  absenceReason?: string;
+  notes?: string;
+  arrivedAt?: string;
   syncStatus: SyncStatus;
   clientSyncId?: string;
   updatedAt: string;
@@ -215,9 +222,12 @@ export interface MoEGradeStat {
   morningAbsent: number;
   morningLate: number;
   morningLeave: number;
+  morningRate?: number | null;
+  afternoonRate?: number | null;
   postBreakPresent: number;
   postBreakAbsent: number;
   attendanceRate: number;
+  officialRate?: number | null;
   chronicAbsenteesCount: number;
   // Extra class metrics
   extraClassesHeld?: number;
@@ -245,6 +255,9 @@ export interface DashboardTrendPoint {
 }
 
 export interface AttendanceStatsSummary {
+  date?: string;
+  schoolName?: string;
+  schoolId?: string;
   totalStudents: number;
   overallAttendanceRate: number | null;
   officialAttendanceRate?: number | null;
@@ -263,6 +276,7 @@ export interface AttendanceStatsSummary {
   closedDaysDeducted?: number;
   totalDaysNeedToPresent?: number;
   isSchoolClosed?: boolean;
+  gradeStats?: any[];
 }
 
 export interface AIPatternPrediction {
@@ -307,6 +321,7 @@ export interface StudentExtraClassAttendanceLog {
   status: AttendanceStatus;
   arrivalTime?: string;
   remarks?: string;
+  notes?: string;
 }
 
 export interface StudentAttendanceDailyLog {
@@ -383,14 +398,17 @@ export interface ClassStudentRow {
   // Mode-specific metrics
   morningRate?: number;
   morningPresent?: number;
+  morningPresentCount?: number;
   morningLate?: number;
   morningLeave?: number;
   morningAbsent?: number;
   afternoonRate?: number;
   afternoonPresent?: number;
+  afternoonPresentCount?: number;
   afternoonLate?: number;
   afternoonLeave?: number;
   afternoonAbsent?: number;
+  afternoonAbsentCount?: number;
   officialRate?: number;
   extraClassCount?: number;
   extraClassAttended?: number;
@@ -411,6 +429,7 @@ export interface ClassAttendanceReport {
   overallRate: number;
   instructionalDays: number;
   closedDays: number;
+  closedDaysDeducted?: number;
   students: ClassStudentRow[];
   chronicCount: number;
   perfectAttendanceCount: number;
@@ -431,6 +450,8 @@ export interface ClassAttendanceReport {
     teacherName: string;
     attendedCount: number;
     totalEnrolled: number;
+    venue?: string;
+    status?: string;
   }>;
 }
 
@@ -447,6 +468,7 @@ export interface WeeklyDailyStat {
   leave: number;
   totalEnrolled?: number;
   rate: number;
+  extraClassesCount?: number;
 }
 
 export interface WeeklyGradeRow {
@@ -565,6 +587,8 @@ export interface YearlyAttendanceReport {
     closedDays: number;
     averageRate: number;
     rate: number;
+    morningRate?: number;
+    afternoonRate?: number;
     officialRate?: number;
     extraClassRate?: number;
   }>;
@@ -572,6 +596,8 @@ export interface YearlyAttendanceReport {
     grade: GradeLevel | string;
     enrolled: number;
     annualRate: number;
+    morningRate?: number;
+    afternoonRate?: number;
     officialRate?: number;
     extraClassRate?: number;
     chronicCount: number;

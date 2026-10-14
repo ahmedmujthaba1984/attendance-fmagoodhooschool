@@ -227,7 +227,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={fetchMonthlyReport}
+              onClick={() => fetchMonthlyReport()}
               disabled={loading}
               className="p-2 px-3 rounded-lg border border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-800 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer active:scale-95 disabled:opacity-50"
               title="Refresh Monthly Attendance Data"

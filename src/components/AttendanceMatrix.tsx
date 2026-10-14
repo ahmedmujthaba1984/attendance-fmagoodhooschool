@@ -172,7 +172,7 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
   );
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'PRESENT' | 'LATE' | 'LEAVE' | 'ABSENT'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'PRESENT' | 'LATE' | 'LEAVE' | 'ABSENT' | 'UNMARKED'>('ALL');
   // Check if current user or environment has Rapid Roll Call privilege
   const isMobileOrPrivileged = useMemo(() => {
     if (typeof window === 'undefined') return false;
@@ -1339,11 +1339,7 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
                 type="button"
                 id="mode-rapid-rollcall-btn"
                 onClick={() => handleSetRollCallMode('rapid')}
-                className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg transition cursor-pointer min-h-[38px] sm:min-h-0 ${
-                  mobileRollCallMode === 'rapid'
-                    ? 'bg-linear-to-r from-teal-600 to-emerald-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg transition cursor-pointer min-h-[38px] sm:min-h-0 text-slate-600 hover:text-slate-900"
               >
                 <Zap className="w-4 h-4 text-amber-300 fill-amber-300" />
                 <span>{t.rapidRollCall}</span>
@@ -1917,24 +1913,11 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
           {/* Quick Mode Toggle in Floating Dock */}
           <button
             type="button"
-            onClick={() => handleSetRollCallMode(mobileRollCallMode === 'rapid' ? 'cards' : 'rapid')}
-            className={`px-2.5 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1 min-h-[40px] shadow-2xs ${
-              mobileRollCallMode === 'rapid'
-                ? 'bg-slate-900 text-white'
-                : 'bg-linear-to-r from-teal-600 to-emerald-600 text-white'
-            }`}
+            onClick={() => handleSetRollCallMode('rapid')}
+            className="px-2.5 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1 min-h-[40px] shadow-2xs bg-linear-to-r from-teal-600 to-emerald-600 text-white"
           >
-            {mobileRollCallMode === 'rapid' ? (
-              <>
-                <LayoutGrid className="w-3.5 h-3.5" />
-                <span className="hidden xs:inline">{t.rosterView}</span>
-              </>
-            ) : (
-              <>
-                <Zap className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
-                <span>{t.rapidRollCall}</span>
-              </>
-            )}
+            <Zap className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
+            <span>{t.rapidRollCall}</span>
           </button>
 
           {onSubmitSession && !isSchoolClosed && (

@@ -44,6 +44,7 @@ export const VoiceDictationModal: React.FC<VoiceDictationModalProps> = ({
   }, []);
 
   const [parsedResult, setParsedResult] = useState<{
+    recognizedGrade?: string;
     transcriptionNormalized?: string;
     matches?: Array<{
       studentName: string;
@@ -145,7 +146,7 @@ export const VoiceDictationModal: React.FC<VoiceDictationModalProps> = ({
     setParsedResult(null);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const timeoutId = setTimeout(() => controller.abort(), 16000);
 
     try {
       const res = await fetch('/api/ai/voice-parse', {

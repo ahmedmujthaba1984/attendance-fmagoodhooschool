@@ -312,7 +312,7 @@ export const StudentReportView: React.FC<StudentReportViewProps> = ({
         Teacher: ec.teacherName || '',
         Status: ec.status,
         'Arrival Time': ec.arrivalTime || '-',
-        Remarks: ec.notes || '-',
+        Remarks: ec.remarks || ec.notes || '-',
       }));
       const wsExtra = XLSX.utils.json_to_sheet(
         extraRows.length > 0
@@ -594,7 +594,7 @@ export const StudentReportView: React.FC<StudentReportViewProps> = ({
             {/* Action buttons */}
             <button
               type="button"
-              onClick={fetchStudentReport}
+              onClick={() => fetchStudentReport()}
               disabled={loading}
               className="p-1.5 px-3 rounded-lg border border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-800 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer active:scale-95 disabled:opacity-50"
               title="Refresh Student Attendance Data"

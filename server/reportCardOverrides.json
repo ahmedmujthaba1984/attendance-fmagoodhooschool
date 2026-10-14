@@ -1,1 +1,11 @@
-{}
+{
+  "term1_std-g1-01": {
+    "daysToBeAttended": 95,
+    "daysAttended": 90,
+    "daysLate": 2,
+    "daysAbsent": 3,
+    "daysLeave": 0,
+    "customNotes": "Good attendance",
+    "updatedAt": "2026-10-14T08:17:34.829Z"
+  }
+}

@@ -35,8 +35,8 @@ export const PendingAttendanceWarningModal: React.FC<PendingAttendanceWarningMod
   const handleGoToPending = () => {
     onGoToPendingSession(
       pendingSession.date,
-      pendingSession.sessionType,
-      pendingSession.gradeLevel || currentGrade
+      (pendingSession.sessionType || pendingSession.session || 'MORNING_BEFORE_BREAK') as SessionType,
+      (pendingSession.gradeLevel || pendingSession.grade || currentGrade || 'ALL') as GradeLevel | 'ALL'
     );
     onClose();
   };

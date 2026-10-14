@@ -1138,208 +1138,231 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
             <div className="col-span-5 text-center">{isRTL ? 'ހާޒިރީ (Attendance Action)' : 'Attendance (Present / Late / Leave / Absent)'}</div>
           </div>
 
-          <div className="divide-y divide-slate-100">
-            {displayStudents.map((student, idx) => {
-              const rec = recordsMap.get(student.id);
-              const status = rec?.status || 'UNMARKED';
-              const isPresent = status === 'PRESENT';
-              const isLate = status === 'LATE';
-              const isLeave = status === 'LEAVE';
-              const isAbsent = status === 'ABSENT';
-
-              const isShowingLatePills = activeLateStudentId === student.id;
-              const isShowingLeavePills = activeLeaveStudentId === student.id;
-
-              return (
-                <div
-                  key={student.id}
-                  className={`p-3.5 sm:p-4 transition-colors flex flex-col md:grid md:grid-cols-12 md:items-center gap-3 ${
-                    isPresent
-                      ? 'bg-emerald-50/25 hover:bg-emerald-50/40'
-                      : isAbsent
-                      ? 'bg-rose-50/30 hover:bg-rose-50/45'
-                      : isLate
-                      ? 'bg-amber-50/30 hover:bg-amber-50/45'
-                      : isLeave
-                      ? 'bg-indigo-50/30 hover:bg-indigo-50/45'
-                      : 'hover:bg-slate-50'
-                  }`}
+          {displayStudents.length === 0 ? (
+            <div className="p-12 text-center text-slate-500">
+              <Users className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+              <h3 className="font-black text-base text-slate-800">
+                {isRTL ? 'މި ކްލާހުގައި ދަރިވަރަކު ނެތް' : 'No Students Found'}
+              </h3>
+              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                {localSearch
+                  ? (isRTL ? `"${localSearch}" އާ ގުޅޭ ދަރިވަރަކު ނުފެނުނު.` : `No students match "${localSearch}".`)
+                  : (isRTL ? 'މަތީގައިވާ ގްރޭޑްތަކުން އެހެން ކްލާހެއް ޚިޔާރުކުރައްވާ.' : 'Select another grade class from the pills above.')}
+              </p>
+              {localSearch && (
+                <button
+                  type="button"
+                  onClick={() => setLocalSearch('')}
+                  className="mt-3 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer"
                 >
-                  {/* # Index Column */}
-                  <div className="hidden md:flex md:col-span-1 items-center justify-center">
-                    <span className="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 font-mono font-bold text-xs flex items-center justify-center">
-                      {idx + 1}
-                    </span>
-                  </div>
+                  {isRTL ? 'ފިލްޓަރު ފޮހެލާ' : 'Clear Filter'}
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {displayStudents.map((student, idx) => {
+                const rec = recordsMap.get(student.id);
+                const status = rec?.status || 'UNMARKED';
+                const isPresent = status === 'PRESENT';
+                const isLate = status === 'LATE';
+                const isLeave = status === 'LEAVE';
+                const isAbsent = status === 'ABSENT';
 
-                  {/* Student Name Column */}
-                  <div className="md:col-span-4 min-w-0">
-                    <div className="flex items-center gap-2.5">
-                      <span className="md:hidden w-6 h-6 rounded-md bg-slate-100 text-slate-700 font-mono font-bold text-[11px] flex items-center justify-center shrink-0">
+                const isShowingLatePills = activeLateStudentId === student.id;
+                const isShowingLeavePills = activeLeaveStudentId === student.id;
+
+                return (
+                  <div
+                    key={student.id}
+                    className={`p-3.5 sm:p-4 transition-colors flex flex-col md:grid md:grid-cols-12 md:items-center gap-3 ${
+                      isPresent
+                        ? 'bg-emerald-50/25 hover:bg-emerald-50/40'
+                        : isAbsent
+                        ? 'bg-rose-50/30 hover:bg-rose-50/45'
+                        : isLate
+                        ? 'bg-amber-50/30 hover:bg-amber-50/45'
+                        : isLeave
+                        ? 'bg-indigo-50/30 hover:bg-indigo-50/45'
+                        : 'hover:bg-slate-50'
+                    }`}
+                  >
+                    {/* # Index Column */}
+                    <div className="hidden md:flex md:col-span-1 items-center justify-center">
+                      <span className="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 font-mono font-bold text-xs flex items-center justify-center">
                         {idx + 1}
                       </span>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-thaana font-black text-slate-900 text-base">
-                            {student.fullNameDhivehi || student.fullName}
-                          </span>
-                          <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
-                            {student.admissionNumber}
-                          </span>
-                        </div>
-                        <div className="text-xs font-semibold text-slate-600 truncate mt-0.5">
-                          {student.fullName}
+                    </div>
+
+                    {/* Student Name Column */}
+                    <div className="md:col-span-4 min-w-0">
+                      <div className="flex items-center gap-2.5">
+                        <span className="md:hidden w-6 h-6 rounded-md bg-slate-100 text-slate-700 font-mono font-bold text-[11px] flex items-center justify-center shrink-0">
+                          {idx + 1}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-thaana font-black text-slate-900 text-base">
+                              {student.fullNameDhivehi || student.fullName}
+                            </span>
+                            <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
+                              {student.admissionNumber}
+                            </span>
+                          </div>
+                          <div className="text-xs font-semibold text-slate-600 truncate mt-0.5">
+                            {student.fullName}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Class Column */}
-                  <div className="md:col-span-2 flex items-center md:justify-center gap-2">
-                    <span className="px-2 py-0.5 rounded-md bg-sky-100 text-sky-900 text-xs font-black">
-                      {student.gradeLevel}
-                    </span>
-                    <span className="text-[10px] uppercase font-bold text-slate-500">
-                      {student.gender === 'MALE' ? (isRTL ? 'ފިރިހެން' : 'Boy') : (isRTL ? 'އަންހެން' : 'Girl')}
-                    </span>
-                  </div>
+                    {/* Class Column */}
+                    <div className="md:col-span-2 flex items-center md:justify-center gap-2">
+                      <span className="px-2 py-0.5 rounded-md bg-sky-100 text-sky-900 text-xs font-black">
+                        {student.gradeLevel}
+                      </span>
+                      <span className="text-[10px] uppercase font-bold text-slate-500">
+                        {student.gender === 'MALE' ? (isRTL ? 'ފިރިހެން' : 'Boy') : (isRTL ? 'އަންހެން' : 'Girl')}
+                      </span>
+                    </div>
 
-                  {/* 4 Attendance Action Buttons: Present, Late, On Leave, Absent */}
-                  <div className="md:col-span-5 flex flex-col items-start md:items-end gap-1.5">
-                    <div className="grid grid-cols-4 w-full sm:w-auto sm:flex sm:items-center gap-1.5">
-                      {/* PRESENT */}
-                      <button
-                        type="button"
-                        disabled={!isMarkingAllowed}
-                        onClick={() => handleMarkPresent(student.id, false)}
-                        className={`px-3 py-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 min-h-[38px] ${
-                          !isMarkingAllowed ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
-                        } ${
-                          isPresent
-                            ? 'bg-emerald-600 text-white shadow-xs ring-2 ring-emerald-500/40'
-                            : 'bg-white hover:bg-emerald-50 text-slate-700 border border-slate-200 hover:border-emerald-300'
-                        }`}
-                        title={!isMarkingAllowed ? sessionEligibility.message : undefined}
-                      >
-                        <Check className="w-3.5 h-3.5" />
-                        <span>{t.present}</span>
-                      </button>
-
-                      {/* LATE */}
-                      <button
-                        type="button"
-                        disabled={!isMarkingAllowed}
-                        onClick={() => {
-                          if (!isMarkingAllowed) return;
-                          triggerHaptic(20);
-                          setActiveLateStudentId(isShowingLatePills ? null : student.id);
-                          setActiveLeaveStudentId(null);
-                        }}
-                        className={`px-3 py-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 min-h-[38px] ${
-                          !isMarkingAllowed ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
-                        } ${
-                          isLate
-                            ? 'bg-amber-500 text-white shadow-xs ring-2 ring-amber-400/40'
-                            : 'bg-white hover:bg-amber-50 text-slate-700 border border-slate-200 hover:border-amber-300'
-                        }`}
-                        title={!isMarkingAllowed ? sessionEligibility.message : undefined}
-                      >
-                        <Clock className="w-3.5 h-3.5" />
-                        <span>{t.late}</span>
-                      </button>
-
-                      {/* LEAVE */}
-                      <button
-                        type="button"
-                        disabled={!isMarkingAllowed}
-                        onClick={() => {
-                          if (!isMarkingAllowed) return;
-                          triggerHaptic(20);
-                          setActiveLeaveStudentId(isShowingLeavePills ? null : student.id);
-                          setActiveLateStudentId(null);
-                        }}
-                        className={`px-3 py-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 min-h-[38px] ${
-                          !isMarkingAllowed ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
-                        } ${
-                          isLeave
-                            ? 'bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-500/40'
-                            : 'bg-white hover:bg-indigo-50 text-slate-700 border border-slate-200 hover:border-indigo-300'
-                        }`}
-                        title={!isMarkingAllowed ? sessionEligibility.message : undefined}
-                      >
-                        <AlertCircle className="w-3.5 h-3.5" />
-                        <span>{t.leave}</span>
-                      </button>
-
-                      {/* ABSENT */}
-                      <button
-                        type="button"
-                        disabled={!isMarkingAllowed}
-                        onClick={() => handleMarkAbsent(student.id, false)}
-                        className={`px-3 py-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 min-h-[38px] ${
-                          !isMarkingAllowed ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
-                        } ${
-                          isAbsent
-                            ? 'bg-rose-600 text-white shadow-xs ring-2 ring-rose-500/40'
-                            : 'bg-white hover:bg-rose-50 text-slate-700 border border-slate-200 hover:border-rose-300'
-                        }`}
-                        title={!isMarkingAllowed ? sessionEligibility.message : undefined}
-                      >
-                        <XCircle className="w-3.5 h-3.5" />
-                        <span>{t.absent}</span>
-                      </button>
-
-                      {/* SMS button for absent/late students */}
-                      {(isAbsent || isLate) && (
+                    {/* 4 Attendance Action Buttons: Present, Late, On Leave, Absent */}
+                    <div className="md:col-span-5 flex flex-col items-start md:items-end gap-1.5">
+                      <div className="grid grid-cols-4 w-full sm:w-auto sm:flex sm:items-center gap-1.5">
+                        {/* PRESENT */}
                         <button
                           type="button"
-                          onClick={() => onOpenSmsDraftModal(student)}
-                          className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition cursor-pointer"
-                          title="Draft SMS to Parent"
+                          disabled={!isMarkingAllowed}
+                          onClick={() => handleMarkPresent(student.id, false)}
+                          className={`px-3 py-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 min-h-[38px] ${
+                            !isMarkingAllowed ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                          } ${
+                            isPresent
+                              ? 'bg-emerald-600 text-white shadow-xs ring-2 ring-emerald-500/40'
+                              : 'bg-white hover:bg-emerald-50 text-slate-700 border border-slate-200 hover:border-emerald-300'
+                          }`}
+                          title={!isMarkingAllowed ? sessionEligibility.message : undefined}
                         >
-                          <MessageSquare className="w-3.5 h-3.5" />
+                          <Check className="w-3.5 h-3.5" />
+                          <span>{t.present}</span>
                         </button>
+
+                        {/* LATE */}
+                        <button
+                          type="button"
+                          disabled={!isMarkingAllowed}
+                          onClick={() => {
+                            if (!isMarkingAllowed) return;
+                            triggerHaptic(20);
+                            setActiveLateStudentId(isShowingLatePills ? null : student.id);
+                            setActiveLeaveStudentId(null);
+                          }}
+                          className={`px-3 py-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 min-h-[38px] ${
+                            !isMarkingAllowed ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                          } ${
+                            isLate
+                              ? 'bg-amber-500 text-white shadow-xs ring-2 ring-amber-400/40'
+                              : 'bg-white hover:bg-amber-50 text-slate-700 border border-slate-200 hover:border-amber-300'
+                          }`}
+                          title={!isMarkingAllowed ? sessionEligibility.message : undefined}
+                        >
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>{t.late}</span>
+                        </button>
+
+                        {/* LEAVE */}
+                        <button
+                          type="button"
+                          disabled={!isMarkingAllowed}
+                          onClick={() => {
+                            if (!isMarkingAllowed) return;
+                            triggerHaptic(20);
+                            setActiveLeaveStudentId(isShowingLeavePills ? null : student.id);
+                            setActiveLateStudentId(null);
+                          }}
+                          className={`px-3 py-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 min-h-[38px] ${
+                            !isMarkingAllowed ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                          } ${
+                            isLeave
+                              ? 'bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-500/40'
+                              : 'bg-white hover:bg-indigo-50 text-slate-700 border border-slate-200 hover:border-indigo-300'
+                          }`}
+                          title={!isMarkingAllowed ? sessionEligibility.message : undefined}
+                        >
+                          <AlertCircle className="w-3.5 h-3.5" />
+                          <span>{t.leave}</span>
+                        </button>
+
+                        {/* ABSENT */}
+                        <button
+                          type="button"
+                          disabled={!isMarkingAllowed}
+                          onClick={() => handleMarkAbsent(student.id, false)}
+                          className={`px-3 py-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 min-h-[38px] ${
+                            !isMarkingAllowed ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                          } ${
+                            isAbsent
+                              ? 'bg-rose-600 text-white shadow-xs ring-2 ring-rose-500/40'
+                              : 'bg-white hover:bg-rose-50 text-slate-700 border border-slate-200 hover:border-rose-300'
+                          }`}
+                          title={!isMarkingAllowed ? sessionEligibility.message : undefined}
+                        >
+                          <XCircle className="w-3.5 h-3.5" />
+                          <span>{t.absent}</span>
+                        </button>
+
+                        {/* SMS button for absent/late students */}
+                        {(isAbsent || isLate) && (
+                          <button
+                            type="button"
+                            onClick={() => onOpenSmsDraftModal(student)}
+                            className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition cursor-pointer"
+                            title="Draft SMS to Parent"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Inline Late Time Selector */}
+                      {isShowingLatePills && (
+                        <div className="flex flex-wrap items-center gap-1 bg-amber-50 p-1.5 rounded-xl border border-amber-300 animate-in fade-in">
+                          <span className="text-[10px] font-bold text-amber-900 mr-1">Time:</span>
+                          {latePresets.map((time) => (
+                            <button
+                              key={time}
+                              type="button"
+                              onClick={() => handleMarkLateWithTime(time, student.id, false)}
+                              className="px-2 py-1 rounded-lg bg-white hover:bg-amber-100 font-mono font-bold text-[11px] text-amber-900 border border-amber-200 shadow-2xs cursor-pointer"
+                            >
+                              {time}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Inline Leave Reason Selector */}
+                      {isShowingLeavePills && (
+                        <div className="flex flex-wrap items-center gap-1 bg-indigo-50 p-1.5 rounded-xl border border-indigo-300 animate-in fade-in">
+                          <span className="text-[10px] font-bold text-indigo-900 mr-1">Reason:</span>
+                          {leavePresets.map((preset) => (
+                            <button
+                              key={preset.id}
+                              type="button"
+                              onClick={() => handleMarkLeaveWithReason(preset.id, student.id, false)}
+                              className="px-2 py-1 rounded-lg bg-white hover:bg-indigo-100 text-[11px] font-bold text-indigo-900 border border-indigo-200 shadow-2xs cursor-pointer"
+                            >
+                              {isRTL ? preset.labelDv : preset.labelEn}
+                            </button>
+                          ))}
+                        </div>
                       )}
                     </div>
-
-                    {/* Inline Late Time Selector */}
-                    {isShowingLatePills && (
-                      <div className="flex flex-wrap items-center gap-1 bg-amber-50 p-1.5 rounded-xl border border-amber-300 animate-in fade-in">
-                        <span className="text-[10px] font-bold text-amber-900 mr-1">Time:</span>
-                        {latePresets.map((time) => (
-                          <button
-                            key={time}
-                            type="button"
-                            onClick={() => handleMarkLateWithTime(time, student.id, false)}
-                            className="px-2 py-1 rounded-lg bg-white hover:bg-amber-100 font-mono font-bold text-[11px] text-amber-900 border border-amber-200 shadow-2xs cursor-pointer"
-                          >
-                            {time}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Inline Leave Reason Selector */}
-                    {isShowingLeavePills && (
-                      <div className="flex flex-wrap items-center gap-1 bg-indigo-50 p-1.5 rounded-xl border border-indigo-300 animate-in fade-in">
-                        <span className="text-[10px] font-bold text-indigo-900 mr-1">Reason:</span>
-                        {leavePresets.map((preset) => (
-                          <button
-                            key={preset.id}
-                            type="button"
-                            onClick={() => handleMarkLeaveWithReason(preset.id, student.id, false)}
-                            className="px-2 py-1 rounded-lg bg-white hover:bg-indigo-100 text-[11px] font-bold text-indigo-900 border border-indigo-200 shadow-2xs cursor-pointer"
-                          >
-                            {isRTL ? preset.labelDv : preset.labelEn}
-                          </button>
-                        ))}
-                      </div>
-                    )}
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -1348,7 +1371,29 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
       {/* ============================================================== */}
       {templateMode === 'grid' && (
         <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
+          {displayStudents.length === 0 ? (
+            <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center text-slate-500 shadow-xs">
+              <Users className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+              <h3 className="font-black text-lg text-slate-800">
+                {isRTL ? 'މި ކްލާހުގައި ދަރިވަރަކު ނެތް' : 'No Students Found'}
+              </h3>
+              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                {localSearch
+                  ? (isRTL ? `"${localSearch}" އާ ގުޅޭ ދަރިވަރަކު ނުފެނުނު.` : `No students match "${localSearch}".`)
+                  : (isRTL ? 'މަތީގައިވާ ގްރޭޑްތަކުން އެހެން ކްލާހެއް ޚިޔާރުކުރައްވާ.' : 'Select another grade class from the pills above.')}
+              </p>
+              {localSearch && (
+                <button
+                  type="button"
+                  onClick={() => setLocalSearch('')}
+                  className="mt-3 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer"
+                >
+                  {isRTL ? 'ފިލްޓަރު ފޮހެލާ' : 'Clear Filter'}
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
             {displayStudents.map((student, idx) => {
               const rec = recordsMap.get(student.id);
               const counterpartRec = counterpartMap?.get(student.id);
@@ -1582,8 +1627,9 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
               );
             })}
           </div>
-        </div>
-      )}
+        )}
+      </div>
+    )}
 
       {/* ============================================================== */}
       {/* 7. COMPLETION / SESSION SUBMIT BANNER                          */}

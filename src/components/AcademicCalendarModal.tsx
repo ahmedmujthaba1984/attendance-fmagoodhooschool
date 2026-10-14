@@ -43,6 +43,7 @@ interface AcademicCalendarModalProps {
   onRefreshCalendar?: () => Promise<void> | void;
   onResetCalendar?: () => Promise<void> | void;
   onSelectDate?: (date: string) => void;
+  onClose?: () => void;
 }
 
 // Preset Maldives official holidays for fast 1-click admin population
@@ -67,6 +68,7 @@ export const AcademicCalendarModal: React.FC<AcademicCalendarModalProps> = ({
   onRefreshCalendar,
   onResetCalendar,
   onSelectDate,
+  onClose,
 }) => {
   const { t, isRTL } = useLanguage();
 
@@ -474,6 +476,19 @@ export const AcademicCalendarModal: React.FC<AcademicCalendarModalProps> = ({
               <CloudRain className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Weather Alert</span>
             </button>
+
+            {/* Close Button back to Attendance */}
+            {onClose && (
+              <button
+                type="button"
+                id="banner-close-calendar-btn"
+                onClick={onClose}
+                className="p-2.5 rounded-xl bg-emerald-950/70 hover:bg-emerald-950 text-white border border-emerald-700/50 transition cursor-pointer"
+                title={isRTL ? 'ކަލަންޑަރު ލައްޕާލާ (ހާޒިރީއަށް އެނބުރިދޭ)' : 'Close Calendar (Back to Attendance)'}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
       </div>

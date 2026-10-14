@@ -45,6 +45,7 @@ interface HeaderProps {
   onResetAllAttendance?: () => void;
   pendingExtraClassesCount?: number;
   onOpenTimingsModal?: () => void;
+  onManualSync?: () => Promise<void> | void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -62,6 +63,7 @@ export const Header: React.FC<HeaderProps> = ({
   onResetAllAttendance,
   pendingExtraClassesCount,
   onOpenTimingsModal,
+  onManualSync,
 }) => {
   const { t, language, toggleLanguage, isRTL } = useLanguage();
   const [syncState, setSyncState] = useState<SyncState>('online_synced');
@@ -79,8 +81,15 @@ export const Header: React.FC<HeaderProps> = ({
 
   const handleManualSync = async () => {
     setIsSyncing(true);
-    await syncEngine.flushQueue();
-    setIsSyncing(false);
+    try {
+      if (onManualSync) {
+        await onManualSync();
+      } else {
+        await syncEngine.flushQueue();
+      }
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const navItems = [
@@ -129,8 +138,22 @@ export const Header: React.FC<HeaderProps> = ({
           )}
 
           {syncState === 'offline_saved' && (
-            <div className="flex items-center gap-1.5">
-              <span className="flex items-center gap-1 text-amber-400 font-medium text-[11px]">
+            <div
+              className="flex items-center gap-1.5"
+              title={
+                isRTL
+                  ? `އޮފްލައިންކޮށް ރައްކާކުރެވިފައިވާ ${pendingCount} ރެކޯޑް. ސާވަރަށް އަޕްލޯޑްކުރުމަށް ސިންކް ފިއްތަވާ.`
+                  : `${pendingCount} attendance records safely saved offline in browser. Click Sync to upload to server.`
+              }
+            >
+              <span
+                className="flex items-center gap-1 text-amber-400 font-medium text-[11px]"
+                title={
+                  isRTL
+                    ? `އޮފްލައިންކޮށް ރައްކާކުރެވިފައިވާ ${pendingCount} ރެކޯޑް`
+                    : `${pendingCount} records stored locally offline`
+                }
+              >
                 <WifiOff className="w-3.5 h-3.5 shrink-0" />
                 <span>{pendingCount}</span>
               </span>
@@ -138,10 +161,19 @@ export const Header: React.FC<HeaderProps> = ({
                 type="button"
                 onClick={handleManualSync}
                 disabled={isSyncing}
-                className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500 text-slate-950 font-bold hover:bg-amber-400 text-[10px] transition cursor-pointer"
+                className="flex items-center gap-1 px-2 py-0.5 rounded bg-amber-500 text-slate-950 font-bold hover:bg-amber-400 text-[10px] transition cursor-pointer shadow-xs active:scale-95 disabled:opacity-50"
+                title={isRTL ? 'ސާވަރާ ސިންކްކުރޭ' : 'Upload and sync pending records to server'}
               >
                 <RefreshCw className={`w-2.5 h-2.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                <span>{isRTL ? 'ސިންކް' : 'Sync'}</span>
+                <span>
+                  {isSyncing
+                    ? isRTL
+                      ? 'ސިންކްވަނީ...'
+                      : 'Syncing...'
+                    : isRTL
+                    ? 'ސިންކް'
+                    : 'Sync'}
+                </span>
               </button>
             </div>
           )}

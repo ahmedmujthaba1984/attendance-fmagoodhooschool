@@ -6279,16 +6279,24 @@ async function startServer() {
   });
 }
 
+const isExecutedDirectly = Boolean(
+  process.argv[1] &&
+  (process.argv[1].endsWith('server.ts') ||
+   process.argv[1].endsWith('server.cjs') ||
+   process.argv[1].endsWith('server.js'))
+);
+
 const isServerless = Boolean(
   process.env.VERCEL ||
   process.env.VERCEL_ENV ||
   process.env.NOW_REGION ||
   process.env.AWS_LAMBDA_FUNCTION_NAME ||
   process.env.LAMBDA_TASK_ROOT ||
-  process.env.FUNCTION_NAME
+  process.env.FUNCTION_NAME ||
+  !isExecutedDirectly
 );
 
-if (!isServerless) {
+if (!isServerless && isExecutedDirectly) {
   startServer();
 }
 

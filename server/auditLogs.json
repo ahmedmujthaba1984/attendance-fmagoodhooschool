@@ -1,5 +1,15 @@
 [
   {
+    "id": "audit-1792051069667-fxfxcx",
+    "timestamp": "2026-10-15T07:57:49.667Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "OFFLINE_QUEUE_FLUSH",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "BullMQ Worker synced 2 queued attendance payloads (0 conflicts resolved, 0 rejected)"
+  },
+  {
     "id": "audit-1791976061624-3u3ff3",
     "timestamp": "2026-10-14T11:07:41.624Z",
     "userId": "stf-32",

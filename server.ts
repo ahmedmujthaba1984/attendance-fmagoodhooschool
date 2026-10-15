@@ -38,16 +38,22 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
-app.use(express.json({ limit: '10mb' }));
-
-// Normalize incoming request URLs across Vercel serverless rewrites and reverse proxies
+// 1. Normalize incoming request URLs across Vercel serverless rewrites and reverse proxies
 app.use((req, res, next) => {
-  const matchedPath = (req.headers['x-matched-path'] || req.headers['x-now-route-matches']) as string;
+  const matchedPath = (req.headers['x-matched-path'] || req.headers['x-now-route-matches'] || req.headers['x-vercel-matched-path']) as string;
   if (matchedPath && matchedPath.startsWith('/api') && (req.url === '/api' || req.url === '/api/index' || !req.url.startsWith('/api'))) {
     req.url = matchedPath;
   }
+  // Prevent Express body-parser from hanging on pre-parsed streams in Vercel/serverless
+  if (req.body !== undefined && req.body !== null && typeof req.body === 'object') {
+    (req as any)._body = true;
+  }
   next();
 });
+
+// 2. Standard body parsers
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Shared Gemini AI client
 const geminiApiKey = process.env.GEMINI_API_KEY;

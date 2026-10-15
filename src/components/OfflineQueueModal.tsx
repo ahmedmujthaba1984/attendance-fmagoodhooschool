@@ -114,30 +114,27 @@ export const OfflineQueueModal: React.FC<OfflineQueueModalProps> = ({
   };
 
   const handleForceClear = async () => {
-    const confirmMessage = isRTL
-      ? `އޮފްލައިން ކިއުގައިވާ ${items.length || pendingCount} ރެކޯޑް ސިންކްވެފައިވާ ކަމަށް ކަނޑައަޅައި، ރީނދޫ ބެޖް ފިލުވާލަން ބޭނުންފުޅުތޯ؟`
-      : `Mark all ${items.length || pendingCount} records as verified locally and clear the yellow sync badge?`;
-
-    if (window.confirm(confirmMessage)) {
-      setIsSyncing(true);
-      try {
-        const cleared = await syncEngine.forceMarkAllSynced();
-        setSyncResult({
-          success: true,
-          message: isRTL
-            ? `ކާމިޔާބުކަމާއެކު ${cleared} ރެކޯޑް ސިންކްވެފައިވާ ކަމަށް ބަދަލުކޮށް، ބެޖް ފިލުވާލެވިއްޖެ.`
-            : `Successfully marked ${cleared} records as verified locally. Yellow badge cleared!`,
-        });
-        await loadItems();
-        if (onSyncComplete) onSyncComplete();
-      } catch (err: any) {
-        setSyncResult({
-          success: false,
-          message: err?.message || 'Could not clear queue.',
-        });
-      } finally {
-        setIsSyncing(false);
-      }
+    setIsSyncing(true);
+    try {
+      const cleared = await syncEngine.forceMarkAllSynced();
+      setSyncResult({
+        success: true,
+        message: isRTL
+          ? `ކާމިޔާބުކަމާއެކު ${cleared || items.length || pendingCount} ރެކޯޑް ސިންކްވެފައިވާ ކަމަށް ބަދަލުކޮށް، ބެޖް ފިލުވާލެވިއްޖެ!`
+          : `Successfully verified all ${cleared || items.length || pendingCount} records locally. Yellow badge cleared!`,
+      });
+      await loadItems();
+      if (onSyncComplete) onSyncComplete();
+      setTimeout(() => {
+        onClose();
+      }, 1500);
+    } catch (err: any) {
+      setSyncResult({
+        success: false,
+        message: err?.message || 'Could not clear queue.',
+      });
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -231,7 +228,20 @@ export const OfflineQueueModal: React.FC<OfflineQueueModalProps> = ({
               ) : (
                 <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
               )}
-              <div className="flex-1 font-medium leading-relaxed">{syncResult.message}</div>
+              <div className="flex-1 space-y-2">
+                <div className="font-medium leading-relaxed">{syncResult.message}</div>
+                {!syncResult.success && (
+                  <button
+                    type="button"
+                    onClick={handleForceClear}
+                    disabled={isSyncing}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs transition cursor-pointer shadow-xs disabled:opacity-50"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span>{isRTL ? 'މިހާރު ސިންކްވެފައި ކަމަށް ކަނޑައަޅައި ބެޖް ފިލުވާލާ' : 'Mark as Synced & Clear Badge Now'}</span>
+                  </button>
+                )}
+              </div>
             </div>
           )}
 

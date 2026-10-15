@@ -19,6 +19,7 @@ import { MobileLoginView } from './components/MobileLoginView';
 import { SuperAdminPasswordModal } from './components/SuperAdminPasswordModal';
 import { StaffChangePasswordModal } from './components/StaffChangePasswordModal';
 import { SessionTimingsModal } from './components/SessionTimingsModal';
+import { OfflineQueueModal } from './components/OfflineQueueModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { MobileMenuDrawer } from './components/MobileMenuDrawer';
 import { ExtraClassesModule } from './components/ExtraClassesModule';
@@ -191,6 +192,7 @@ function MainApp() {
   const [isSuperAdminModalOpen, setIsSuperAdminModalOpen] = useState(false);
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
   const [isTimingsModalOpen, setIsTimingsModalOpen] = useState(false);
+  const [isOfflineQueueModalOpen, setIsOfflineQueueModalOpen] = useState(false);
 
   // Mobile Navigation & Login View State
   const [showLoginView, setShowLoginView] = useState(false);
@@ -1760,6 +1762,22 @@ function MainApp() {
         onResetAllAttendance={() => setShowResetAttendanceModal(true)}
         pendingExtraClassesCount={pendingExtraClassesCount}
         onOpenTimingsModal={() => setIsTimingsModalOpen(true)}
+        onOpenOfflineQueueModal={() => setIsOfflineQueueModalOpen(true)}
+        onManualSync={async () => {
+          const res = await syncEngine.flushQueue();
+          if (res.syncedCount > 0) {
+            showNotification(
+              isRTL
+                ? `${res.syncedCount} ހާޒިރީ ރެކޯޑް ކާމިޔާބުކަމާއެކު ސާވަރަށް ސިންކްކުރެވިއްޖެ!`
+                : `Successfully synced ${res.syncedCount} attendance records to server!`,
+              'info'
+            );
+            await fetchAttendance();
+            await fetchMoEStats();
+          } else {
+            setIsOfflineQueueModalOpen(true);
+          }
+        }}
       />
 
       {/* Main Container */}
@@ -1916,31 +1934,6 @@ function MainApp() {
         onOpenChangePassword={() => setIsChangePasswordModalOpen(true)}
         onOpenTimingsModal={() => setIsTimingsModalOpen(true)}
         onLogout={handleLogout}
-        onManualSync={async () => {
-          const res = await syncEngine.flushQueue();
-          if (res.syncedCount > 0) {
-            showNotification(
-              isRTL
-                ? `${res.syncedCount} ހާޒިރީ ރެކޯޑް ކާމިޔާބުކަމާއެކު ސާވަރަށް ސިންކްކުރެވިއްޖެ!`
-                : `Successfully synced ${res.syncedCount} attendance records to server!`,
-              'info'
-            );
-            await fetchAttendance();
-            await fetchMoEStats();
-          } else if (res.success) {
-            showNotification(
-              isRTL ? 'ހުރިހާ ރެކޯޑެއް ވަނީ ސިންކްވެފައި' : 'All records are already up to date!',
-              'info'
-            );
-          } else {
-            showNotification(
-              isRTL
-                ? 'ސާވަރާ ގުޅުމުގައި މައްސަލައެއް. އަލުން މަސައްކަތްކުރައްވާ.'
-                : 'Unable to connect to server. Your records remain safe offline.',
-              'warning'
-            );
-          }
-        }}
       />
 
       {/* Live Student & Staff Directory Sync Modal */}
@@ -2168,6 +2161,18 @@ function MainApp() {
           </div>
         </div>
       )}
+
+      {/* Offline Attendance Queue Manager Modal */}
+      <OfflineQueueModal
+        isOpen={isOfflineQueueModalOpen}
+        onClose={() => setIsOfflineQueueModalOpen(false)}
+        pendingCount={stats?.pendingOfflineCount || 0}
+        onSyncComplete={async () => {
+          await fetchAttendance();
+          await fetchMoEStats();
+        }}
+      />
+
       {/* In-App Floating Toast Notification (replaces native window.alert to prevent iframe/sandbox crashes) */}
       {toastNotification && (
         <div

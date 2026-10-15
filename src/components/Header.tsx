@@ -47,6 +47,7 @@ interface HeaderProps {
   pendingExtraClassesCount?: number;
   onOpenTimingsModal?: () => void;
   onManualSync?: () => Promise<void> | void;
+  onOpenOfflineQueueModal?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -65,6 +66,7 @@ export const Header: React.FC<HeaderProps> = ({
   pendingExtraClassesCount,
   onOpenTimingsModal,
   onManualSync,
+  onOpenOfflineQueueModal,
 }) => {
   const { t, language, toggleLanguage, isRTL } = useLanguage();
   const [syncState, setSyncState] = useState<SyncState>('online_synced');
@@ -88,12 +90,12 @@ export const Header: React.FC<HeaderProps> = ({
         await onManualSync();
       } else {
         const res = await syncEngine.flushQueue();
-        if (!res.success) {
-          setShowQueueModal(true);
+        if (!res.success && onOpenOfflineQueueModal) {
+          onOpenOfflineQueueModal();
         }
       }
     } catch {
-      setShowQueueModal(true);
+      if (onOpenOfflineQueueModal) onOpenOfflineQueueModal();
     } finally {
       setIsSyncing(false);
     }
@@ -155,7 +157,13 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <button
                 type="button"
-                onClick={() => setShowQueueModal(true)}
+                onClick={() => {
+                  if (onOpenOfflineQueueModal) {
+                    onOpenOfflineQueueModal();
+                  } else {
+                    setShowQueueModal(true);
+                  }
+                }}
                 className="flex items-center gap-1 text-amber-400 font-bold text-[11px] hover:text-amber-300 transition cursor-pointer px-1 py-0.5 rounded hover:bg-slate-800"
                 title={
                   isRTL
@@ -491,18 +499,6 @@ export const Header: React.FC<HeaderProps> = ({
           })}
         </nav>
       </div>
-
-      {/* Offline Attendance Queue Manager Modal */}
-      <OfflineQueueModal
-        isOpen={showQueueModal}
-        onClose={() => setShowQueueModal(false)}
-        pendingCount={pendingCount}
-        onSyncComplete={async () => {
-          if (onManualSync) {
-            await onManualSync();
-          }
-        }}
-      />
     </header>
   );
 };

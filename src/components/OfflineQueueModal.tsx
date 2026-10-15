@@ -176,7 +176,7 @@ export const OfflineQueueModal: React.FC<OfflineQueueModalProps> = ({
 
   const modalContent = (
     <div
-      className="fixed inset-0 z-[9999] bg-slate-950/75 backdrop-blur-xs flex flex-col items-center justify-start sm:justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-150"
+      className="fixed inset-0 z-[9999] bg-slate-950/75 backdrop-blur-xs flex flex-col items-center justify-start p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-150"
       role="dialog"
       aria-modal="true"
       onClick={(e) => {
@@ -184,7 +184,7 @@ export const OfflineQueueModal: React.FC<OfflineQueueModalProps> = ({
       }}
     >
       <div
-        className="bg-white rounded-2xl max-w-lg w-full border border-slate-200 shadow-2xl overflow-hidden flex flex-col my-auto max-h-[88vh] shrink-0 relative"
+        className="bg-white rounded-2xl max-w-lg w-full border border-slate-200 shadow-2xl overflow-hidden flex flex-col my-3 sm:my-6 max-h-[88vh] shrink-0 relative"
         dir={isRTL ? 'rtl' : 'ltr'}
         onClick={(e) => e.stopPropagation()}
       >

@@ -2339,23 +2339,7 @@ app.post('/api/attendance/sync-queue', (req, res) => {
         return;
       }
 
-      // Offline queue records: accept all records for today or past days.
-      // Only reject if it's explicitly for a distant future date.
-      if (item.date > todayStr) {
-        const eligibility = checkSessionStartEligibility(item.date, item.sessionType);
-        if (!eligibility.allowed) {
-          rejectedCount++;
-          return;
-        }
-      }
-
-      // School closure check
-      const closed = checkSchoolClosed(item.date);
-      if (closed.isClosed) {
-        rejectedCount++;
-        return;
-      }
-
+      // For offline queue sync: accept all valid recorded entries from staff
       const key = `${item.studentId}_${item.date}_${item.sessionType}`;
       const existing = attendanceStore.get(key);
 

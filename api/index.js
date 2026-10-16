@@ -1,38 +1,15 @@
-var __create = Object.create;
-var __defProp = Object.defineProperty;
-var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
-var __getOwnPropNames = Object.getOwnPropertyNames;
-var __getProtoOf = Object.getPrototypeOf;
-var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __copyProps = (to, from, except, desc) => {
-  if (from && typeof from === "object" || typeof from === "function") {
-    for (let key of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
-  }
-  return to;
-};
-var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
-  // If the importer is in node compatibility mode or this is not an ESM
-  // file that has been converted to a CommonJS file using a Babel-
-  // compatible transform (i.e. "__esModule" has not been set), then set
-  // "default" to the CommonJS "module.exports" for node compatibility.
-  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
-  mod
-));
-
 // server.ts
-var import_express = __toESM(require("express"), 1);
-var import_path3 = __toESM(require("path"), 1);
-var import_fs3 = __toESM(require("fs"), 1);
-var import_https2 = __toESM(require("https"), 1);
-var import_http2 = __toESM(require("http"), 1);
-var import_dotenv = __toESM(require("dotenv"), 1);
-var import_genai = require("@google/genai");
+import express from "express";
+import path3 from "path";
+import fs3 from "fs";
+import https2 from "https";
+import http2 from "http";
+import dotenv from "dotenv";
+import { GoogleGenAI } from "@google/genai";
 
 // server/seedData.ts
-var import_fs = __toESM(require("fs"), 1);
-var import_path = __toESM(require("path"), 1);
+import fs from "fs";
+import path from "path";
 var ALL_GRADES = [
   "LKG",
   "UKG",
@@ -199,9 +176,9 @@ function generateStaffList() {
 }
 function generate215Students() {
   try {
-    const jsonPath = import_path.default.join(process.cwd(), "server", "magoodhooStudents.json");
-    if (import_fs.default.existsSync(jsonPath)) {
-      const data = import_fs.default.readFileSync(jsonPath, "utf-8");
+    const jsonPath = path.join(process.cwd(), "server", "magoodhooStudents.json");
+    if (fs.existsSync(jsonPath)) {
+      const data = fs.readFileSync(jsonPath, "utf-8");
       const list = JSON.parse(data);
       if (Array.isArray(list) && list.length > 0) {
         return list;
@@ -395,11 +372,11 @@ function generateAcademicCalendar() {
 }
 
 // server/magoodhooSync.ts
-var import_https = __toESM(require("https"), 1);
-var import_http = __toESM(require("http"), 1);
-var import_vm = __toESM(require("vm"), 1);
-var import_fs2 = __toESM(require("fs"), 1);
-var import_path2 = __toESM(require("path"), 1);
+import https from "https";
+import http from "http";
+import vm from "vm";
+import fs2 from "fs";
+import path2 from "path";
 var MAGOODHOO_PORTAL_URL = "https://reportcard-fmagoodhooschool.vercel.app/";
 var FIRESTORE_PROJECT_ID = "industrial-heaven-2j4jh";
 var FIRESTORE_DB_ID = "ai-studio-magoodhooschoole-128d6f0a-ac98-471b-97a7-60f7b0b880b4";
@@ -422,14 +399,14 @@ var ALL_GRADES2 = [
 function safeWriteJsonSync(targetPath, data) {
   const tmpPath = `${targetPath}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`;
   try {
-    import_fs2.default.writeFileSync(tmpPath, JSON.stringify(data, null, 2), "utf-8");
-    import_fs2.default.renameSync(tmpPath, targetPath);
+    fs2.writeFileSync(tmpPath, JSON.stringify(data, null, 2), "utf-8");
+    fs2.renameSync(tmpPath, targetPath);
   } catch {
     try {
-      if (import_fs2.default.existsSync(tmpPath)) import_fs2.default.unlinkSync(tmpPath);
+      if (fs2.existsSync(tmpPath)) fs2.unlinkSync(tmpPath);
     } catch {
     }
-    import_fs2.default.writeFileSync(targetPath, JSON.stringify(data, null, 2), "utf-8");
+    fs2.writeFileSync(targetPath, JSON.stringify(data, null, 2), "utf-8");
   }
 }
 var MagoodhooSyncEngine = class _MagoodhooSyncEngine {
@@ -523,9 +500,9 @@ var MagoodhooSyncEngine = class _MagoodhooSyncEngine {
   }
   loadInitialCache() {
     try {
-      const filePath = import_path2.default.join(process.cwd(), "server", "magoodhooStudents.json");
-      if (import_fs2.default.existsSync(filePath)) {
-        const raw = import_fs2.default.readFileSync(filePath, "utf-8");
+      const filePath = path2.join(process.cwd(), "server", "magoodhooStudents.json");
+      if (fs2.existsSync(filePath)) {
+        const raw = fs2.readFileSync(filePath, "utf-8");
         this.cachedStudents = JSON.parse(raw);
         this.updateStatsFromStudents(this.cachedStudents, "preloaded_cache");
       }
@@ -533,9 +510,9 @@ var MagoodhooSyncEngine = class _MagoodhooSyncEngine {
       console.warn("Could not load server/magoodhooStudents.json cache:", err);
     }
     try {
-      const staffFilePath = import_path2.default.join(process.cwd(), "server", "magoodhooStaff.json");
-      if (import_fs2.default.existsSync(staffFilePath)) {
-        const staffRaw = import_fs2.default.readFileSync(staffFilePath, "utf-8");
+      const staffFilePath = path2.join(process.cwd(), "server", "magoodhooStaff.json");
+      if (fs2.existsSync(staffFilePath)) {
+        const staffRaw = fs2.readFileSync(staffFilePath, "utf-8");
         const parsed = JSON.parse(staffRaw);
         this.cachedStaff = this.normalizeStaffList(parsed);
         this.updateStatsFromStaff(this.cachedStaff);
@@ -578,7 +555,7 @@ var MagoodhooSyncEngine = class _MagoodhooSyncEngine {
   }
   fetchUrl(targetUrl) {
     return new Promise((resolve, reject) => {
-      const client = targetUrl.startsWith("https") ? import_https.default : import_http.default;
+      const client = targetUrl.startsWith("https") ? https : http;
       client.get(targetUrl, (res) => {
         if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
           return resolve(this.fetchUrl(res.headers.location));
@@ -614,7 +591,7 @@ var MagoodhooSyncEngine = class _MagoodhooSyncEngine {
   fetchGradeFromFirestore(grade) {
     const url = `${FIRESTORE_BASE_URL}${encodeURIComponent(grade)}?key=${FIRESTORE_API_KEY}`;
     return new Promise((resolve, reject) => {
-      import_https.default.get(url, (res) => {
+      https.get(url, (res) => {
         if (res.statusCode !== 200) {
           return reject(new Error(`Firestore returned HTTP ${res.statusCode} for grade ${grade}`));
         }
@@ -713,8 +690,8 @@ var MagoodhooSyncEngine = class _MagoodhooSyncEngine {
       }
       const staffArrayStr = bundleJs.slice(start, end);
       const sandbox = {};
-      import_vm.default.createContext(sandbox);
-      import_vm.default.runInContext("var rawStaff = " + staffArrayStr + ";", sandbox);
+      vm.createContext(sandbox);
+      vm.runInContext("var rawStaff = " + staffArrayStr + ";", sandbox);
       if (Array.isArray(sandbox.rawStaff) && sandbox.rawStaff.length > 0) {
         return this.normalizeStaffList(sandbox.rawStaff);
       }
@@ -738,7 +715,7 @@ var MagoodhooSyncEngine = class _MagoodhooSyncEngine {
       const bundleJs = await this.fetchUrl(bundleUrl);
       const extractedStaff = this.extractStaffFromBundle(bundleJs);
       if (extractedStaff.length > 0) {
-        const staffFilePath = import_path2.default.join(process.cwd(), "server", "magoodhooStaff.json");
+        const staffFilePath = path2.join(process.cwd(), "server", "magoodhooStaff.json");
         safeWriteJsonSync(staffFilePath, extractedStaff);
         this.updateStatsFromStaff(extractedStaff);
         this.notifyStaffListeners(extractedStaff);
@@ -815,7 +792,7 @@ var MagoodhooSyncEngine = class _MagoodhooSyncEngine {
           });
         }
         if (formattedStudents.length > 0) {
-          const filePath = import_path2.default.join(process.cwd(), "server", "magoodhooStudents.json");
+          const filePath = path2.join(process.cwd(), "server", "magoodhooStudents.json");
           safeWriteJsonSync(filePath, formattedStudents);
           this.updateStatsFromStudents(formattedStudents, bundlePath);
           this.notifyListeners(formattedStudents);
@@ -837,7 +814,7 @@ var MagoodhooSyncEngine = class _MagoodhooSyncEngine {
     try {
       const liveStudents = await this.syncFromFirestore();
       if (liveStudents && liveStudents.length > 0) {
-        const filePath = import_path2.default.join(process.cwd(), "server", "magoodhooStudents.json");
+        const filePath = path2.join(process.cwd(), "server", "magoodhooStudents.json");
         safeWriteJsonSync(filePath, liveStudents);
         this.updateStatsFromStudents(liveStudents, "live_firestore_edurms");
         this.notifyListeners(liveStudents);
@@ -906,7 +883,7 @@ var MagoodhooSyncEngine = class _MagoodhooSyncEngine {
         islandAddress: st.islandAddress || "F. Magoodhoo",
         status: "ACTIVE"
       }));
-      const filePath = import_path2.default.join(process.cwd(), "server", "magoodhooStudents.json");
+      const filePath = path2.join(process.cwd(), "server", "magoodhooStudents.json");
       safeWriteJsonSync(filePath, formatted);
       this.updateStatsFromStudents(formatted, "manual_imported_json");
       this.notifyListeners(formatted);
@@ -936,7 +913,7 @@ var MagoodhooSyncEngine = class _MagoodhooSyncEngine {
       ...updatedData
     };
     this.cachedStudents[idx] = updated;
-    const filePath = import_path2.default.join(process.cwd(), "server", "magoodhooStudents.json");
+    const filePath = path2.join(process.cwd(), "server", "magoodhooStudents.json");
     safeWriteJsonSync(filePath, this.cachedStudents);
     this.updateStatsFromStudents(this.cachedStudents, "local_edit");
     this.notifyListeners(this.cachedStudents);
@@ -960,9 +937,18 @@ var MagoodhooSyncEngine = class _MagoodhooSyncEngine {
 var magoodhooSyncEngine = MagoodhooSyncEngine.getInstance();
 
 // server.ts
-import_dotenv.default.config();
-var app = (0, import_express.default)();
+dotenv.config();
+var app = express();
 var PORT = 3e3;
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+  next();
+});
 app.use((req, res, next) => {
   const matchedPath = req.headers["x-matched-path"] || req.headers["x-now-route-matches"] || req.headers["x-vercel-matched-path"];
   if (matchedPath && matchedPath.startsWith("/api") && (req.url === "/api" || req.url === "/api/index" || !req.url.startsWith("/api"))) {
@@ -973,10 +959,10 @@ app.use((req, res, next) => {
   }
   next();
 });
-app.use(import_express.default.json({ limit: "10mb" }));
-app.use(import_express.default.urlencoded({ extended: true, limit: "10mb" }));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 var geminiApiKey = process.env.GEMINI_API_KEY;
-var ai = geminiApiKey ? new import_genai.GoogleGenAI({
+var ai = geminiApiKey ? new GoogleGenAI({
   apiKey: geminiApiKey,
   httpOptions: {
     headers: {
@@ -995,18 +981,18 @@ magoodhooSyncEngine.onStaffUpdated((newStaff) => {
   console.log(`[server] Live staff directory updated with ${staffMembers.length} staff from remote portal.`);
 });
 function getFilePath(filename) {
-  const localSeed = import_path3.default.join(process.cwd(), "server", filename);
+  const localSeed = path3.join(process.cwd(), "server", filename);
   if (!process.env.VERCEL && !process.env.NOW_REGION) {
     return localSeed;
   }
-  const tmpPath = import_path3.default.join("/tmp", "server_data", filename);
+  const tmpPath = path3.join("/tmp", "server_data", filename);
   try {
-    const tmpDir = import_path3.default.join("/tmp", "server_data");
-    if (!import_fs3.default.existsSync(tmpDir)) {
-      import_fs3.default.mkdirSync(tmpDir, { recursive: true });
+    const tmpDir = path3.join("/tmp", "server_data");
+    if (!fs3.existsSync(tmpDir)) {
+      fs3.mkdirSync(tmpDir, { recursive: true });
     }
-    if (!import_fs3.default.existsSync(tmpPath) && import_fs3.default.existsSync(localSeed)) {
-      import_fs3.default.copyFileSync(localSeed, tmpPath);
+    if (!fs3.existsSync(tmpPath) && fs3.existsSync(localSeed)) {
+      fs3.copyFileSync(localSeed, tmpPath);
     }
   } catch (err) {
     console.warn(`Could not sync ${filename} to /tmp:`, err);
@@ -1060,8 +1046,8 @@ function loadSessionTimingsFromDisk() {
     return cachedSessionTimings;
   }
   try {
-    if (import_fs3.default.existsSync(SESSION_TIMINGS_FILE_PATH)) {
-      const raw = import_fs3.default.readFileSync(SESSION_TIMINGS_FILE_PATH, "utf-8");
+    if (fs3.existsSync(SESSION_TIMINGS_FILE_PATH)) {
+      const raw = fs3.readFileSync(SESSION_TIMINGS_FILE_PATH, "utf-8");
       const data = JSON.parse(raw);
       if (data) {
         const morning = data.normal?.morning || data.morning || DEFAULT_SESSION_TIMINGS.normal.morning;
@@ -1084,7 +1070,7 @@ function loadSessionTimingsFromDisk() {
 function saveSessionTimingsToDisk(timings) {
   cachedSessionTimings = timings;
   try {
-    import_fs3.default.writeFileSync(SESSION_TIMINGS_FILE_PATH, JSON.stringify(timings, null, 2), "utf-8");
+    fs3.writeFileSync(SESSION_TIMINGS_FILE_PATH, JSON.stringify(timings, null, 2), "utf-8");
   } catch (err) {
     console.warn("Could not save session timings to disk:", err);
   }
@@ -1092,7 +1078,7 @@ function saveSessionTimingsToDisk(timings) {
 function fetchTimingsFromFirestore() {
   return new Promise((resolve) => {
     try {
-      const req = import_https2.default.get(FIRESTORE_SETTINGS_URL, (res) => {
+      const req = https2.get(FIRESTORE_SETTINGS_URL, (res) => {
         if (res.statusCode !== 200) {
           res.resume();
           return resolve(null);
@@ -1157,7 +1143,7 @@ function saveTimingsToFirestore(timings) {
           updatedAt: { stringValue: (/* @__PURE__ */ new Date()).toISOString() }
         }
       });
-      const req = import_https2.default.request(
+      const req = https2.request(
         FIRESTORE_SETTINGS_URL,
         {
           method: "PATCH",
@@ -1210,8 +1196,8 @@ if (!process.env.VERCEL && !process.env.NOW_REGION) {
 function loadTermDatesFromDisk() {
   let list = [];
   try {
-    if (import_fs3.default.existsSync(TERM_DATES_FILE_PATH)) {
-      const raw = import_fs3.default.readFileSync(TERM_DATES_FILE_PATH, "utf-8");
+    if (fs3.existsSync(TERM_DATES_FILE_PATH)) {
+      const raw = fs3.readFileSync(TERM_DATES_FILE_PATH, "utf-8");
       const data = JSON.parse(raw);
       if (Array.isArray(data) && data.length > 0) {
         list = data;
@@ -1260,15 +1246,15 @@ function loadTermDatesFromDisk() {
 }
 function saveTermDatesToDisk(terms) {
   try {
-    import_fs3.default.writeFileSync(TERM_DATES_FILE_PATH, JSON.stringify(terms, null, 2), "utf-8");
+    fs3.writeFileSync(TERM_DATES_FILE_PATH, JSON.stringify(terms, null, 2), "utf-8");
   } catch (err) {
     console.warn("Could not save term dates to disk:", err);
   }
 }
 function loadReportCardOverridesFromDisk() {
   try {
-    if (import_fs3.default.existsSync(REPORT_CARD_OVERRIDES_FILE_PATH)) {
-      const raw = import_fs3.default.readFileSync(REPORT_CARD_OVERRIDES_FILE_PATH, "utf-8");
+    if (fs3.existsSync(REPORT_CARD_OVERRIDES_FILE_PATH)) {
+      const raw = fs3.readFileSync(REPORT_CARD_OVERRIDES_FILE_PATH, "utf-8");
       return JSON.parse(raw);
     }
   } catch (err) {
@@ -1278,14 +1264,14 @@ function loadReportCardOverridesFromDisk() {
 }
 function saveReportCardOverridesToDisk(overrides) {
   try {
-    import_fs3.default.writeFileSync(REPORT_CARD_OVERRIDES_FILE_PATH, JSON.stringify(overrides, null, 2), "utf-8");
+    fs3.writeFileSync(REPORT_CARD_OVERRIDES_FILE_PATH, JSON.stringify(overrides, null, 2), "utf-8");
   } catch (err) {
     console.warn("Could not save report card overrides to disk:", err);
   }
 }
 function saveDeletedHolidaysToDisk(deletedSet) {
   try {
-    import_fs3.default.writeFileSync(DELETED_CALENDAR_FILE_PATH, JSON.stringify(Array.from(deletedSet), null, 2), "utf-8");
+    fs3.writeFileSync(DELETED_CALENDAR_FILE_PATH, JSON.stringify(Array.from(deletedSet), null, 2), "utf-8");
   } catch (err) {
     console.warn("Could not save deleted holidays to disk:", err);
   }
@@ -1293,8 +1279,8 @@ function saveDeletedHolidaysToDisk(deletedSet) {
 function loadDeletedHolidaysFromDisk() {
   const set = /* @__PURE__ */ new Set();
   try {
-    if (import_fs3.default.existsSync(DELETED_CALENDAR_FILE_PATH)) {
-      const raw = import_fs3.default.readFileSync(DELETED_CALENDAR_FILE_PATH, "utf-8");
+    if (fs3.existsSync(DELETED_CALENDAR_FILE_PATH)) {
+      const raw = fs3.readFileSync(DELETED_CALENDAR_FILE_PATH, "utf-8");
       const data = JSON.parse(raw);
       if (Array.isArray(data)) {
         data.forEach((id) => set.add(id));
@@ -1308,15 +1294,15 @@ function loadDeletedHolidaysFromDisk() {
 var deletedHolidays = loadDeletedHolidaysFromDisk();
 function saveCalendarToDisk(cal) {
   try {
-    import_fs3.default.writeFileSync(CALENDAR_FILE_PATH, JSON.stringify(cal, null, 2), "utf-8");
+    fs3.writeFileSync(CALENDAR_FILE_PATH, JSON.stringify(cal, null, 2), "utf-8");
   } catch (err) {
     console.warn("Could not save calendar to disk:", err);
   }
 }
 function loadCalendarFromDisk() {
   try {
-    if (import_fs3.default.existsSync(CALENDAR_FILE_PATH)) {
-      const raw = import_fs3.default.readFileSync(CALENDAR_FILE_PATH, "utf-8");
+    if (fs3.existsSync(CALENDAR_FILE_PATH)) {
+      const raw = fs3.readFileSync(CALENDAR_FILE_PATH, "utf-8");
       const data = JSON.parse(raw);
       if (Array.isArray(data)) {
         const activeData = data.filter(
@@ -1336,7 +1322,7 @@ function loadCalendarFromDisk() {
 }
 function saveSubmittedSessionsToDisk(set) {
   try {
-    import_fs3.default.writeFileSync(SUBMITTED_SESSIONS_FILE_PATH, JSON.stringify(Array.from(set)), "utf-8");
+    fs3.writeFileSync(SUBMITTED_SESSIONS_FILE_PATH, JSON.stringify(Array.from(set)), "utf-8");
   } catch (err) {
     console.warn("Could not save submitted sessions to disk:", err);
   }
@@ -1344,8 +1330,8 @@ function saveSubmittedSessionsToDisk(set) {
 function loadSubmittedSessionsFromDisk() {
   const set = /* @__PURE__ */ new Set();
   try {
-    if (import_fs3.default.existsSync(SUBMITTED_SESSIONS_FILE_PATH)) {
-      const raw = import_fs3.default.readFileSync(SUBMITTED_SESSIONS_FILE_PATH, "utf-8");
+    if (fs3.existsSync(SUBMITTED_SESSIONS_FILE_PATH)) {
+      const raw = fs3.readFileSync(SUBMITTED_SESSIONS_FILE_PATH, "utf-8");
       const data = JSON.parse(raw);
       if (Array.isArray(data)) {
         data.forEach((k) => set.add(k));
@@ -1369,7 +1355,7 @@ function unmarkSessionSubmitted(key) {
 function saveAttendanceToDisk(store) {
   try {
     const list = Array.from(store.values());
-    import_fs3.default.writeFileSync(ATTENDANCE_FILE_PATH, JSON.stringify(list), "utf-8");
+    fs3.writeFileSync(ATTENDANCE_FILE_PATH, JSON.stringify(list), "utf-8");
   } catch (err) {
     console.warn("Could not save attendance to disk:", err);
   }
@@ -1377,8 +1363,8 @@ function saveAttendanceToDisk(store) {
 function loadAttendanceFromDisk(studentsList, staffList) {
   const store = /* @__PURE__ */ new Map();
   try {
-    if (import_fs3.default.existsSync(ATTENDANCE_FILE_PATH)) {
-      const raw = import_fs3.default.readFileSync(ATTENDANCE_FILE_PATH, "utf-8");
+    if (fs3.existsSync(ATTENDANCE_FILE_PATH)) {
+      const raw = fs3.readFileSync(ATTENDANCE_FILE_PATH, "utf-8");
       const data = JSON.parse(raw);
       if (Array.isArray(data)) {
         data.forEach((rec) => {
@@ -1394,15 +1380,15 @@ function loadAttendanceFromDisk(studentsList, staffList) {
 }
 function saveDelegationsToDisk(list) {
   try {
-    import_fs3.default.writeFileSync(DELEGATIONS_FILE_PATH, JSON.stringify(list, null, 2), "utf-8");
+    fs3.writeFileSync(DELEGATIONS_FILE_PATH, JSON.stringify(list, null, 2), "utf-8");
   } catch (err) {
     console.warn("Could not save delegations to disk:", err);
   }
 }
 function loadDelegationsFromDisk() {
   try {
-    if (import_fs3.default.existsSync(DELEGATIONS_FILE_PATH)) {
-      const raw = import_fs3.default.readFileSync(DELEGATIONS_FILE_PATH, "utf-8");
+    if (fs3.existsSync(DELEGATIONS_FILE_PATH)) {
+      const raw = fs3.readFileSync(DELEGATIONS_FILE_PATH, "utf-8");
       const data = JSON.parse(raw);
       if (Array.isArray(data)) {
         return data;
@@ -1460,7 +1446,7 @@ function checkIsLeadingTeacherOrAdmin(userIdOrUser) {
 }
 function saveExtraClassesToDisk(list) {
   try {
-    import_fs3.default.writeFileSync(EXTRA_CLASSES_FILE_PATH, JSON.stringify(list, null, 2), "utf-8");
+    fs3.writeFileSync(EXTRA_CLASSES_FILE_PATH, JSON.stringify(list, null, 2), "utf-8");
   } catch (err) {
     console.warn("Could not save extra classes to disk:", err);
   }
@@ -1532,8 +1518,8 @@ function isValidCalendarDate(dateStr) {
 }
 function loadExtraClassesFromDisk() {
   try {
-    if (import_fs3.default.existsSync(EXTRA_CLASSES_FILE_PATH)) {
-      const raw = import_fs3.default.readFileSync(EXTRA_CLASSES_FILE_PATH, "utf-8");
+    if (fs3.existsSync(EXTRA_CLASSES_FILE_PATH)) {
+      const raw = fs3.readFileSync(EXTRA_CLASSES_FILE_PATH, "utf-8");
       const data = JSON.parse(raw);
       if (Array.isArray(data)) {
         const sanitized = data.map(sanitizeExtraClass);
@@ -1549,7 +1535,7 @@ function loadExtraClassesFromDisk() {
 var extraClasses = loadExtraClassesFromDisk();
 function saveSessionToDisk(userId) {
   try {
-    import_fs3.default.writeFileSync(
+    fs3.writeFileSync(
       SESSION_FILE_PATH,
       JSON.stringify(
         {
@@ -1567,8 +1553,8 @@ function saveSessionToDisk(userId) {
 }
 function loadSessionFromDisk(staffList) {
   try {
-    if (import_fs3.default.existsSync(SESSION_FILE_PATH)) {
-      const raw = import_fs3.default.readFileSync(SESSION_FILE_PATH, "utf-8");
+    if (fs3.existsSync(SESSION_FILE_PATH)) {
+      const raw = fs3.readFileSync(SESSION_FILE_PATH, "utf-8");
       const data = JSON.parse(raw);
       if (data && typeof data.currentActiveUserId === "string" && data.currentActiveUserId) {
         const found = staffList.find((s) => s.id === data.currentActiveUserId || s.staffId === data.currentActiveUserId);
@@ -1585,15 +1571,15 @@ function loadSessionFromDisk(staffList) {
 }
 function saveAuditLogsToDisk(logs) {
   try {
-    import_fs3.default.writeFileSync(AUDIT_FILE_PATH, JSON.stringify(logs.slice(0, 1e3), null, 2), "utf-8");
+    fs3.writeFileSync(AUDIT_FILE_PATH, JSON.stringify(logs.slice(0, 1e3), null, 2), "utf-8");
   } catch (err) {
     console.warn("Could not save audit logs to disk:", err);
   }
 }
 function loadAuditLogsFromDisk(defaultActor) {
   try {
-    if (import_fs3.default.existsSync(AUDIT_FILE_PATH)) {
-      const raw = import_fs3.default.readFileSync(AUDIT_FILE_PATH, "utf-8");
+    if (fs3.existsSync(AUDIT_FILE_PATH)) {
+      const raw = fs3.readFileSync(AUDIT_FILE_PATH, "utf-8");
       const data = JSON.parse(raw);
       if (Array.isArray(data) && data.length > 0) {
         return data;
@@ -1704,7 +1690,22 @@ function getPreviousPendingSession(targetDate, targetSession) {
 }
 function logAudit(actionType, entityAffected, details, req, actorUserId) {
   const currentUser = (actorUserId ? staffMembers.find((u) => u.id === actorUserId || u.staffId === actorUserId) : null) || staffMembers.find((u) => u.id === currentActiveUserId) || staffMembers[0];
-  const ip = req ? req.headers?.["x-forwarded-for"] || req.headers?.["x-real-ip"] || req.ip || req.socket?.remoteAddress || "127.0.0.1" : "127.0.0.1";
+  let ip = "127.0.0.1";
+  if (req) {
+    try {
+      const fwd = req.headers?.["x-forwarded-for"];
+      const real = req.headers?.["x-real-ip"];
+      if (typeof fwd === "string") {
+        ip = fwd.split(",")[0].trim();
+      } else if (typeof real === "string") {
+        ip = real;
+      } else if (req.socket && req.socket.remoteAddress) {
+        ip = req.socket.remoteAddress;
+      }
+    } catch {
+      ip = "127.0.0.1";
+    }
+  }
   const log = {
     id: `audit-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
     timestamp: (/* @__PURE__ */ new Date()).toISOString(),
@@ -1727,8 +1728,8 @@ var PASSWORDS_FILE_PATH = getFilePath("staffPasswords.json");
 function loadStaffPasswords() {
   const map = /* @__PURE__ */ new Map();
   try {
-    if (import_fs3.default.existsSync(PASSWORDS_FILE_PATH)) {
-      const raw = import_fs3.default.readFileSync(PASSWORDS_FILE_PATH, "utf-8");
+    if (fs3.existsSync(PASSWORDS_FILE_PATH)) {
+      const raw = fs3.readFileSync(PASSWORDS_FILE_PATH, "utf-8");
       const list = JSON.parse(raw);
       if (Array.isArray(list)) {
         for (const item of list) {
@@ -1746,7 +1747,7 @@ function loadStaffPasswords() {
 function saveStaffPasswords(map) {
   try {
     const list = Array.from(map.values());
-    import_fs3.default.writeFileSync(PASSWORDS_FILE_PATH, JSON.stringify(list, null, 2), "utf-8");
+    fs3.writeFileSync(PASSWORDS_FILE_PATH, JSON.stringify(list, null, 2), "utf-8");
   } catch (err) {
     console.warn("Could not save staffPasswords.json:", err);
   }
@@ -5773,8 +5774,8 @@ Return JSON:
   return res.json({ draft });
 });
 async function startServer() {
-  const server = import_http2.default.createServer(app);
-  app.use(import_express.default.static(import_path3.default.join(process.cwd(), "public")));
+  const server = http2.createServer(app);
+  app.use(express.static(path3.join(process.cwd(), "public")));
   if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
     const { createServer: createViteServer } = await import("vite");
     const isHmrDisabled = process.env.DISABLE_HMR === "true";
@@ -5787,12 +5788,12 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = import_path3.default.join(process.cwd(), "dist");
-    if (import_fs3.default.existsSync(distPath)) {
-      app.use(import_express.default.static(distPath));
+    const distPath = path3.join(process.cwd(), "dist");
+    if (fs3.existsSync(distPath)) {
+      app.use(express.static(distPath));
       app.get("*", (req, res, next) => {
         if (req.path.startsWith("/api")) return next();
-        res.sendFile(import_path3.default.join(distPath, "index.html"));
+        res.sendFile(path3.join(distPath, "index.html"));
       });
     }
   }
@@ -5800,16 +5801,18 @@ async function startServer() {
     console.log(`Maldives School Attendance Portal running on http://0.0.0.0:${PORT}`);
   });
 }
-var isServerless = Boolean(
-  process.env.VERCEL || process.env.VERCEL_ENV || process.env.NOW_REGION || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.LAMBDA_TASK_ROOT || process.env.FUNCTION_NAME
+var isExecutedDirectly = Boolean(
+  process.argv[1] && (process.argv[1].endsWith("server.ts") || process.argv[1].endsWith("server.cjs") || process.argv[1].endsWith("server.js"))
 );
-if (!isServerless) {
+var isServerless = Boolean(
+  process.env.VERCEL || process.env.VERCEL_ENV || process.env.NOW_REGION || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.LAMBDA_TASK_ROOT || process.env.FUNCTION_NAME || !isExecutedDirectly
+);
+if (!isServerless && isExecutedDirectly) {
   startServer();
 }
 var server_default = app;
 
 // api/index.ts
-process.env.VERCEL = "1";
 function handler(req, res) {
   const matched = req.headers["x-matched-path"] || req.headers["x-vercel-matched-path"] || req.originalUrl;
   if (matched && matched.startsWith("/api") && (req.url === "/api" || req.url === "/api/index" || req.url === "/")) {
@@ -5817,4 +5820,6 @@ function handler(req, res) {
   }
   return server_default(req, res);
 }
-module.exports = handler;
+export {
+  handler as default
+};

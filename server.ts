@@ -948,13 +948,22 @@ function logAudit(actionType: string, entityAffected: string, details: string, r
     (actorUserId ? staffMembers.find((u) => u.id === actorUserId || u.staffId === actorUserId) : null) ||
     staffMembers.find((u) => u.id === currentActiveUserId) ||
     staffMembers[0];
-  const ip = req
-    ? (req.headers?.['x-forwarded-for'] as string) ||
-      (req.headers?.['x-real-ip'] as string) ||
-      req.ip ||
-      req.socket?.remoteAddress ||
-      '127.0.0.1'
-    : '127.0.0.1';
+  let ip = '127.0.0.1';
+  if (req) {
+    try {
+      const fwd = req.headers?.['x-forwarded-for'];
+      const real = req.headers?.['x-real-ip'];
+      if (typeof fwd === 'string') {
+        ip = fwd.split(',')[0].trim();
+      } else if (typeof real === 'string') {
+        ip = real;
+      } else if (req.socket && req.socket.remoteAddress) {
+        ip = req.socket.remoteAddress;
+      }
+    } catch {
+      ip = '127.0.0.1';
+    }
+  }
   const log: AuditLog = {
     id: `audit-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
     timestamp: new Date().toISOString(),

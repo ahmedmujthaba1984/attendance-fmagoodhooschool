@@ -3,7 +3,7 @@ import http from 'http';
 import vm from 'vm';
 import fs from 'fs';
 import path from 'path';
-import type { Student, GradeLevel, User } from '../src/types.ts';
+import type { Student, GradeLevel, User } from '../src/types';
 
 export interface MagoodhooSyncState {
   sourceUrl: string;

@@ -11,7 +11,7 @@ import {
   generateAcademicCalendar,
   generatePastAttendance,
   ALL_GRADES,
-} from './server/seedData.ts';
+} from './server/seedData';
 import type {
   User,
   Student,
@@ -29,9 +29,9 @@ import type {
   ExtraClassAttendanceRecord,
   ExtraClassStatus,
   TermDurationConfig,
-} from './src/types.ts';
+} from './src/types';
 
-import { magoodhooSyncEngine } from './server/magoodhooSync.ts';
+import { magoodhooSyncEngine } from './server/magoodhooSync';
 
 dotenv.config();
 

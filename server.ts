@@ -38,6 +38,17 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
+// Universal CORS support for multi-device sync
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+  next();
+});
+
 // 1. Normalize incoming request URLs across Vercel serverless rewrites and reverse proxies
 app.use((req, res, next) => {
   const matchedPath = (req.headers['x-matched-path'] || req.headers['x-now-route-matches'] || req.headers['x-vercel-matched-path']) as string;

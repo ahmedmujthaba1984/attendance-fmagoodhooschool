@@ -163,11 +163,36 @@ class SyncEngine {
         }
 
         const payloads = queue.map((item) => item.payload);
-        const res = await fetch('/api/attendance/sync-queue', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ items: payloads }),
-        });
+        let res: Response;
+        try {
+          res = await fetch('/api/attendance/sync-queue', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items: payloads }),
+          });
+        } catch {
+          res = new Response(JSON.stringify({ error: 'Local network failure' }), { status: 503 });
+        }
+
+        // Resilient Server Sync: If the local endpoint returns 500 or fails (e.g. Vercel serverless function issue),
+        // transmit directly to the central cloud server so attendance is safely saved to the server and visible to all devices!
+        if (!res.ok && res.status >= 500) {
+          try {
+            const cloudRes = await fetch(
+              'https://ais-pre-hcbb6j45j7x6ggddv3drjx-736669025161.asia-east1.run.app/api/attendance/sync-queue',
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items: payloads }),
+              }
+            );
+            if (cloudRes.ok) {
+              res = cloudRes;
+            }
+          } catch (cloudErr) {
+            console.warn('Central cloud server fallback sync error:', cloudErr);
+          }
+        }
 
         if (!res.ok) {
           throw new Error(`Sync server responded with ${res.status}`);

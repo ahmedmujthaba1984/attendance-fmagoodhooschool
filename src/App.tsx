@@ -724,10 +724,30 @@ function MainApp() {
       }
 
       const url = `/api/attendance?date=${selectedDate}&grade=ALL&session=${selectedSession}&_t=${Date.now()}`;
-      const res = await fetch(url, {
-        cache: 'no-store',
-        headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
-      });
+      let res: Response;
+      try {
+        res = await fetch(url, {
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
+        });
+      } catch {
+        res = new Response(null, { status: 503 });
+      }
+
+      if (!res.ok && res.status >= 500) {
+        try {
+          const fallbackRes = await fetch(
+            `https://ais-pre-hcbb6j45j7x6ggddv3drjx-736669025161.asia-east1.run.app${url}`,
+            {
+              cache: 'no-store',
+              headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
+            }
+          );
+          if (fallbackRes.ok) {
+            res = fallbackRes;
+          }
+        } catch {}
+      }
       if (res.ok) {
         const data = await res.json();
         setAttendanceRecords(data.records || []);

@@ -849,6 +849,14 @@ function checkSchoolClosed(dateStr: string): {
 } {
   const cal = academicCalendar.find((c) => c.date === dateStr);
   if (cal) {
+    if (cal.dayType === 'REGULAR_TEACHING_DAY' && cal.isManualOverride) {
+      return {
+        isClosed: false,
+        reason: '',
+        reasonDhivehi: '',
+        dayType: 'REGULAR_TEACHING_DAY',
+      };
+    }
     const closedTypes: DayType[] = [
       'SCHOOL_CLOSED',
       'SCHOOL_CLOSED_WEATHER',
@@ -2292,6 +2300,16 @@ app.post('/api/school/reopen-day', (req, res) => {
       isManualOverride: true,
       updatedByUserId: currentActiveUserId,
     };
+  } else {
+    academicCalendar.push({
+      id: `cal-${targetDate}`,
+      date: targetDate,
+      dayType: 'REGULAR_TEACHING_DAY',
+      description: 'Regular School Day (Reopened)',
+      descriptionDhivehi: 'ޢާންމު ކިޔަވައިދޭ ދުވަސް',
+      isManualOverride: true,
+      updatedByUserId: currentActiveUserId,
+    });
   }
 
   // Allow manual marking again for this day

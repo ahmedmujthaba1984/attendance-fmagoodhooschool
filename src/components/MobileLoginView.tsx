@@ -230,7 +230,7 @@ export const MobileLoginView: React.FC<MobileLoginViewProps> = ({
         if (res.ok && data.success && data.user) {
           loginSucceeded = true;
           loggedInUser = data.user;
-        } else if (res.status === 401 || res.status === 404 || data.error) {
+        } else if (res.status === 401) {
           setErrorMessage(
             data.error ||
               (isRTL
@@ -239,6 +239,8 @@ export const MobileLoginView: React.FC<MobileLoginViewProps> = ({
           );
           setIsLoading(false);
           return;
+        } else if (res.status >= 500) {
+          console.warn('Server error during login, falling back to local staff directory:', data.error);
         }
       }
     } catch {

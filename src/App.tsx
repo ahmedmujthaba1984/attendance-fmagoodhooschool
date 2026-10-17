@@ -165,6 +165,7 @@ function MainApp() {
     grade?: string;
   } | null>(null);
   const [isSessionSubmitted, setIsSessionSubmitted] = useState<boolean>(false);
+  const [manuallyReopenedDates, setManuallyReopenedDates] = useState<Set<string>>(new Set());
   const [isLiveSyncActive, setIsLiveSyncActive] = useState<boolean>(true);
   const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
 
@@ -783,7 +784,7 @@ function MainApp() {
         // Offline Maldivian Weekend check (Friday = 5, Saturday = 6)
         const d = new Date(selectedDate + 'T00:00:00Z');
         const day = d.getUTCDay();
-        if (day === 5 || day === 6) {
+        if ((day === 5 || day === 6) && !manuallyReopenedDates.has(selectedDate)) {
           setIsSchoolClosed(true);
           const reasonEn = day === 5 ? 'Official Weekend (Friday)' : 'Official Weekend (Saturday)';
           const reasonDv = day === 5 ? 'ހުކުރު (ހަފްތާ ބަންދު)' : 'ހޮނިހިރު (ހަފްތާ ބަންދު)';
@@ -813,7 +814,7 @@ function MainApp() {
 
       const d = new Date(selectedDate + 'T00:00:00Z');
       const day = d.getUTCDay();
-      if (day === 5 || day === 6) {
+      if ((day === 5 || day === 6) && !manuallyReopenedDates.has(selectedDate)) {
         setIsSchoolClosed(true);
         const reasonEn = day === 5 ? 'Official Weekend (Friday)' : 'Official Weekend (Saturday)';
         const reasonDv = day === 5 ? 'ހުކުރު (ހަފްތާ ބަންދު)' : 'ހޮނިހިރު (ހަފްތާ ބަންދު)';
@@ -1440,6 +1441,11 @@ function MainApp() {
   };
 
   const handleReopenSchoolDay = async () => {
+    setIsSchoolClosed(false);
+    setSchoolClosureReason('');
+    setSchoolClosureReasonDhivehi('');
+    setClosureDetails(undefined);
+    setManuallyReopenedDates((prev) => new Set(prev).add(selectedDate));
     try {
       const res = await fetch('/api/school/reopen-day', {
         method: 'POST',
@@ -1450,10 +1456,6 @@ function MainApp() {
         }),
       });
       if (res.ok) {
-        setIsSchoolClosed(false);
-        setSchoolClosureReason('');
-        setSchoolClosureReasonDhivehi('');
-        setClosureDetails(undefined);
         await fetchAttendance();
         await fetchMoEStats();
         await fetchAuditLogs();
@@ -1464,7 +1466,7 @@ function MainApp() {
         }
       }
     } catch (err) {
-      console.error('Failed to reopen school day:', err);
+      console.warn('Reopen school day deferred/offline:', err);
     }
   };
 

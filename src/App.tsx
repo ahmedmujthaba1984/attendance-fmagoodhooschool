@@ -778,8 +778,29 @@ function MainApp() {
           .equals(selectedDate)
           .and((r) => r.sessionType === selectedSession)
           .toArray();
-        if (local.length > 0) {
-          setAttendanceRecords(local);
+        setAttendanceRecords(local.length > 0 ? local : []);
+
+        // Offline Maldivian Weekend check (Friday = 5, Saturday = 6)
+        const d = new Date(selectedDate + 'T00:00:00Z');
+        const day = d.getUTCDay();
+        if (day === 5 || day === 6) {
+          setIsSchoolClosed(true);
+          const reasonEn = day === 5 ? 'Official Weekend (Friday)' : 'Official Weekend (Saturday)';
+          const reasonDv = day === 5 ? 'ހުކުރު (ހަފްތާ ބަންދު)' : 'ހޮނިހިރު (ހަފްތާ ބަންދު)';
+          setSchoolClosureReason(reasonEn);
+          setSchoolClosureReasonDhivehi(reasonDv);
+          setClosureDetails({
+            reason: reasonEn,
+            reasonDhivehi: reasonDv,
+            formattedLabel: `School Closed - ${reasonEn}`,
+            formattedLabelDhivehi: `ސްކޫލް ބަންދު - ${reasonDv}`,
+            source: 'CALENDAR',
+          });
+        } else {
+          setIsSchoolClosed(false);
+          setSchoolClosureReason('');
+          setSchoolClosureReasonDhivehi('');
+          setClosureDetails(undefined);
         }
       }
     } catch {
@@ -788,7 +809,29 @@ function MainApp() {
         .equals(selectedDate)
         .and((r) => r.sessionType === selectedSession)
         .toArray();
-      if (local.length > 0) setAttendanceRecords(local);
+      setAttendanceRecords(local.length > 0 ? local : []);
+
+      const d = new Date(selectedDate + 'T00:00:00Z');
+      const day = d.getUTCDay();
+      if (day === 5 || day === 6) {
+        setIsSchoolClosed(true);
+        const reasonEn = day === 5 ? 'Official Weekend (Friday)' : 'Official Weekend (Saturday)';
+        const reasonDv = day === 5 ? 'ހުކުރު (ހަފްތާ ބަންދު)' : 'ހޮނިހިރު (ހަފްތާ ބަންދު)';
+        setSchoolClosureReason(reasonEn);
+        setSchoolClosureReasonDhivehi(reasonDv);
+        setClosureDetails({
+          reason: reasonEn,
+          reasonDhivehi: reasonDv,
+          formattedLabel: `School Closed - ${reasonEn}`,
+          formattedLabelDhivehi: `ސްކޫލް ބަންދު - ${reasonDv}`,
+          source: 'CALENDAR',
+        });
+      } else {
+        setIsSchoolClosed(false);
+        setSchoolClosureReason('');
+        setSchoolClosureReasonDhivehi('');
+        setClosureDetails(undefined);
+      }
     }
   };
 
@@ -1558,25 +1601,31 @@ function MainApp() {
   const handleResetAllAttendance = async () => {
     setIsResettingAttendance(true);
     try {
-      const res = await fetch('/api/attendance/reset-all', {
-        method: 'POST',
-      });
-      if (res.ok) {
-        try {
-          await offlineDb.attendance.clear();
-          await offlineDb.syncQueue.clear();
-        } catch (e) {
-          console.warn('Could not clear offlineDb:', e);
-        }
-        setAttendanceRecords([]);
-        setCounterpartRecords([]);
-        setIsSessionSubmitted(false);
-        await fetchAttendance();
-        await fetchMoEStats();
-        await fetchAuditLogs();
-        setShowResetAttendanceModal(false);
-        setHasConfirmedResetRisk(false);
+      // 1. Immediately wipe IndexedDB and UI state locally so user is never blocked
+      try {
+        await offlineDb.attendance.clear();
+        await offlineDb.syncQueue.clear();
+      } catch (e) {
+        console.warn('Could not clear offlineDb:', e);
       }
+      setAttendanceRecords([]);
+      setCounterpartRecords([]);
+      setIsSessionSubmitted(false);
+
+      // 2. Notify server to wipe remote memory/disk store
+      try {
+        await fetch('/api/attendance/reset-all', {
+          method: 'POST',
+        });
+      } catch (err) {
+        console.warn('Remote reset deferred/offline:', err);
+      }
+
+      await fetchAttendance();
+      await fetchMoEStats();
+      await fetchAuditLogs();
+      setShowResetAttendanceModal(false);
+      setHasConfirmedResetRisk(false);
     } catch (err) {
       console.error('Failed to reset all attendance:', err);
     } finally {

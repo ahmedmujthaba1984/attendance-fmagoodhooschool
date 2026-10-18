@@ -834,6 +834,7 @@ function loadAuditLogsFromDisk(defaultActor: User): AuditLog[] {
 
 let academicCalendar: AcademicCalendarDay[] = loadCalendarFromDisk();
 let attendanceStore: Map<string, AttendanceRecord> = loadAttendanceFromDisk(students, staffMembers);
+let attendanceVersion = 1;
 let delegations: ClassDelegation[] = loadDelegationsFromDisk();
 let currentActiveUserId: string = loadSessionFromDisk(staffMembers);
 let auditLogs: AuditLog[] = loadAuditLogsFromDisk(
@@ -1708,6 +1709,17 @@ function checkSessionStartEligibility(
   return { allowed: true, currentDate: curDateStr, currentTime: curTimeStr };
 }
 
+// Real-Time Version Check for ultra-fast multi-tab/multi-device synchronization
+app.get(['/api/attendance/version', '/api/attendance-version'], (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.json({
+    version: attendanceVersion,
+    timestamp: Date.now(),
+  });
+});
+
 // 3. Attendance API
 app.get('/api/attendance', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -1908,6 +1920,7 @@ app.post('/api/attendance/bulk', (req, res) => {
   });
 
   saveAttendanceToDisk(attendanceStore);
+  attendanceVersion++;
   const isSubmitted = submittedSessions.has(`${targetDate}_${targetSession}`);
 
   broadcastLiveSync({
@@ -2002,6 +2015,7 @@ const handleSingleAttendance = (req: express.Request, res: express.Response) => 
   };
   attendanceStore.set(key, updated);
   saveAttendanceToDisk(attendanceStore);
+  attendanceVersion++;
 
   // Broadcast instantly to all connected browsers & incognito windows via SSE
   broadcastLiveSync({
@@ -2193,6 +2207,7 @@ app.post('/api/attendance/reset-all', (req, res) => {
   attendanceStore.clear();
   submittedSessions.clear();
   saveAttendanceToDisk(attendanceStore);
+  attendanceVersion++;
   saveSubmittedSessionsToDisk(submittedSessions);
   try {
     saveReportCardOverridesToDisk({});
@@ -2403,6 +2418,7 @@ app.post('/api/attendance/sync-queue', (req, res) => {
 
     if (syncedCount > 0) {
       saveAttendanceToDisk(attendanceStore);
+      attendanceVersion++;
       broadcastLiveSync({
         type: 'ATTENDANCE_MUTATED',
         count: syncedCount,

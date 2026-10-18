@@ -549,16 +549,50 @@ function MainApp() {
 
     setupSSE();
 
-    // Background sync polling interval (every 12 seconds) as fallback alongside SSE & BroadcastChannel
-    const interval = setInterval(() => {
+    // High-frequency Real-Time Version Pulse (every 1.5 seconds)
+    // Synchronizes Normal tabs, Incognito tabs, and other staff devices immediately!
+    let lastKnownAttendanceVersion = -1;
+    let isVersionCheckRunning = false;
+
+    const checkAttendanceVersionPulse = async () => {
+      if (isVersionCheckRunning) return;
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+      isVersionCheckRunning = true;
+      try {
+        const res = await fetch('/api/attendance/version', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (typeof data.version === 'number') {
+            if (lastKnownAttendanceVersion !== -1 && data.version !== lastKnownAttendanceVersion) {
+              fetchAttendanceSilent();
+              fetchMoEStats();
+            }
+            lastKnownAttendanceVersion = data.version;
+          }
+        }
+      } catch {}
+      finally {
+        isVersionCheckRunning = false;
+      }
+    };
+
+    // Run first check right away
+    checkAttendanceVersionPulse();
+
+    // Pulse every 1.5 seconds for instant multi-tab & incognito cross-sync
+    const pulseInterval = setInterval(checkAttendanceVersionPulse, 1500);
+
+    // Standard session timings interval (every 15 seconds)
+    const timingsInterval = setInterval(() => {
       fetchSessionTimings();
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         fetchAttendanceSilent();
       }
-    }, 12000);
+    }, 15000);
 
     const handleFocus = () => {
       fetchSessionTimings();
+      checkAttendanceVersionPulse();
       fetchAttendanceSilent();
     };
     window.addEventListener('focus', handleFocus);
@@ -566,13 +600,15 @@ function MainApp() {
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
         fetchSessionTimings();
+        checkAttendanceVersionPulse();
         fetchAttendanceSilent();
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
-      clearInterval(interval);
+      clearInterval(pulseInterval);
+      clearInterval(timingsInterval);
       clearTimeout(sseReconnectTimer);
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener('storage', handleStorage);

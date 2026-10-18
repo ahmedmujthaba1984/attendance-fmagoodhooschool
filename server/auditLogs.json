@@ -1,5 +1,15 @@
 [
   {
+    "id": "audit-1792318391223-y28dav",
+    "timestamp": "2026-10-18T10:13:11.223Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked std-001 () as PRESENT  on 2026-10-18 by Ahmed Mujthaba (Senior School Administration Officer)"
+  },
+  {
     "id": "audit-1792308423451-1za9ug",
     "timestamp": "2026-10-18T07:27:03.451Z",
     "userId": "stf-32",

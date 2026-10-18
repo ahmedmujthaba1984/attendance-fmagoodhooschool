@@ -98,30 +98,22 @@ export const OfflineQueueModal: React.FC<OfflineQueueModalProps> = ({
         if (onSyncComplete) onSyncComplete();
         setTimeout(() => onClose(), 1500);
       } else {
-        // Auto-resolve: if server has issues (e.g. 500), mark as verified locally and clear the badge!
-        const cleared = await syncEngine.forceMarkAllSynced();
         setSyncResult({
-          success: true,
+          success: false,
           message: isRTL
-            ? `ކާމިޔާބުކަމާއެކު ${cleared || items.length || pendingCount} ރެކޯޑް ސިންކްވެ، ރީނދޫ ބެޖް ފިލުވާލެވިއްޖެ!`
-            : `All ${cleared || items.length || pendingCount} records successfully verified locally and cleared from queue! Yellow badge removed.`,
-          syncedCount: cleared,
+            ? 'ސާވަރަށް ސިންކެއް ނުކުރެވުނު. އިންޓަނެޓް ބައްލަވާލެއްވުމަށްފަހު އަލުން މަސައްކަތްކުރައްވާ.'
+            : `Sync failed: ${res.error || 'Server unreachable'}. Records are safely kept in offline queue and will auto-sync.`,
         });
         await loadItems();
-        if (onSyncComplete) onSyncComplete();
-        setTimeout(() => onClose(), 1500);
       }
-    } catch {
-      const cleared = await syncEngine.forceMarkAllSynced();
+    } catch (err: any) {
       setSyncResult({
-        success: true,
+        success: false,
         message: isRTL
-          ? 'ހުރިހާ ރެކޯޑެއް ސިންކްވެ، ރީނދޫ ބެޖް ފިލުވާލެވިއްޖެ!'
-          : 'All records verified locally. Yellow badge cleared!',
+          ? 'ސާވަރަށް ގުޅުމުގައި މައްސަލައެއް ޖެހިއްޖެ. އަލުން މަސައްކަތްކުރައްވާ.'
+          : `Sync error: ${err?.message || 'Server connection failed'}. Records remain safely queued.`,
       });
       await loadItems();
-      if (onSyncComplete) onSyncComplete();
-      setTimeout(() => onClose(), 1500);
     } finally {
       setIsSyncing(false);
     }

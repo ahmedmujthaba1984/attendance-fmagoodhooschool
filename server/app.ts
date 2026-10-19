@@ -167,8 +167,10 @@ const DEFAULT_SESSION_TIMINGS = {
 };
 
 const FIRESTORE_SETTINGS_URL = `https://firestore.googleapis.com/v1/projects/industrial-heaven-2j4jh/databases/ai-studio-magoodhooschoole-128d6f0a-ac98-471b-97a7-60f7b0b880b4/documents/school_settings/session_timings?key=AIzaSyAfYbbnjncIlteLWYG9ZIpRRa8lq_QZvR8`;
+const FIRESTORE_SETTINGS_PATCH_URL = `${FIRESTORE_SETTINGS_URL}&updateMask.fieldPaths=timingsJson&updateMask.fieldPaths=updatedAt`;
 
 let cachedSessionTimings: any = null;
+let sessionTimingsVersion = 1;
 
 function loadSessionTimingsFromDisk() {
   if (cachedSessionTimings) {
@@ -278,7 +280,7 @@ function saveTimingsToFirestore(timings: any): Promise<boolean> {
       });
 
       const req = https.request(
-        FIRESTORE_SETTINGS_URL,
+        FIRESTORE_SETTINGS_PATCH_URL,
         {
           method: 'PATCH',
           headers: {
@@ -291,7 +293,7 @@ function saveTimingsToFirestore(timings: any): Promise<boolean> {
           res.on('end', () => resolve(res.statusCode === 200));
         }
       );
-      req.setTimeout(3000, () => {
+      req.setTimeout(3500, () => {
         req.destroy();
         resolve(false);
       });

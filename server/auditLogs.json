@@ -1,5 +1,85 @@
 [
   {
+    "id": "audit-1792395890599-q8byof",
+    "timestamp": "2026-10-19T07:44:50.599Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "STAFF_LOGIN",
+    "entityAffected": "User",
+    "ipAddress": "127.0.0.1",
+    "details": "Aishath Sulthana (aishath.sulthana@fmagoodhooschool.edu.mv) logged in successfully"
+  },
+  {
+    "id": "audit-1792395890577-0nitr2",
+    "timestamp": "2026-10-19T07:44:50.577Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ADMIN_RESET_STAFF_PASSWORD",
+    "entityAffected": "User",
+    "ipAddress": "127.0.0.1",
+    "details": "Super Admin reset password for Aishath Sulthana (aishath.sulthana@fmagoodhooschool.edu.mv) to default (1234)"
+  },
+  {
+    "id": "audit-1792395879338-57f8xb",
+    "timestamp": "2026-10-19T07:44:39.338Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "PASSWORD_RESET_REQUESTED",
+    "entityAffected": "User",
+    "ipAddress": "127.0.0.1",
+    "details": "Password reset requested for Aishath Sulthana (aishath.sulthana@fmagoodhooschool.edu.mv) - awaiting Super Admin approval"
+  },
+  {
+    "id": "audit-1792395873983-0cewfk",
+    "timestamp": "2026-10-19T07:44:33.983Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "PASSWORD_CHANGED",
+    "entityAffected": "User",
+    "ipAddress": "127.0.0.1",
+    "details": "Aishath Sulthana changed their portal password"
+  },
+  {
+    "id": "audit-1792377812798-1tt1l5",
+    "timestamp": "2026-10-19T02:43:32.798Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "SESSION_TIMINGS_UPDATED",
+    "entityAffected": "SessionSettings",
+    "ipAddress": "203.104.27.154",
+    "details": "Updated school session timings: Morning (06:40 - 09:35), Afternoon (10:15 - 12:30), 1 temporary overrides active"
+  },
+  {
+    "id": "audit-1792377811403-8hthsi",
+    "timestamp": "2026-10-19T02:43:31.403Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "SESSION_TIMINGS_UPDATED",
+    "entityAffected": "SessionSettings",
+    "ipAddress": "203.104.27.154",
+    "details": "Updated school session timings: Morning (06:40 - 09:35), Afternoon (10:15 - 12:30), 0 temporary overrides active"
+  },
+  {
+    "id": "audit-1792374840983-pw32o4",
+    "timestamp": "2026-10-19T01:54:00.983Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "SESSION_TIMINGS_UPDATED",
+    "entityAffected": "SessionSettings",
+    "ipAddress": "203.104.27.154",
+    "details": "Updated school session timings: Morning (06:40 - 09:35), Afternoon (10:10 - 12:35), 0 temporary overrides active"
+  },
+  {
+    "id": "audit-1792374793333-gqrz3z",
+    "timestamp": "2026-10-19T01:53:13.333Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "SESSION_TIMINGS_UPDATED",
+    "entityAffected": "SessionSettings",
+    "ipAddress": "203.104.27.154",
+    "details": "Updated school session timings: Morning (06:40 - 09:35), Afternoon (10:10 - 12:35), 0 temporary overrides active"
+  },
+  {
     "id": "audit-1792318391223-y28dav",
     "timestamp": "2026-10-18T10:13:11.223Z",
     "userId": "stf-32",

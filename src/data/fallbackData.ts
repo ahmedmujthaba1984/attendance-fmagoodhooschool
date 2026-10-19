@@ -95,3 +95,14 @@ export function setStaffLocalPassword(email: string, newPass: string): void {
     safeLocalStorage.setItem(LOCAL_PASSWORDS_KEY, JSON.stringify(custom));
   } catch {}
 }
+
+// Reset staff password back to default in client storage
+export function resetStaffLocalPasswordToDefault(email: string): void {
+  if (!email) return;
+  const cleanEmail = email.toLowerCase().trim();
+  try {
+    const custom = safeJsonParse<Record<string, string>>(safeLocalStorage.getItem(LOCAL_PASSWORDS_KEY), {});
+    delete custom[cleanEmail];
+    safeLocalStorage.setItem(LOCAL_PASSWORDS_KEY, JSON.stringify(custom));
+  } catch {}
+}

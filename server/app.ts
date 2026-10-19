@@ -134,6 +134,7 @@ const DELETED_CALENDAR_FILE_PATH = getFilePath('deletedHolidaysData.json');
 const TERM_DATES_FILE_PATH = getFilePath('termDates.json');
 const REPORT_CARD_OVERRIDES_FILE_PATH = getFilePath('reportCardOverrides.json');
 const SESSION_TIMINGS_FILE_PATH = getFilePath('sessionTimings.json');
+const RESET_REQUESTS_FILE_PATH = getFilePath('passwordResetRequests.json');
 
 const DEFAULT_SESSION_TIMINGS = {
   normal: {
@@ -1087,6 +1088,44 @@ function resetAllStaffPasswords(updatedBy: string): number {
   return count;
 }
 
+export interface PasswordResetRequest {
+  id: string;
+  staffId?: string;
+  email: string;
+  fullName: string;
+  fullNameDhivehi?: string;
+  designation?: string;
+  department?: string;
+  requestedAt: string;
+  status: 'PENDING' | 'RESOLVED' | 'REJECTED';
+  resolvedAt?: string;
+  resolvedBy?: string;
+  note?: string;
+}
+
+function loadPasswordResetRequests(): PasswordResetRequest[] {
+  try {
+    if (fs.existsSync(RESET_REQUESTS_FILE_PATH)) {
+      const raw = fs.readFileSync(RESET_REQUESTS_FILE_PATH, 'utf-8');
+      const list = JSON.parse(raw);
+      if (Array.isArray(list)) return list;
+    }
+  } catch (err) {
+    console.warn('Could not read passwordResetRequests.json:', err);
+  }
+  return [];
+}
+
+function savePasswordResetRequests(list: PasswordResetRequest[]) {
+  try {
+    fs.writeFileSync(RESET_REQUESTS_FILE_PATH, JSON.stringify(list, null, 2), 'utf-8');
+  } catch (err) {
+    console.warn('Could not save passwordResetRequests.json:', err);
+  }
+}
+
+let passwordResetRequests: PasswordResetRequest[] = loadPasswordResetRequests();
+
 // Enhance staff with isSuperAdmin and custom password flags
 function enrichStaffUser(user: User): User {
   const email = (user.email || '').toLowerCase().trim();
@@ -1195,10 +1234,18 @@ app.post('/api/auth/login', (req, res) => {
   const correctPassword = getStaffPassword(staffEmail);
 
   if (inputPassword !== correctPassword) {
+    const isCustom = hasCustomPassword(staffEmail);
+    const errorMessage = isCustom
+      ? 'Incorrect password. The default password has change.'
+      : 'Incorrect password. The default password for all staff is 1234.';
+
     return res.status(401).json({
       success: false,
-      error: 'Incorrect password. The default password for all staff is 1234.',
-      hint: 'Default password is 1234. You can reset your password using the Forgot Password option.',
+      error: errorMessage,
+      hasChangedFromDefault: isCustom,
+      hint: isCustom
+        ? 'The default password has change. You can request a password reset from Super Admin (Ahmed Mujthaba).'
+        : 'The default password for all staff is 1234.',
     });
   }
 
@@ -1438,6 +1485,192 @@ app.post('/api/admin/reset-all-passwords', (req, res) => {
     message: `All ${count} staff member passwords have been successfully reset to default: 1234`,
     count,
     defaultPassword: '1234',
+  });
+});
+
+// ==========================================
+// Password Reset Requests (Staff Request & Super Admin Reset)
+// ==========================================
+
+// Staff: Request a password reset
+app.post('/api/auth/request-password-reset', (req, res) => {
+  const { email, staffId, fullName, note } = req.body;
+  const inputId = (email || staffId || '').toLowerCase().trim();
+
+  if (!inputId && !fullName) {
+    return res.status(400).json({ success: false, error: 'Staff email or name is required.' });
+  }
+
+  // Find staff in directory
+  const staff = staffMembers.find((s) => {
+    const sEmail = (s.email || '').toLowerCase().trim();
+    const sStaffId = (s.staffId || '').toLowerCase().trim();
+    const sId = (s.id || '').toLowerCase().trim();
+    const sName = (s.fullName || '').toLowerCase().trim();
+    return (
+      sEmail === inputId ||
+      sStaffId === inputId ||
+      sId === inputId ||
+      sEmail.split('@')[0] === inputId ||
+      (fullName && sName === fullName.toLowerCase().trim())
+    );
+  });
+
+  const staffEmail = staff ? (staff.email || '').toLowerCase().trim() : inputId;
+  const staffName = staff ? staff.fullName : (fullName || inputId);
+  const staffNameDv = staff ? staff.fullNameDhivehi : undefined;
+  const designation = staff ? staff.designation : undefined;
+  const department = staff ? staff.department : undefined;
+
+  // Check if an existing PENDING request already exists
+  const existingPendingIndex = passwordResetRequests.findIndex(
+    (r) => (r.email || '').toLowerCase().trim() === staffEmail && r.status === 'PENDING'
+  );
+
+  const now = new Date().toISOString();
+
+  if (existingPendingIndex >= 0) {
+    passwordResetRequests[existingPendingIndex].requestedAt = now;
+    if (note) passwordResetRequests[existingPendingIndex].note = note;
+    savePasswordResetRequests(passwordResetRequests);
+    return res.json({
+      success: true,
+      message: 'Password reset request is already pending. Super Admin (Ahmed Mujthaba) has been notified.',
+      request: passwordResetRequests[existingPendingIndex],
+    });
+  }
+
+  const newReq: PasswordResetRequest = {
+    id: `reset-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    staffId: staff?.staffId || staff?.id,
+    email: staffEmail,
+    fullName: staffName,
+    fullNameDhivehi: staffNameDv,
+    designation,
+    department,
+    requestedAt: now,
+    status: 'PENDING',
+    note: note || 'Password reset requested from login portal',
+  };
+
+  passwordResetRequests.unshift(newReq);
+  savePasswordResetRequests(passwordResetRequests);
+
+  logAudit(
+    'PASSWORD_RESET_REQUESTED',
+    'User',
+    `Password reset requested for ${staffName} (${staffEmail}) - awaiting Super Admin approval`,
+    req,
+    staff?.id
+  );
+
+  res.json({
+    success: true,
+    message: 'Your password reset request has been submitted to Super Admin (Ahmed Mujthaba). You may also contact him directly at 7984844.',
+    request: newReq,
+  });
+});
+
+// Super Admin: Get all password reset requests
+app.get('/api/admin/password-reset-requests', (req, res) => {
+  const requesterEmail = ((req.query.requesterEmail as string) || '').toLowerCase().trim();
+  const currentActiveUser = staffMembers.find((u) => u.id === currentActiveUserId);
+  const isSuper =
+    requesterEmail === SUPER_ADMIN_EMAIL ||
+    requesterEmail === 'ahmedmujthaba@gmail.com' ||
+    requesterEmail.includes('ahmed.mujthaba') ||
+    currentActiveUser?.isSuperAdmin ||
+    currentActiveUser?.role === 'ADMIN';
+
+  if (!isSuper) {
+    return res.status(403).json({
+      success: false,
+      error: 'Only Super Admin (ahmed.mujthaba@fmagoodhooschool.edu.mv) can view password reset requests.',
+    });
+  }
+
+  const pendingCount = passwordResetRequests.filter((r) => r.status === 'PENDING').length;
+
+  res.json({
+    success: true,
+    pendingCount,
+    totalRequests: passwordResetRequests.length,
+    requests: passwordResetRequests,
+  });
+});
+
+// Super Admin: Resolve / Approve password reset request (resets staff password to 1234)
+app.post('/api/admin/resolve-password-reset', (req, res) => {
+  const { requestId, targetEmail, action, newPassword, requesterEmail } = req.body;
+  const currentActiveUser = staffMembers.find((u) => u.id === currentActiveUserId);
+  const reqEmail = (requesterEmail || currentActiveUser?.email || '').toLowerCase().trim();
+
+  const isSuper =
+    reqEmail === SUPER_ADMIN_EMAIL ||
+    reqEmail === 'ahmedmujthaba@gmail.com' ||
+    reqEmail.includes('ahmed.mujthaba') ||
+    currentActiveUser?.isSuperAdmin ||
+    currentActiveUser?.role === 'ADMIN';
+
+  if (!isSuper) {
+    return res.status(403).json({
+      success: false,
+      error: 'Only Super Admin (ahmed.mujthaba@fmagoodhooschool.edu.mv) can resolve password reset requests.',
+    });
+  }
+
+  const normalizedTarget = (targetEmail || '').toLowerCase().trim();
+  let foundReq = passwordResetRequests.find((r) => r.id === requestId);
+  if (!foundReq && normalizedTarget) {
+    foundReq = passwordResetRequests.find(
+      (r) => (r.email || '').toLowerCase().trim() === normalizedTarget && r.status === 'PENDING'
+    );
+  }
+
+  const emailToReset = (foundReq?.email || normalizedTarget).toLowerCase().trim();
+  const staff = staffMembers.find((s) => (s.email || '').toLowerCase().trim() === emailToReset);
+
+  if (!staff && !emailToReset) {
+    return res.status(404).json({ success: false, error: 'Staff account not found.' });
+  }
+
+  const now = new Date().toISOString();
+
+  if (action === 'REJECT') {
+    if (foundReq) {
+      foundReq.status = 'REJECTED';
+      foundReq.resolvedAt = now;
+      foundReq.resolvedBy = currentActiveUser?.fullName || 'Super Admin (Ahmed Mujthaba)';
+      savePasswordResetRequests(passwordResetRequests);
+    }
+    return res.json({ success: true, message: 'Password reset request was dismissed.' });
+  }
+
+  // Reset password to 1234 (default) or custom
+  const passToSet = newPassword && newPassword.trim().length >= 5 ? newPassword.trim() : '1234';
+  setStaffPassword(emailToReset, passToSet, reqEmail || 'Super Admin (Ahmed Mujthaba)');
+
+  if (foundReq) {
+    foundReq.status = 'RESOLVED';
+    foundReq.resolvedAt = now;
+    foundReq.resolvedBy = currentActiveUser?.fullName || 'Super Admin (Ahmed Mujthaba)';
+    savePasswordResetRequests(passwordResetRequests);
+  }
+
+  logAudit(
+    'ADMIN_RESET_STAFF_PASSWORD',
+    'User',
+    `Super Admin reset password for ${staff?.fullName || emailToReset} (${emailToReset}) to ${passToSet === '1234' ? 'default (1234)' : passToSet}`,
+    req,
+    currentActiveUser?.id
+  );
+
+  res.json({
+    success: true,
+    message: `Password for ${staff?.fullName || emailToReset} has been successfully reset to ${passToSet === '1234' ? 'default (1234)' : passToSet}.`,
+    targetEmail: emailToReset,
+    newPassword: passToSet,
+    isDefault: passToSet === '1234',
   });
 });
 

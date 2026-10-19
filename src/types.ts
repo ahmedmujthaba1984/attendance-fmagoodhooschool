@@ -134,6 +134,21 @@ export interface StaffPasswordInfo {
   passwordUpdatedAt?: string;
 }
 
+export interface PasswordResetRequest {
+  id: string;
+  staffId?: string;
+  email: string;
+  fullName: string;
+  fullNameDhivehi?: string;
+  designation?: string;
+  department?: string;
+  requestedAt: string;
+  status: 'PENDING' | 'RESOLVED' | 'REJECTED';
+  resolvedAt?: string;
+  resolvedBy?: string;
+  note?: string;
+}
+
 export type Gender = 'MALE' | 'FEMALE';
 
 export interface Student {

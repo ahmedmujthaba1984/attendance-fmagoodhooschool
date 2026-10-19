@@ -129,11 +129,7 @@ export const Header: React.FC<HeaderProps> = ({
             🇲🇻
           </div>
           <span className="font-medium tracking-wide truncate text-[11px] sm:text-xs">
-            {isRTL ? 'މިނިސްޓްރީ އޮފް އެޑިޔުކޭޝަން' : 'Ministry of Education'}
-          </span>
-          <span className="hidden sm:inline text-slate-500">•</span>
-          <span className="hidden sm:inline text-slate-300 font-semibold truncate">
-            {isRTL ? 'ފ. މަގޫދޫ ސްކޫލް' : 'F. Magoodhoo School'}
+            {isRTL ? 'މަގޫދޫ ސްކޫލް - ހާޒިރީ ޕޯޓަލް' : 'Magoodhoo School - Attendance Portal'}
           </span>
         </div>
 

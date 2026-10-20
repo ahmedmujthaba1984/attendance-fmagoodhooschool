@@ -17,6 +17,7 @@ import {
   Tag,
   Info,
   ArrowRight,
+  RefreshCw,
 } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { SchoolSessionTimings, TemporarySessionOverride } from '../types';
@@ -27,6 +28,7 @@ interface SessionTimingsModalProps {
   currentTimings: SchoolSessionTimings;
   selectedDate?: string;
   onSave: (timings: SchoolSessionTimings) => Promise<void> | void;
+  onRefresh?: () => void;
 }
 
 function calculateDuration(start: string, end: string): string {
@@ -87,6 +89,7 @@ export const SessionTimingsModal: React.FC<SessionTimingsModalProps> = ({
   currentTimings,
   selectedDate,
   onSave,
+  onRefresh,
 }) => {
   const { t, isRTL } = useLanguage();
   const [activeTab, setActiveTab] = useState<'normal' | 'temporary'>('normal');
@@ -115,9 +118,19 @@ export const SessionTimingsModal: React.FC<SessionTimingsModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // Auto-refresh freshest timings from server while modal is open
+  useEffect(() => {
+    if (!isOpen || !onRefresh) return;
+    onRefresh();
+    const interval = setInterval(() => {
+      onRefresh();
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [isOpen, onRefresh]);
+
   // Sync state when modal opens or currentTimings changes
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !saving) {
       const nm = currentTimings.normal?.morning || currentTimings.morning || { startTime: '07:45', endTime: '10:15' };
       const na = currentTimings.normal?.afternoon || currentTimings.afternoon || { startTime: '10:45', endTime: '13:15' };
       setNormalMorningStart(nm.startTime || '07:45');
@@ -446,13 +459,25 @@ export const SessionTimingsModal: React.FC<SessionTimingsModalProps> = ({
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1.5">
+            {onRefresh && (
+              <button
+                type="button"
+                onClick={() => onRefresh()}
+                className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-sky-200 hover:text-white transition cursor-pointer"
+                title={isRTL ? 'ސާވަރުން އެންމެ ފަހުގެ ވަގުތުތައް ރީފްރެޝްކުރޭ' : 'Refresh latest timings from server'}
+              >
+                <RefreshCw className="w-4 h-4" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Top Scope Segmented Selector Tabs */}

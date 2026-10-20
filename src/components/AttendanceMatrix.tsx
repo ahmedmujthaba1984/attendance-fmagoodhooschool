@@ -2340,14 +2340,16 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
         onConfirmSessionRevert={onRevertSession}
       />
 
-      {/* Session Timings & Duration Settings Modal */}
-      <SessionTimingsModal
-        isOpen={showTimingsModal}
-        onClose={() => setShowTimingsModal(false)}
-        currentTimings={sessionTimings}
-        selectedDate={selectedDate}
-        onSave={onUpdateSessionTimings || (() => {})}
-      />
+      {/* Fallback Session Timings Modal */}
+      {showTimingsModal && (
+        <SessionTimingsModal
+          isOpen={showTimingsModal}
+          onClose={() => setShowTimingsModal(false)}
+          currentTimings={sessionTimings}
+          selectedDate={selectedDate}
+          onSave={onUpdateSessionTimings || (() => {})}
+        />
+      )}
     </div>
   );
 };

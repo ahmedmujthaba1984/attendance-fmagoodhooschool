@@ -36,7 +36,7 @@ import { magoodhooSyncEngine } from './magoodhooSync';
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 // Universal CORS support for multi-device sync
 app.use((req, res, next) => {
@@ -1951,6 +1951,7 @@ app.get(['/api/attendance/version', '/api/attendance-version'], (req, res) => {
   res.setHeader('Expires', '0');
   res.json({
     version: attendanceVersion,
+    timingsVersion: sessionTimingsVersion,
     timestamp: Date.now(),
   });
 });
@@ -3937,14 +3938,14 @@ app.get(['/api/settings/session-timings', '/api/session-timings', '/settings/ses
 
   // Fast path: return in-memory cached timings immediately (<1ms)
   if (cachedSessionTimings) {
-    return res.json({ timings: cachedSessionTimings });
+    return res.json({ timings: cachedSessionTimings, version: sessionTimingsVersion });
   }
 
   // Next: return disk-persisted timings immediately (<1ms)
   const disk = loadSessionTimingsFromDisk();
   if (disk) {
     cachedSessionTimings = disk;
-    return res.json({ timings: disk });
+    return res.json({ timings: disk, version: sessionTimingsVersion });
   }
 
   // Fallback to remote Firestore
@@ -3953,11 +3954,11 @@ app.get(['/api/settings/session-timings', '/api/session-timings', '/settings/ses
     if (remote) {
       cachedSessionTimings = remote;
       saveSessionTimingsToDisk(remote);
-      return res.json({ timings: remote });
+      return res.json({ timings: remote, version: sessionTimingsVersion });
     }
   } catch {}
 
-  res.json({ timings: DEFAULT_SESSION_TIMINGS });
+  res.json({ timings: DEFAULT_SESSION_TIMINGS, version: sessionTimingsVersion });
 });
 
 app.put(['/api/settings/session-timings', '/api/session-timings', '/settings/session-timings', '/session-timings'], async (req, res) => {
@@ -3980,12 +3981,18 @@ app.put(['/api/settings/session-timings', '/api/session-timings', '/settings/ses
   // 1. Immediately update cache & disk
   cachedSessionTimings = normalized;
   saveSessionTimingsToDisk(normalized);
+  sessionTimingsVersion++;
+  attendanceVersion++;
 
   // 2. Broadcast instantly to all connected browsers & incognito windows via SSE
-  broadcastLiveSync({ type: 'SESSION_TIMINGS_UPDATED', timings: normalized });
+  broadcastLiveSync({ type: 'SESSION_TIMINGS_UPDATED', timings: normalized, version: sessionTimingsVersion });
 
-  // 3. Save to Firestore in background without delaying HTTP response
-  saveTimingsToFirestore(normalized).catch(() => {});
+  // 3. Save to Firestore and await so serverless functions flush to cloud before completing
+  try {
+    await saveTimingsToFirestore(normalized);
+  } catch (err) {
+    console.warn('Could not save timings to Firestore:', err);
+  }
 
   logAudit(
     'SESSION_TIMINGS_UPDATED',
@@ -3995,7 +4002,7 @@ app.put(['/api/settings/session-timings', '/api/session-timings', '/settings/ses
   );
 
   // 4. Return immediately to the client
-  res.json({ success: true, timings: normalized });
+  res.json({ success: true, timings: normalized, version: sessionTimingsVersion });
 });
 
 app.get('/api/reports/report-card-attendance', (req, res) => {

@@ -1,5 +1,15 @@
 [
   {
+    "id": "audit-1792480555440-zxzixd",
+    "timestamp": "2026-10-20T07:15:55.440Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "SESSION_TIMINGS_UPDATED",
+    "entityAffected": "SessionSettings",
+    "ipAddress": "127.0.0.1",
+    "details": "Updated school session timings: Morning (06:40 - 09:35), Afternoon (10:10 - 11:35), 0 temporary overrides active"
+  },
+  {
     "id": "audit-1792395890599-q8byof",
     "timestamp": "2026-10-19T07:44:50.599Z",
     "userId": "stf-03",

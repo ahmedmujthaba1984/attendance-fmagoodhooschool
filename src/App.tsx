@@ -552,16 +552,22 @@ function MainApp() {
     // High-frequency Real-Time Version Pulse (every 1.5 seconds)
     // Synchronizes Normal tabs, Incognito tabs, and other staff devices immediately!
     let lastKnownAttendanceVersion = -1;
+    let lastKnownTimingsVersion = -1;
     let isVersionCheckRunning = false;
 
     const checkAttendanceVersionPulse = async () => {
       if (isVersionCheckRunning) return;
-      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
       isVersionCheckRunning = true;
       try {
-        const res = await fetch('/api/attendance/version', { cache: 'no-store' });
+        const res = await fetch(`/api/attendance/version?_t=${Date.now()}`, { cache: 'no-store' });
         if (res.ok) {
           const data = await res.json();
+          if (typeof data.timingsVersion === 'number') {
+            if (lastKnownTimingsVersion !== -1 && data.timingsVersion !== lastKnownTimingsVersion) {
+              fetchSessionTimings();
+            }
+            lastKnownTimingsVersion = data.timingsVersion;
+          }
           if (typeof data.version === 'number') {
             if (lastKnownAttendanceVersion !== -1 && data.version !== lastKnownAttendanceVersion) {
               fetchAttendanceSilent();
@@ -1408,16 +1414,24 @@ function MainApp() {
       }
     } catch {}
 
-    // 3. Persist to server API (server immediately broadcasts to live SSE clients & updates cache)
+    // 3. Persist to server API and await confirmation
     try {
-      fetch('/api/settings/session-timings', {
+      const res = await fetch('/api/settings/session-timings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ timings: newTimings }),
-      }).catch((err) => console.warn('PUT session timings error:', err));
-    } catch {}
+      });
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (data.timings) {
+          applyUpdatedTimings(data.timings);
+        }
+      }
+    } catch (err) {
+      console.warn('PUT session timings error:', err);
+    }
 
-    // 4. Also directly persist to Firestore document in background
+    // 4. Also directly persist to Firestore document in parallel
     try {
       const payload = JSON.stringify({
         fields: {
@@ -1425,15 +1439,20 @@ function MainApp() {
           updatedAt: { stringValue: new Date().toISOString() },
         },
       });
-      fetch(
+      await fetch(
         `https://firestore.googleapis.com/v1/projects/industrial-heaven-2j4jh/databases/ai-studio-magoodhooschoole-128d6f0a-ac98-471b-97a7-60f7b0b880b4/documents/school_settings/session_timings?key=AIzaSyAfYbbnjncIlteLWYG9ZIpRRa8lq_QZvR8&updateMask.fieldPaths=timingsJson&updateMask.fieldPaths=updatedAt`,
         {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: payload,
         }
-      ).catch(() => {});
+      );
     } catch {}
+  };
+
+  const handleOpenTimingsModal = () => {
+    setIsTimingsModalOpen(true);
+    fetchSessionTimings().catch(() => {});
   };
 
   const handleDeclareSchoolClosed = async (reason: string, reasonDhivehi?: string) => {
@@ -1868,7 +1887,7 @@ function MainApp() {
         onOpenSuperAdminPasswords={() => setIsSuperAdminModalOpen(true)}
         onResetAllAttendance={() => setShowResetAttendanceModal(true)}
         pendingExtraClassesCount={pendingExtraClassesCount}
-        onOpenTimingsModal={() => setIsTimingsModalOpen(true)}
+        onOpenTimingsModal={handleOpenTimingsModal}
         onOpenOfflineQueueModal={() => setIsOfflineQueueModalOpen(true)}
         onManualSync={async () => {
           const res = await syncEngine.flushQueue();
@@ -1939,7 +1958,7 @@ function MainApp() {
             onOpenLoginView={() => setShowLoginView(true)}
             sessionTimings={sessionTimings}
             onUpdateSessionTimings={handleUpdateSessionTimings}
-            onOpenTimingsModal={() => setIsTimingsModalOpen(true)}
+            onOpenTimingsModal={handleOpenTimingsModal}
             isLiveSyncActive={isLiveSyncActive}
             lastSyncTime={lastSyncTime}
           />
@@ -2039,7 +2058,7 @@ function MainApp() {
         onOpenLoginView={() => setShowLoginView(true)}
         onOpenSuperAdminPasswords={() => setIsSuperAdminModalOpen(true)}
         onOpenChangePassword={() => setIsChangePasswordModalOpen(true)}
-        onOpenTimingsModal={() => setIsTimingsModalOpen(true)}
+        onOpenTimingsModal={handleOpenTimingsModal}
         onLogout={handleLogout}
       />
 
@@ -2096,6 +2115,7 @@ function MainApp() {
         currentTimings={sessionTimings}
         selectedDate={selectedDate}
         onSave={handleUpdateSessionTimings}
+        onRefresh={fetchSessionTimings}
       />
 
       {/* Super Admin Staff Password Center Modal */}

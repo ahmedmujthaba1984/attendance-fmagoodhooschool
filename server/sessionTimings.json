@@ -8,7 +8,7 @@
     },
     "afternoon": {
       "startTime": "10:10",
-      "endTime": "12:30",
+      "endTime": "11:35",
       "label": "Afternoon Session",
       "labelDhivehi": "މެންދުރުފަހުގެ ސެޝަން"
     }
@@ -21,7 +21,7 @@
   },
   "afternoon": {
     "startTime": "10:10",
-    "endTime": "12:30",
+    "endTime": "11:35",
     "label": "Afternoon Session",
     "labelDhivehi": "މެންދުރުފަހުގެ ސެޝަން"
   },

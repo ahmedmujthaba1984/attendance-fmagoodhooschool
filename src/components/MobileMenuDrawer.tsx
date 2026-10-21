@@ -158,8 +158,12 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({
         {/* Header handle & Close button */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-teal-600 text-white flex items-center justify-center font-bold text-xs">
-              <GraduationCap className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-lg bg-white border border-slate-200/90 shadow-2xs overflow-hidden flex items-center justify-center p-0.5">
+              <img
+                src="/logo.jpg"
+                alt="Magoodhoo School Logo"
+                className="w-full h-full object-contain"
+              />
             </div>
             <div>
               <div className="text-xs font-bold text-slate-900 leading-tight">

@@ -1,6 +1,6 @@
 {
-  "name": "Maldives School Attendance & Analytics Portal",
-  "description": "Production-ready, offline-first attendance portal tailored for Maldivian island schools with Dhivehi/Thaana RTL support, dual sessions, voice dictation, and MoE compliance exports.",
+  "name": "Magoodhoo School Attendance & Analytics Portal",
+  "description": "Production-ready, offline-first attendance portal tailored for F. Magoodhoo School, Maldives with Dhivehi/Thaana RTL support, dual sessions, voice dictation, and MoE compliance exports.",
   "requestFramePermissions": [
     "microphone"
   ],

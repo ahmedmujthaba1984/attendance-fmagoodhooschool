@@ -216,8 +216,12 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2 sm:py-3 flex items-center justify-between gap-2 sm:gap-4">
         {/* School Identity */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-          <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-linear-to-br from-sky-600 to-teal-700 flex items-center justify-center text-white shadow-sm shrink-0">
-            <GraduationCap className="w-5 h-5 sm:w-6 sm:h-6" />
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white border border-slate-200/90 shadow-xs shrink-0 flex items-center justify-center p-0.5 overflow-hidden">
+            <img
+              src="/logo.jpg"
+              alt="Magoodhoo School Logo"
+              className="w-full h-full object-contain"
+            />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 truncate">

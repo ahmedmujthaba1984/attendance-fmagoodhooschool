@@ -1,9 +1,10 @@
-// Service Worker for Maldives School Attendance & Analytics Portal
-const CACHE_NAME = 'moe-attendance-v2';
+// Service Worker for Magoodhoo School Attendance & Analytics Portal
+const CACHE_NAME = 'magoodhoo-attendance-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
+  '/logo.jpg',
   '/icon.svg',
   '/fonts/Faruma.woff2',
   '/fonts/Faruma.woff'

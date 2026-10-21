@@ -6571,7 +6571,7 @@ async function startServer() {
   }
 
   server.listen(PORT, '0.0.0.0', () => {
-    console.log(`Maldives School Attendance Portal running on http://0.0.0.0:${PORT}`);
+    console.log(`Magoodhoo School Attendance Portal running on http://0.0.0.0:${PORT}`);
   });
 }
 

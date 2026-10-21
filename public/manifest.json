@@ -1,16 +1,22 @@
 {
   "id": "/",
-  "name": "Maldives School Attendance & Analytics Portal",
-  "short_name": "MoE Attend",
-  "description": "Offline-First Attendance Tracking & Analytics Portal for Maldives Island Schools",
+  "name": "Magoodhoo School Attendance & Analytics Portal",
+  "short_name": "Magoodhoo School",
+  "description": "Offline-First Attendance Tracking & Analytics Portal for F. Magoodhoo School, Maldives",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#0f172a",
+  "background_color": "#ffffff",
   "theme_color": "#0284c7",
   "categories": ["education", "productivity"],
   "icons": [
+    {
+      "src": "/logo.jpg",
+      "sizes": "192x192 512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
     {
       "src": "/icon.svg",
       "sizes": "192x192 512x512",

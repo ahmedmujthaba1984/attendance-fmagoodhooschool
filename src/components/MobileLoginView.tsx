@@ -580,8 +580,12 @@ export const MobileLoginView: React.FC<MobileLoginViewProps> = ({
       {/* Top Mobile App Bar */}
       <div className="sticky top-0 z-20 px-3.5 sm:px-6 py-2.5 bg-white/95 backdrop-blur-md border-b border-slate-200/90 shadow-2xs flex items-center justify-between">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-linear-to-br from-teal-600 via-sky-600 to-teal-700 flex items-center justify-center text-white font-bold shadow-xs shrink-0">
-            <GraduationCap className="w-5 h-5" />
+          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-white border border-slate-200/90 shadow-xs shrink-0 flex items-center justify-center p-0.5 overflow-hidden">
+            <img
+              src="/logo.jpg"
+              alt="Magoodhoo School Logo"
+              className="w-full h-full object-contain"
+            />
           </div>
           <div className="min-w-0">
             <div className="text-xs sm:text-sm font-black text-slate-900 tracking-tight flex items-center gap-1.5 truncate">

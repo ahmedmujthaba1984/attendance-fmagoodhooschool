@@ -5813,9 +5813,9 @@ app.get('/api/reports/analytics', (req, res) => {
       }
     });
 
-    const mornR = gMornRec > 0 ? Math.round((gMornPres / gMornRec) * 100) : 95;
-    const aftR = gAftRec > 0 ? Math.round((gAftPres / gAftRec) * 100) : 93;
-    const offR = (mornR != null && aftR != null) ? Math.round((mornR + aftR) / 2) : (mornR ?? aftR);
+    const mornR = gMornRec > 0 ? Math.round((gMornPres / gMornRec) * 100) : null;
+    const aftR = gAftRec > 0 ? Math.round((gAftPres / gAftRec) * 100) : null;
+    const offR = (mornR != null && aftR != null) ? Math.round((mornR + aftR) / 2) : (mornR ?? aftR ?? null);
     const extR = gExTotal > 0 ? Math.round((gExPres / gExTotal) * 100) : null;
     const combR = (gMornRec + gAftRec + gExTotal) > 0
       ? Math.round(((gMornPres + gAftPres + gExPres) / (gMornRec + gAftRec + gExTotal)) * 100)

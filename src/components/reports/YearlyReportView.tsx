@@ -98,7 +98,41 @@ export const YearlyReportView: React.FC<YearlyReportViewProps> = ({
       const contentType = res.headers.get('content-type');
       if (res.ok && contentType && contentType.includes('application/json')) {
         const data = await res.json();
-        setYearlyData(data);
+        if (records && records.length > 0 && Array.isArray(data.gradeBreakdown)) {
+          const mergedGrades = data.gradeBreakdown.map((gb: any) => {
+            if (gb.annualRate == null) {
+              const cg = fallback.gradeBreakdown.find((c) => c.grade === gb.grade);
+              if (cg && cg.annualRate != null) {
+                return {
+                  ...gb,
+                  annualRate: cg.annualRate,
+                  rate: cg.annualRate,
+                  officialRate: cg.officialRate,
+                  chronicCount: cg.chronicCount,
+                  perfectAttendanceCount: cg.perfectAttendanceCount,
+                  perfectCount: cg.perfectCount,
+                };
+              }
+            }
+            return gb;
+          });
+          const hasAnyValid = mergedGrades.some((g: any) => g.annualRate != null);
+          const computedAvg = hasAnyValid
+            ? Math.round(
+                mergedGrades.filter((g: any) => g.annualRate != null).reduce((a: number, b: any) => a + b.annualRate, 0) /
+                  mergedGrades.filter((g: any) => g.annualRate != null).length
+              )
+            : null;
+          setYearlyData({
+            ...data,
+            gradeBreakdown: mergedGrades,
+            annualAverageRate: data.annualAverageRate ?? computedAvg,
+            combinedAnnualRate: data.combinedAnnualRate ?? computedAvg,
+            officialAnnualRate: data.officialAnnualRate ?? computedAvg,
+          });
+        } else {
+          setYearlyData(data);
+        }
       } else {
         setYearlyData(fallback);
       }
@@ -785,9 +819,15 @@ export const YearlyReportView: React.FC<YearlyReportViewProps> = ({
                           )}
                         </td>
                         <td className="py-2.5 px-3 text-center">
-                          <span className="text-[11px] font-semibold text-emerald-700">
-                            ✓ Verified
-                          </span>
+                          {gb.annualRate != null ? (
+                            <span className="text-[11px] font-semibold text-emerald-700">
+                              ✓ {isRTL ? 'ތަޞްދީޤުކުރެވިފައި' : 'Verified'}
+                            </span>
+                          ) : (
+                            <span className="text-[11px] font-medium text-slate-400">
+                              {isRTL ? 'ރެކޯޑު ނެތް' : 'Unrecorded'}
+                            </span>
+                          )}
                         </td>
                       </tr>
                     ))}

@@ -1,5 +1,15 @@
 [
   {
+    "id": "audit-1792575613225-t0euw3",
+    "timestamp": "2026-10-21T09:40:13.225Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_RESET_ALL",
+    "entityAffected": "AttendanceRecord",
+    "ipAddress": "127.0.0.1",
+    "details": "All attendance records and submitted sessions have been reset to empty by Aishath Sulthana. System is ready for fresh attendance entry."
+  },
+  {
     "id": "audit-1792480555440-zxzixd",
     "timestamp": "2026-10-20T07:15:55.440Z",
     "userId": "stf-03",

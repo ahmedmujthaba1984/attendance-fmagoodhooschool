@@ -450,6 +450,14 @@ function MainApp() {
             data?.type === 'ATTENDANCE_RECORD_REVERTED' ||
             data?.type === 'CALENDAR_UPDATED'
           ) {
+            if (data?.resetAll) {
+              setAttendanceRecords([]);
+              setCounterpartRecords([]);
+              setIsSessionSubmitted(false);
+              try {
+                offlineDb.attendance.clear().catch(() => {});
+              } catch {}
+            }
             fetchAttendanceSilent();
             fetchMoEStats();
           } else if (data?.type === 'STUDENT_UPDATED' && data.student) {
@@ -529,6 +537,14 @@ function MainApp() {
                 data.type === 'ATTENDANCE_RECORD_REVERTED' ||
                 data.type === 'CALENDAR_UPDATED'
               ) {
+                if (data?.resetAll) {
+                  setAttendanceRecords([]);
+                  setCounterpartRecords([]);
+                  setIsSessionSubmitted(false);
+                  try {
+                    offlineDb.attendance.clear().catch(() => {});
+                  } catch {}
+                }
                 fetchAttendanceSilent();
                 fetchMoEStats();
               } else if (data.type === 'STUDENT_UPDATED' && data.student) {

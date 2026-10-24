@@ -1,5 +1,1045 @@
 [
   {
+    "id": "audit-1792846728864-1d9xxc",
+    "timestamp": "2026-10-24T12:58:48.864Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Yoosuf Zaalif Ismail (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728861-vuo3zb",
+    "timestamp": "2026-10-24T12:58:48.861Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Baraka Binth Mohamed Rameez (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728857-l5ucq6",
+    "timestamp": "2026-10-24T12:58:48.858Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Livia Binth Moosa (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728854-86g8s9",
+    "timestamp": "2026-10-24T12:58:48.854Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Ausam Bin Hisaan Hameed (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728850-7ipe9j",
+    "timestamp": "2026-10-24T12:58:48.850Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Riumaan Bin Rameez (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728846-xey8bj",
+    "timestamp": "2026-10-24T12:58:48.846Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Siya Binth Ahsan (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728842-1uxx1f",
+    "timestamp": "2026-10-24T12:58:48.842Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Rikz Bin Mohamed (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728838-ahsfr0",
+    "timestamp": "2026-10-24T12:58:48.838Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Ibrahim Ilf Mohamed (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728835-pmhy9b",
+    "timestamp": "2026-10-24T12:58:48.835Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Ahmed Fizaan (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728831-du82pd",
+    "timestamp": "2026-10-24T12:58:48.831Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Liba Binth Ibrahim Mohamed (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728827-r59376",
+    "timestamp": "2026-10-24T12:58:48.827Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Sundus Binth Ahmed Shujau (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728823-juliyd",
+    "timestamp": "2026-10-24T12:58:48.823Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Alyan Areen (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728820-uc8d6a",
+    "timestamp": "2026-10-24T12:58:48.820Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Aishath Nishya Binth Ahmed (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728817-bnze6q",
+    "timestamp": "2026-10-24T12:58:48.817Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Lahmaah Umar Yausan (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728812-ngzyix",
+    "timestamp": "2026-10-24T12:58:48.812Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Zen Bin Ahmed Abdulla (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728809-lo9nym",
+    "timestamp": "2026-10-24T12:58:48.809Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Alyas Bin Amanullah (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728805-x1niju",
+    "timestamp": "2026-10-24T12:58:48.805Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Aminath Hindhu (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728802-f48fou",
+    "timestamp": "2026-10-24T12:58:48.802Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Mohamed Joodhu Hisan (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728798-igr8cn",
+    "timestamp": "2026-10-24T12:58:48.798Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Adhuyan Umair Salih (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728794-8tjble",
+    "timestamp": "2026-10-24T12:58:48.794Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Nawaar Binthu Ibrahim Mohamed (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728790-ytjr8b",
+    "timestamp": "2026-10-24T12:58:48.790Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Liam Bin Abdul Majeedh (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728786-zw4n4v",
+    "timestamp": "2026-10-24T12:58:48.786Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Noorain Abdulla Saeed (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728781-dtsu3a",
+    "timestamp": "2026-10-24T12:58:48.781Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Ahzaab Bin Muslim (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728777-e8rhy6",
+    "timestamp": "2026-10-24T12:58:48.777Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Fathimath Eenaal Mohamed Rafeeu (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728773-7aygj5",
+    "timestamp": "2026-10-24T12:58:48.773Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Yoosuf Zaalif Ismail (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728769-g49g02",
+    "timestamp": "2026-10-24T12:58:48.769Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Baraka Binth Mohamed Rameez (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728765-jwrw5a",
+    "timestamp": "2026-10-24T12:58:48.765Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Livia Binth Moosa (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728760-x5txbm",
+    "timestamp": "2026-10-24T12:58:48.760Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Ausam Bin Hisaan Hameed (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728757-gb4rr1",
+    "timestamp": "2026-10-24T12:58:48.757Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Riumaan Bin Rameez (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728754-spin98",
+    "timestamp": "2026-10-24T12:58:48.754Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Siya Binth Ahsan (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728750-4y2212",
+    "timestamp": "2026-10-24T12:58:48.750Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Rikz Bin Mohamed (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728746-9kw1zq",
+    "timestamp": "2026-10-24T12:58:48.746Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Ibrahim Ilf Mohamed (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728741-o84u5f",
+    "timestamp": "2026-10-24T12:58:48.741Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Ahmed Fizaan (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728737-mma2lt",
+    "timestamp": "2026-10-24T12:58:48.737Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Liba Binth Ibrahim Mohamed (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728733-oplfyb",
+    "timestamp": "2026-10-24T12:58:48.733Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Sundus Binth Ahmed Shujau (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728729-t4qg6a",
+    "timestamp": "2026-10-24T12:58:48.729Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Alyan Areen (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728725-epk8a2",
+    "timestamp": "2026-10-24T12:58:48.725Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Aishath Nishya Binth Ahmed (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728720-o5h91b",
+    "timestamp": "2026-10-24T12:58:48.720Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Lahmaah Umar Yausan (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728714-s3gvk8",
+    "timestamp": "2026-10-24T12:58:48.714Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Zen Bin Ahmed Abdulla (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728709-2ugayi",
+    "timestamp": "2026-10-24T12:58:48.709Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Alyas Bin Amanullah (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728701-jk7fnu",
+    "timestamp": "2026-10-24T12:58:48.701Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Aminath Hindhu (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728692-mdgphd",
+    "timestamp": "2026-10-24T12:58:48.692Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Mohamed Joodhu Hisan (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728685-kdv7dr",
+    "timestamp": "2026-10-24T12:58:48.685Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Adhuyan Umair Salih (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728678-mgbndj",
+    "timestamp": "2026-10-24T12:58:48.678Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Nawaar Binthu Ibrahim Mohamed (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728673-cifzsv",
+    "timestamp": "2026-10-24T12:58:48.673Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Liam Bin Abdul Majeedh (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728666-wg1jm4",
+    "timestamp": "2026-10-24T12:58:48.666Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Noorain Abdulla Saeed (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728660-d7y8ws",
+    "timestamp": "2026-10-24T12:58:48.660Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Ahzaab Bin Muslim (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846728652-zjwjfn",
+    "timestamp": "2026-10-24T12:58:48.652Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Fathimath Eenaal Mohamed Rafeeu (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628857-c9q4ik",
+    "timestamp": "2026-10-24T12:57:08.857Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Yoosuf Zaalif Ismail (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628851-jiyhob",
+    "timestamp": "2026-10-24T12:57:08.851Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Baraka Binth Mohamed Rameez (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628843-yuhapg",
+    "timestamp": "2026-10-24T12:57:08.843Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Livia Binth Moosa (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628838-s5rmcr",
+    "timestamp": "2026-10-24T12:57:08.838Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Ausam Bin Hisaan Hameed (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628832-rj3sd9",
+    "timestamp": "2026-10-24T12:57:08.832Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Riumaan Bin Rameez (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628822-j8diiz",
+    "timestamp": "2026-10-24T12:57:08.822Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Siya Binth Ahsan (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628814-hukge6",
+    "timestamp": "2026-10-24T12:57:08.814Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Rikz Bin Mohamed (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628807-q55lkp",
+    "timestamp": "2026-10-24T12:57:08.807Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Ibrahim Ilf Mohamed (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628799-f8yq6g",
+    "timestamp": "2026-10-24T12:57:08.799Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Ahmed Fizaan (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628795-lti9p6",
+    "timestamp": "2026-10-24T12:57:08.795Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Liba Binth Ibrahim Mohamed (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628788-9e4kcy",
+    "timestamp": "2026-10-24T12:57:08.788Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Sundus Binth Ahmed Shujau (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628781-chupys",
+    "timestamp": "2026-10-24T12:57:08.781Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Alyan Areen (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628774-l8axjm",
+    "timestamp": "2026-10-24T12:57:08.774Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Aishath Nishya Binth Ahmed (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628763-sxs2n0",
+    "timestamp": "2026-10-24T12:57:08.763Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Lahmaah Umar Yausan (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628757-xo4c69",
+    "timestamp": "2026-10-24T12:57:08.757Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Zen Bin Ahmed Abdulla (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628748-2g2tso",
+    "timestamp": "2026-10-24T12:57:08.748Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Alyas Bin Amanullah (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628742-3cc1ue",
+    "timestamp": "2026-10-24T12:57:08.742Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Aminath Hindhu (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628737-84ier5",
+    "timestamp": "2026-10-24T12:57:08.737Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Mohamed Joodhu Hisan (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628733-kosd2e",
+    "timestamp": "2026-10-24T12:57:08.733Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Adhuyan Umair Salih (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628726-9k3nnr",
+    "timestamp": "2026-10-24T12:57:08.726Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Nawaar Binthu Ibrahim Mohamed (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628721-4oao74",
+    "timestamp": "2026-10-24T12:57:08.721Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Liam Bin Abdul Majeedh (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628716-00gf19",
+    "timestamp": "2026-10-24T12:57:08.716Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Noorain Abdulla Saeed (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628712-umozjz",
+    "timestamp": "2026-10-24T12:57:08.712Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Ahzaab Bin Muslim (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628708-1z1mj6",
+    "timestamp": "2026-10-24T12:57:08.708Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Fathimath Eenaal Mohamed Rafeeu (Grade 4) as ABSENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628704-9i2qm3",
+    "timestamp": "2026-10-24T12:57:08.704Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Yoosuf Zaalif Ismail (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628698-5gssb3",
+    "timestamp": "2026-10-24T12:57:08.698Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Baraka Binth Mohamed Rameez (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628693-khrmu3",
+    "timestamp": "2026-10-24T12:57:08.693Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Livia Binth Moosa (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628687-inr1fv",
+    "timestamp": "2026-10-24T12:57:08.687Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Ausam Bin Hisaan Hameed (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628680-24nsjp",
+    "timestamp": "2026-10-24T12:57:08.680Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Riumaan Bin Rameez (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628675-34uv7z",
+    "timestamp": "2026-10-24T12:57:08.675Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Siya Binth Ahsan (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628671-f0hwss",
+    "timestamp": "2026-10-24T12:57:08.671Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Rikz Bin Mohamed (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628666-886cby",
+    "timestamp": "2026-10-24T12:57:08.666Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Ibrahim Ilf Mohamed (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628660-vs1hz9",
+    "timestamp": "2026-10-24T12:57:08.660Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Ahmed Fizaan (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628655-vezm0q",
+    "timestamp": "2026-10-24T12:57:08.656Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Liba Binth Ibrahim Mohamed (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628647-qx19ya",
+    "timestamp": "2026-10-24T12:57:08.647Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Sundus Binth Ahmed Shujau (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628641-hdps39",
+    "timestamp": "2026-10-24T12:57:08.641Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Alyan Areen (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628634-o0ioum",
+    "timestamp": "2026-10-24T12:57:08.634Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Aishath Nishya Binth Ahmed (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628624-i23f8o",
+    "timestamp": "2026-10-24T12:57:08.624Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Lahmaah Umar Yausan (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628618-vj0gfj",
+    "timestamp": "2026-10-24T12:57:08.618Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Zen Bin Ahmed Abdulla (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628609-in43wg",
+    "timestamp": "2026-10-24T12:57:08.609Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Alyas Bin Amanullah (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628596-nexfnt",
+    "timestamp": "2026-10-24T12:57:08.596Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Aminath Hindhu (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628584-oxbp95",
+    "timestamp": "2026-10-24T12:57:08.584Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Mohamed Joodhu Hisan (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628574-p6aoky",
+    "timestamp": "2026-10-24T12:57:08.574Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Adhuyan Umair Salih (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628565-1blzo6",
+    "timestamp": "2026-10-24T12:57:08.565Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Nawaar Binthu Ibrahim Mohamed (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628560-ncmzeg",
+    "timestamp": "2026-10-24T12:57:08.560Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Liam Bin Abdul Majeedh (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628551-sp891i",
+    "timestamp": "2026-10-24T12:57:08.551Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Noorain Abdulla Saeed (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628542-hty6ot",
+    "timestamp": "2026-10-24T12:57:08.542Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Ahzaab Bin Muslim (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792846628523-0vk91s",
+    "timestamp": "2026-10-24T12:57:08.523Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Fathimath Eenaal Mohamed Rafeeu (Grade 4) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792845294432-ljzpdb",
+    "timestamp": "2026-10-24T12:34:54.432Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_RESET_ALL",
+    "entityAffected": "AttendanceRecord",
+    "ipAddress": "127.0.0.1",
+    "details": "All attendance records and submitted sessions have been reset to empty by Aishath Sulthana. System is ready for fresh attendance entry."
+  },
+  {
+    "id": "audit-1792845281909-ml9wpj",
+    "timestamp": "2026-10-24T12:34:41.909Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "BULK_ATTENDANCE_MARKED",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Bulk attendance saved for 48 students on 2026-10-22 (MORNING_BEFORE_BREAK) by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792772326639-aybuw6",
+    "timestamp": "2026-10-23T16:18:46.639Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_RESET_ALL",
+    "entityAffected": "AttendanceRecord",
+    "ipAddress": "127.0.0.1",
+    "details": "All attendance records and submitted sessions have been reset to empty by Aishath Sulthana. System is ready for fresh attendance entry."
+  },
+  {
+    "id": "audit-1792772299918-chfcw5",
+    "timestamp": "2026-10-23T16:18:19.918Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "BULK_ATTENDANCE_MARKED",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Bulk attendance saved for 48 students on 2026-10-22 (MORNING_BEFORE_BREAK) by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792755230650-ora2eg",
+    "timestamp": "2026-10-23T11:33:50.650Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_RESET_ALL",
+    "entityAffected": "AttendanceRecord",
+    "ipAddress": "127.0.0.1",
+    "details": "All attendance records and submitted sessions have been reset to empty by Aishath Sulthana. System is ready for fresh attendance entry."
+  },
+  {
+    "id": "audit-1792755217715-tto2pb",
+    "timestamp": "2026-10-23T11:33:37.715Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "BULK_ATTENDANCE_MARKED",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Bulk attendance saved for 215 students on 2026-10-22 (MORNING_BEFORE_BREAK) by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1792753983728-9azecp",
+    "timestamp": "2026-10-23T11:13:03.729Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_RESET_ALL",
+    "entityAffected": "AttendanceRecord",
+    "ipAddress": "127.0.0.1",
+    "details": "All attendance records and submitted sessions have been reset to empty by Aishath Sulthana. System is ready for fresh attendance entry."
+  },
+  {
+    "id": "audit-1792753973014-thjp2a",
+    "timestamp": "2026-10-23T11:12:53.014Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Aasha Binth Nafiz (LKG) as PRESENT  on 2026-10-22 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
     "id": "audit-1792575613225-t0euw3",
     "timestamp": "2026-10-21T09:40:13.225Z",
     "userId": "stf-03",

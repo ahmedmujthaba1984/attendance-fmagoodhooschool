@@ -658,8 +658,12 @@ export function generateClientWeeklyReport({
   ];
 
   let closedDays = 0;
-  let totalPresentCount = 0;
-  let totalSessionCount = 0;
+  let totalMornPres = 0;
+  let totalMornRec = 0;
+  let totalPostPres = 0;
+  let totalPostRec = 0;
+  let totalExtraPres = 0;
+  let totalExtraRec = 0;
 
   const dailyStats = schoolDates.map((dateStr) => {
     const d = new Date(dateStr + 'T00:00:00Z');
@@ -685,29 +689,109 @@ export function generateClientWeeklyReport({
         leave: 0,
         totalEnrolled: students.length,
         rate: 100,
+        morningRate: 100,
+        afternoonRate: 100,
+        officialRate: 100,
+        extraClassRate: null,
+        extraClassesCount: 0,
       };
     }
 
     const dayRecords = records.filter((r) => r.date === dateStr);
-    let pres = 0;
-    let late = 0;
-    let abs = 0;
-    let leave = 0;
-    let recs = 0;
+    let mornP = 0;
+    let mornL = 0;
+    let mornA = 0;
+    let mornLv = 0;
+    let mornRecs = 0;
 
-    if (dayRecords.length > 0) {
-      dayRecords.forEach((r) => {
-        recs++;
-        if (r.status === 'PRESENT') pres++;
-        else if (r.status === 'LATE') late++;
-        else if (r.status === 'LEAVE') leave++;
-        else if (r.status === 'ABSENT') abs++;
-      });
+    let postP = 0;
+    let postL = 0;
+    let postA = 0;
+    let postLv = 0;
+    let postRecs = 0;
+
+    let extraP = 0;
+    let extraL = 0;
+    let extraA = 0;
+    let extraLv = 0;
+    let extraRecs = 0;
+
+    dayRecords.forEach((r) => {
+      if (r.sessionType === 'POST_BREAK') {
+        postRecs++;
+        if (r.status === 'PRESENT') postP++;
+        else if (r.status === 'LATE') postL++;
+        else if (r.status === 'LEAVE') postLv++;
+        else if (r.status === 'ABSENT') postA++;
+      } else if ((r.sessionType as string) === 'EXTRA_CLASS') {
+        extraRecs++;
+        if (r.status === 'PRESENT') extraP++;
+        else if (r.status === 'LATE') extraL++;
+        else if (r.status === 'LEAVE') extraLv++;
+        else if (r.status === 'ABSENT') extraA++;
+      } else {
+        mornRecs++;
+        if (r.status === 'PRESENT') mornP++;
+        else if (r.status === 'LATE') mornL++;
+        else if (r.status === 'LEAVE') mornLv++;
+        else if (r.status === 'ABSENT') mornA++;
+      }
+    });
+
+    const dayMorningRate = mornRecs > 0 ? Math.round(((mornP + mornL) / mornRecs) * 100) : null;
+    const dayAfternoonRate = postRecs > 0 ? Math.round(((postP + postL) / postRecs) * 100) : null;
+    const dayOfficialRate = (dayMorningRate != null && dayAfternoonRate != null)
+      ? Math.round((dayMorningRate + dayAfternoonRate) / 2)
+      : (dayMorningRate ?? dayAfternoonRate);
+    const dayExtraRate = extraRecs > 0 ? Math.round(((extraP + extraL) / extraRecs) * 100) : null;
+
+    const totOfficialRecs = mornRecs + postRecs;
+    const totOfficialPres = mornP + mornL + postP + postL;
+    const dayCombinedRate = (totOfficialRecs + extraRecs) > 0
+      ? Math.round(((totOfficialPres + extraP + extraL) / (totOfficialRecs + extraRecs)) * 100)
+      : dayOfficialRate;
+
+    const dayRate =
+      reportMode === 'MORNING' ? dayMorningRate :
+      reportMode === 'AFTERNOON' ? dayAfternoonRate :
+      reportMode === 'OFFICIAL' ? dayOfficialRate :
+      reportMode === 'EXTRA_CLASS' ? dayExtraRate :
+      dayCombinedRate;
+
+    let displayPres = mornP + (postRecs > 0 ? postP : 0);
+    let displayAbs = mornA + (postRecs > 0 ? postA : 0);
+    let displayLate = mornL + (postRecs > 0 ? postL : 0);
+    let displayLeave = mornLv + (postRecs > 0 ? postLv : 0);
+
+    if (reportMode === 'MORNING') {
+      displayPres = mornP;
+      displayAbs = mornA;
+      displayLate = mornL;
+      displayLeave = mornLv;
+    } else if (reportMode === 'AFTERNOON') {
+      displayPres = postP;
+      displayAbs = postA;
+      displayLate = postL;
+      displayLeave = postLv;
+    } else if (reportMode === 'EXTRA_CLASS') {
+      displayPres = extraP;
+      displayAbs = extraA;
+      displayLate = extraL;
+      displayLeave = extraLv;
     }
 
-    const dayRate = recs > 0 ? Math.round(((pres + late) / recs) * 100) : null;
-    totalPresentCount += pres + late;
-    totalSessionCount += recs;
+    if (mornRecs > 0) {
+      totalMornPres += mornP + mornL;
+      totalMornRec += mornRecs;
+    }
+    if (postRecs > 0) {
+      totalPostPres += postP + postL;
+      totalPostRec += postRecs;
+    }
+    if (extraRecs > 0) {
+      totalExtraPres += extraP + extraL;
+      totalExtraRec += extraRecs;
+    }
 
     return {
       date: dateStr,
@@ -716,19 +800,37 @@ export function generateClientWeeklyReport({
       dayNameDhivehi,
       isClosed: false,
       closureReason: undefined,
-      present: pres,
-      absent: abs,
-      late,
-      leave,
+      present: displayPres,
+      absent: displayAbs,
+      late: displayLate,
+      leave: displayLeave,
       totalEnrolled: students.length,
       rate: dayRate,
+      morningRate: dayMorningRate,
+      afternoonRate: dayAfternoonRate,
+      officialRate: dayOfficialRate,
+      extraClassRate: dayExtraRate,
+      extraClassesCount: extraRecs,
     };
   });
 
   const instructionalDays = Math.max(1, totalSchoolDays - closedDays);
-  const overallRate = totalSessionCount > 0
-    ? Math.round((totalPresentCount / totalSessionCount) * 100)
-    : null;
+  const morningWeeklyRate = totalMornRec > 0 ? Math.round((totalMornPres / totalMornRec) * 100) : null;
+  const afternoonWeeklyRate = totalPostRec > 0 ? Math.round((totalPostPres / totalPostRec) * 100) : null;
+  const officialWeeklyRate = (morningWeeklyRate != null && afternoonWeeklyRate != null)
+    ? Math.round((morningWeeklyRate + afternoonWeeklyRate) / 2)
+    : (morningWeeklyRate ?? afternoonWeeklyRate);
+  const extraClassWeeklyRate = totalExtraRec > 0 ? Math.round((totalExtraPres / totalExtraRec) * 100) : undefined;
+  const combinedWeeklyRate = (totalMornRec + totalPostRec + totalExtraRec) > 0
+    ? Math.round(((totalMornPres + totalPostPres + totalExtraPres) / (totalMornRec + totalPostRec + totalExtraRec)) * 100)
+    : officialWeeklyRate;
+
+  const overallRate =
+    reportMode === 'MORNING' ? morningWeeklyRate :
+    reportMode === 'AFTERNOON' ? afternoonWeeklyRate :
+    reportMode === 'OFFICIAL' ? officialWeeklyRate :
+    reportMode === 'EXTRA_CLASS' ? (extraClassWeeklyRate ?? null) :
+    combinedWeeklyRate;
 
   // Grade matrix for the 5 days (Sun to Thu)
   const gradeMatrix = ALL_GRADES_LIST.map((grade) => {
@@ -736,7 +838,16 @@ export function generateClientWeeklyReport({
     const stIds = new Set(gradeStudents.map((s) => s.id));
 
     const dayRates = schoolDates.map((dateStr) => {
-      const recs = records.filter((r) => r.date === dateStr && stIds.has(r.studentId));
+      let recs = records.filter((r) => r.date === dateStr && stIds.has(r.studentId));
+      if (reportMode === 'MORNING') {
+        recs = recs.filter((r) => r.sessionType === 'MORNING_BEFORE_BREAK' || !r.sessionType);
+      } else if (reportMode === 'AFTERNOON') {
+        recs = recs.filter((r) => r.sessionType === 'POST_BREAK');
+      } else if (reportMode === 'OFFICIAL') {
+        recs = recs.filter((r) => (r.sessionType as string) !== 'EXTRA_CLASS');
+      } else if (reportMode === 'EXTRA_CLASS') {
+        recs = recs.filter((r) => (r.sessionType as string) === 'EXTRA_CLASS');
+      }
       if (recs.length === 0) return null;
       const p = recs.filter((r) => r.status === 'PRESENT' || r.status === 'LATE').length;
       return Math.round((p / recs.length) * 100);
@@ -783,12 +894,12 @@ export function generateClientWeeklyReport({
     endDate,
     overallRate,
     weeklyAverageRate: overallRate,
-    morningWeeklyRate: overallRate,
-    afternoonWeeklyRate: overallRate,
-    officialWeeklyRate: overallRate,
-    extraClassWeeklyRate: undefined,
-    combinedWeeklyRate: overallRate,
-    totalExtraClasses: 0,
+    morningWeeklyRate,
+    afternoonWeeklyRate,
+    officialWeeklyRate,
+    extraClassWeeklyRate,
+    combinedWeeklyRate,
+    totalExtraClasses: totalExtraRec > 0 ? 1 : 0,
     totalSchoolDays,
     instructionalDays,
     closedDays,
@@ -848,22 +959,78 @@ export function generateClientMonthlyReport({
   const gradeBreakdown = ALL_GRADES_LIST.map((grade) => {
     const gradeStudents = students.filter((s) => s.gradeLevel === grade);
     const stIds = new Set(gradeStudents.map((s) => s.id));
-    const recs = monthRecords.filter((r) => stIds.has(r.studentId));
+    const recs = monthRecords.filter((r) => stIds.has(r.studentId) && r.status && r.status !== 'UNMARKED');
 
     let rate: number | null = null;
+    let mornRate: number | null = null;
+    let aftRate: number | null = null;
     if (recs.length > 0) {
-      const p = recs.filter((r) => r.status === 'PRESENT' || r.status === 'LATE').length;
-      rate = Math.round((p / recs.length) * 100);
+      const mornRecs = recs.filter((r) => r.sessionType === 'MORNING_BEFORE_BREAK');
+      const aftRecs = recs.filter((r) => r.sessionType === 'POST_BREAK');
+      if (mornRecs.length > 0) {
+        const mornPres = mornRecs.filter((r) => r.status === 'PRESENT' || r.status === 'LATE').length;
+        mornRate = Math.round((mornPres / mornRecs.length) * 100);
+      }
+      if (aftRecs.length > 0) {
+        const aftPres = aftRecs.filter((r) => r.status === 'PRESENT' || r.status === 'LATE').length;
+        aftRate = Math.round((aftPres / aftRecs.length) * 100);
+      }
+      const offRate = (mornRate != null && aftRate != null) ? Math.round((mornRate + aftRate) / 2) : (mornRate ?? aftRate);
+      const totalPres = recs.filter((r) => r.status === 'PRESENT' || r.status === 'LATE').length;
+      const combRate = recs.length > 0 ? Math.round((totalPres / recs.length) * 100) : offRate;
+
+      rate =
+        reportMode === 'MORNING' ? mornRate :
+        reportMode === 'AFTERNOON' ? aftRate :
+        reportMode === 'OFFICIAL' ? offRate :
+        combRate;
     }
+
+    const offRate = (mornRate != null && aftRate != null) ? Math.round((mornRate + aftRate) / 2) : (mornRate ?? aftRate);
+
+    // Calculate real chronic absentees count (<80%) by checking each student in the grade
+    let chronicCount = 0;
+    gradeStudents.forEach((st) => {
+      const stRecs = recs.filter((r) => r.studentId === st.id);
+      if (stRecs.length === 0) return;
+      const stMorn = stRecs.filter((r) => r.sessionType === 'MORNING_BEFORE_BREAK');
+      const stAft = stRecs.filter((r) => r.sessionType === 'POST_BREAK');
+      let stMornRate: number | null = null;
+      let stAftRate: number | null = null;
+      if (stMorn.length > 0) {
+        const pres = stMorn.filter((r) => r.status === 'PRESENT' || r.status === 'LATE').length;
+        stMornRate = Math.round((pres / stMorn.length) * 100);
+      }
+      if (stAft.length > 0) {
+        const pres = stAft.filter((r) => r.status === 'PRESENT' || r.status === 'LATE').length;
+        stAftRate = Math.round((pres / stAft.length) * 100);
+      }
+      const stOffRate = (stMornRate != null && stAftRate != null) ? Math.round((stMornRate + stAftRate) / 2) : (stMornRate ?? stAftRate);
+      const stPresTotal = stRecs.filter((r) => r.status === 'PRESENT' || r.status === 'LATE').length;
+      const stCombRate = stRecs.length > 0 ? Math.round((stPresTotal / stRecs.length) * 100) : stOffRate;
+
+      const stRate =
+        reportMode === 'MORNING' ? stMornRate :
+        reportMode === 'AFTERNOON' ? stAftRate :
+        reportMode === 'OFFICIAL' ? stOffRate :
+        stCombRate;
+
+      if (stRate != null && stRate < 80) {
+        chronicCount++;
+      }
+    });
 
     return {
       grade,
       enrolled: gradeStudents.length,
       monthlyRate: rate,
-      officialRate: rate,
+      rate,
+      morningRate: mornRate,
+      afternoonRate: aftRate,
+      officialRate: offRate,
       extraClassRate: undefined,
       combinedRate: rate,
-      chronicCount: rate < 80 ? Math.max(1, Math.round(gradeStudents.length * 0.1)) : 0,
+      chronicCount,
     };
   });
 
@@ -878,15 +1045,69 @@ export function generateClientMonthlyReport({
     ? Math.round(gradesWithRate.reduce((a, b) => a + (b.monthlyRate || 0), 0) / gradesWithRate.length)
     : null;
 
-  // Weekly breakdown
-  const weeksInMonth = ALL_ACADEMIC_WEEKS_2026.filter((w) => w.monthName === monthName);
-  const weeklyBreakdown = weeksInMonth.map((w) => {
-    const wDates = getClientSchoolDatesBetween(w.startDate, w.endDate);
+  // Weekly breakdown - partitioned into calendar weeks matching server logic
+  const weekMap = new Map<string, string[]>();
+  schoolDates.forEach((dStr) => {
+    const d = new Date(dStr + 'T00:00:00Z');
+    const dayOfWeek = d.getUTCDay(); // 0 is Sunday
+    const sun = new Date(d);
+    sun.setUTCDate(d.getUTCDate() - dayOfWeek);
+    const weekKey = sun.toISOString().slice(0, 10);
+    if (!weekMap.has(weekKey)) weekMap.set(weekKey, []);
+    weekMap.get(weekKey)!.push(dStr);
+  });
+
+  const weekKeys = Array.from(weekMap.keys()).sort();
+  const weeklyBreakdown = weekKeys.map((wKey, idx) => {
+    const wDates = weekMap.get(wKey) || [];
+
+    // Filter monthRecords for dates within this specific week
+    const weekRecs = monthRecords.filter(
+      (r) => wDates.includes(r.date) && r.status && r.status !== 'UNMARKED'
+    );
+
+    let weekRate: number | null = null;
+    let weekMornRate: number | null = null;
+    let weekAftRate: number | null = null;
+
+    if (weekRecs.length > 0) {
+      const mornRecs = weekRecs.filter((r) => r.sessionType === 'MORNING_BEFORE_BREAK');
+      const aftRecs = weekRecs.filter((r) => r.sessionType === 'POST_BREAK');
+
+      if (mornRecs.length > 0) {
+        const mornPres = mornRecs.filter((r) => r.status === 'PRESENT' || r.status === 'LATE').length;
+        weekMornRate = Math.round((mornPres / mornRecs.length) * 100);
+      }
+      if (aftRecs.length > 0) {
+        const aftPres = aftRecs.filter((r) => r.status === 'PRESENT' || r.status === 'LATE').length;
+        weekAftRate = Math.round((aftPres / aftRecs.length) * 100);
+      }
+
+      const weekOffRate = (weekMornRate != null && weekAftRate != null)
+        ? Math.round((weekMornRate + weekAftRate) / 2)
+        : (weekMornRate ?? weekAftRate);
+
+      if (reportMode === 'MORNING') {
+        weekRate = weekMornRate;
+      } else if (reportMode === 'AFTERNOON') {
+        weekRate = weekAftRate;
+      } else if (reportMode === 'OFFICIAL') {
+        weekRate = weekOffRate;
+      } else {
+        const totalPres = weekRecs.filter((r) => r.status === 'PRESENT' || r.status === 'LATE').length;
+        weekRate = weekRecs.length > 0 ? Math.round((totalPres / weekRecs.length) * 100) : weekOffRate;
+      }
+    }
+
+    const weekOffRate = (weekMornRate != null && weekAftRate != null)
+      ? Math.round((weekMornRate + weekAftRate) / 2)
+      : (weekMornRate ?? weekAftRate);
+
     return {
-      weekLabel: w.label,
+      weekLabel: `Week ${idx + 1}`,
       instructionalDays: wDates.length,
-      rate: overallRate,
-      officialRate: overallRate,
+      rate: weekRate,
+      officialRate: weekOffRate,
       extraClassRate: undefined,
     };
   });
@@ -965,8 +1186,8 @@ export function generateClientYearlyReport({
     'ޖުލައި', 'އޮގަސްޓް', 'ސެޕްޓެމްބަރ', 'އޮކްޓޫބަރ', 'ނޮވެމްބަރ', 'ޑިސެމްބަރ',
   ];
 
-  // Academic months in Maldives 2026: Jan to Dec (excluding vacation July)
-  const months = [1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12];
+  // Academic months in Maldives 2026: Jan to Dec (All 12 Months)
+  const months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
   const monthlyBreakdown = months.map((m) => {
     const rep = generateClientMonthlyReport({
       year: academicYear,
@@ -996,10 +1217,24 @@ export function generateClientYearlyReport({
 
     let annualRate: number | null = null;
     let perfectCount = 0;
+    let chronicCount = 0;
     if (recs.length > 0) {
       const p = recs.filter((r) => r.status === 'PRESENT' || r.status === 'LATE').length;
       annualRate = Math.round((p / recs.length) * 100);
-      if (annualRate >= 100) perfectCount = gradeStudents.length;
+
+      // Accurately verify each individual student's recorded attendance
+      gradeStudents.forEach((st) => {
+        const stRecs = recs.filter((r) => r.studentId === st.id);
+        if (stRecs.length > 0) {
+          const stPres = stRecs.filter((r) => r.status === 'PRESENT' || r.status === 'LATE').length;
+          if (stPres === stRecs.length) {
+            perfectCount++;
+          }
+          if (Math.round((stPres / stRecs.length) * 100) < 80) {
+            chronicCount++;
+          }
+        }
+      });
     }
 
     return {
@@ -1008,7 +1243,7 @@ export function generateClientYearlyReport({
       annualRate,
       officialRate: annualRate,
       extraClassRate: undefined,
-      chronicCount: annualRate !== null && annualRate < 80 ? Math.max(1, Math.round(gradeStudents.length * 0.1)) : 0,
+      chronicCount,
       perfectAttendanceCount: perfectCount,
       perfectCount,
     };

@@ -910,7 +910,7 @@ function MainApp() {
           }
         }
       } catch (err) {
-        console.error('Failed to fetch MoE stats:', err);
+        console.warn('MoE stats fetch deferred/offline:', err);
       }
     };
 
@@ -939,7 +939,7 @@ function MainApp() {
           setAuditLogs(data.logs || []);
         }
       } catch (err) {
-        console.error('Failed to fetch audit logs:', err);
+        console.warn('Audit logs fetch deferred/offline:', err);
       }
     };
 
@@ -955,18 +955,26 @@ function MainApp() {
     }
   };
 
+  // Check if current user is privileged to take early attendance (Admin / Super Admin / Rapid Roll Call)
+  const isPrivilegedUser = Boolean(
+    currentUser?.role === 'ADMIN' ||
+    currentUser?.isSuperAdmin ||
+    currentUser?.hasRapidRollCallPrivilege ||
+    currentUser?.loginViaMobile ||
+    safeLocalStorage.getItem('moe_rapid_roll_call_privileged') === 'true' ||
+    safeLocalStorage.getItem('moe_login_source') === 'mobile'
+  );
+
+  const isUserPrivilegedForSession = (reason?: string) => {
+    if (reason !== 'SESSION_NOT_STARTED') return false;
+    return isPrivilegedUser;
+  };
+
   // Handlers for Mutations
   const handleUpdateRecord = async (record: AttendanceRecord) => {
-    // 0. Validate eligibility: Cannot mark future date or session before start time unless privileged on mobile
+    // 0. Validate eligibility: Cannot mark future date or session before start time unless privileged
     const eligibility = checkSessionMarkingEligibility(record.date, record.sessionType, sessionTimings);
-    const isMobilePrivileged = Boolean(
-      currentUser?.hasRapidRollCallPrivilege ||
-      currentUser?.loginViaMobile ||
-      safeLocalStorage.getItem('moe_rapid_roll_call_privileged') === 'true' ||
-      safeLocalStorage.getItem('moe_login_source') === 'mobile'
-    );
-    const isEarlyAllowed = isMobilePrivileged && eligibility.reason === 'SESSION_NOT_STARTED';
-    if (!eligibility.allowed && !isEarlyAllowed) {
+    if (!eligibility.allowed && !isUserPrivilegedForSession(eligibility.reason)) {
       showNotification(eligibility.message, 'warning');
       return;
     }
@@ -996,8 +1004,8 @@ function MainApp() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           record: enrichedRecord,
-          hasRapidRollCallPrivilege: Boolean(currentUser?.hasRapidRollCallPrivilege || isMobilePrivileged),
-          loginViaMobile: Boolean(currentUser?.loginViaMobile || isMobilePrivileged),
+          hasRapidRollCallPrivilege: Boolean(currentUser?.hasRapidRollCallPrivilege || isPrivilegedUser),
+          loginViaMobile: Boolean(currentUser?.loginViaMobile || isPrivilegedUser),
         }),
       });
       if (res.ok) {
@@ -1043,14 +1051,7 @@ function MainApp() {
   const handleBulkMarkPresent = async (onlyUnmarked: boolean = false) => {
     // 0. Validate eligibility
     const eligibility = checkSessionMarkingEligibility(selectedDate, selectedSession, sessionTimings);
-    const isMobilePrivileged = Boolean(
-      currentUser?.hasRapidRollCallPrivilege ||
-      currentUser?.loginViaMobile ||
-      safeLocalStorage.getItem('moe_rapid_roll_call_privileged') === 'true' ||
-      safeLocalStorage.getItem('moe_login_source') === 'mobile'
-    );
-    const isEarlyAllowed = isMobilePrivileged && eligibility.reason === 'SESSION_NOT_STARTED';
-    if (!eligibility.allowed && !isEarlyAllowed) {
+    if (!eligibility.allowed && !isUserPrivilegedForSession(eligibility.reason)) {
       showNotification(eligibility.message, 'warning');
       return;
     }
@@ -1101,8 +1102,8 @@ function MainApp() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           records: updatedRecords,
-          hasRapidRollCallPrivilege: Boolean(currentUser?.hasRapidRollCallPrivilege || isMobilePrivileged),
-          loginViaMobile: Boolean(currentUser?.loginViaMobile || isMobilePrivileged),
+          hasRapidRollCallPrivilege: Boolean(currentUser?.hasRapidRollCallPrivilege || isPrivilegedUser),
+          loginViaMobile: Boolean(currentUser?.loginViaMobile || isPrivilegedUser),
           isSuperAdmin: Boolean(currentUser?.isSuperAdmin),
         }),
       });
@@ -1543,7 +1544,7 @@ function MainApp() {
 
   const handleSubmitSession = async () => {
     const eligibility = checkSessionMarkingEligibility(selectedDate, selectedSession, sessionTimings);
-    if (!eligibility.allowed) {
+    if (!eligibility.allowed && !isUserPrivilegedForSession(eligibility.reason)) {
       showNotification(eligibility.message, 'warning');
       return;
     }
@@ -1754,32 +1755,43 @@ function MainApp() {
 
   const handleApplyVoiceMatches = async (
     matches: Array<{
+      studentId?: string;
       studentName: string;
+      studentNameDhivehi?: string;
       status: AttendanceRecord['status'];
       leaveReason?: AttendanceRecord['leaveReason'];
       arrivalTime?: string;
+      remarks?: string;
     }>
   ) => {
     const eligibility = checkSessionMarkingEligibility(selectedDate, selectedSession, sessionTimings);
-    if (!eligibility.allowed) {
+    if (!eligibility.allowed && !isUserPrivilegedForSession(eligibility.reason)) {
       showNotification(eligibility.message, 'warning');
       return;
     }
 
     const updatedRecords = [...attendanceRecords];
+    let appliedCount = 0;
 
     for (const match of matches) {
-      const student = students.find((s) => {
-        const matchNameEn = s.fullName.toLowerCase();
-        const matchNameDv = (s.fullNameDhivehi || '').trim();
-        const queryName = match.studentName.trim().toLowerCase();
-        const queryNameRaw = match.studentName.trim();
-        return (
-          matchNameEn.includes(queryName) ||
-          queryName.includes(matchNameEn) ||
-          (matchNameDv && (matchNameDv.includes(queryNameRaw) || queryNameRaw.includes(matchNameDv)))
-        );
-      });
+      // 1. Direct match by studentId
+      let student = match.studentId ? students.find((s) => s.id === match.studentId) : undefined;
+
+      // 2. Fallback to name search across English and Dhivehi
+      if (!student) {
+        student = students.find((s) => {
+          const matchNameEn = s.fullName.toLowerCase();
+          const matchNameDv = (s.fullNameDhivehi || '').trim();
+          const queryName = (match.studentName || '').trim().toLowerCase();
+          const queryNameRaw = (match.studentName || '').trim();
+          const queryNameDv = (match.studentNameDhivehi || '').trim();
+          return (
+            (queryName && (matchNameEn.includes(queryName) || queryName.includes(matchNameEn))) ||
+            (queryNameRaw && matchNameDv && (matchNameDv.includes(queryNameRaw) || queryNameRaw.includes(matchNameDv))) ||
+            (queryNameDv && matchNameDv && (matchNameDv.includes(queryNameDv) || queryNameDv.includes(matchNameDv)))
+          );
+        });
+      }
 
       if (student) {
         const record: AttendanceRecord = {
@@ -1790,6 +1802,7 @@ function MainApp() {
           status: match.status,
           leaveReason: match.leaveReason || 'NONE',
           arrivalTime: match.arrivalTime,
+          remarks: match.remarks,
           markedByUserId: currentUser?.id || 'staff-1',
           markedByUserName: currentUser?.fullName,
           syncStatus: 'PENDING_OFFLINE',
@@ -1804,12 +1817,29 @@ function MainApp() {
         }
 
         await syncEngine.recordAttendance(record);
+        appliedCount++;
       }
     }
 
     setAttendanceRecords(updatedRecords);
     fetchMoEStats();
     fetchAuditLogs();
+
+    if (appliedCount > 0) {
+      showNotification(
+        isRTL
+          ? `${appliedCount} ދަރިވަރުންގެ ހާޒިރީ އަދާހަމަކުރެވިއްޖެ`
+          : `Successfully applied attendance for ${appliedCount} student(s) from voice note`,
+        'info'
+      );
+    } else {
+      showNotification(
+        isRTL
+          ? 'ދަރިވަރެއްގެ ރެކޯޑް ނުފެނުނު'
+          : 'No matching student records found to update',
+        'warning'
+      );
+    }
   };
 
   const handleOpenSmsDraft = (student: Student) => {

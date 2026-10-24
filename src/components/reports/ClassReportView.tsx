@@ -166,7 +166,11 @@ export const ClassReportView: React.FC<ClassReportViewProps> = ({
             return st;
           });
         }
-        setClassData(data);
+        if (data && data.overallRate == null && fallbackReport && fallbackReport.overallRate != null) {
+          setClassData(fallbackReport);
+        } else {
+          setClassData(data);
+        }
       } else if (fallbackReport) {
         setClassData(fallbackReport);
       }

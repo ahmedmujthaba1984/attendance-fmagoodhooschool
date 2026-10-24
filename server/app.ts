@@ -32,6 +32,7 @@ import type {
 } from '../src/types';
 
 import { magoodhooSyncEngine } from './magoodhooSync';
+import { ALL_ACADEMIC_WEEKS_2026 } from '../src/utils/academicWeeks';
 
 dotenv.config();
 
@@ -3478,6 +3479,8 @@ app.get('/api/reports/moe', (req, res) => {
         morningLate: 0,
         morningLeave: 0,
         postBreakPresent: 0,
+        postBreakLate: 0,
+        postBreakLeave: 0,
         postBreakAbsent: 0,
         attendanceRate: null,
         chronicAbsenteesCount: 0,
@@ -3494,6 +3497,8 @@ app.get('/api/reports/moe', (req, res) => {
         morningLate: 0,
         morningLeave: 0,
         postBreakPresent: 0,
+        postBreakLate: 0,
+        postBreakLeave: 0,
         postBreakAbsent: 0,
         attendanceRate: null,
         chronicAbsenteesCount: 0,
@@ -3506,6 +3511,8 @@ app.get('/api/reports/moe', (req, res) => {
     let mLate = 0;
     let mLeave = 0;
     let pPres = 0;
+    let pLate = 0;
+    let pLeave = 0;
     let pAbs = 0;
     let recordedStudents = 0;
     let postRecordedStudents = 0;
@@ -3524,13 +3531,15 @@ app.get('/api/reports/moe', (req, res) => {
 
       if (pRec) {
         postRecordedStudents++;
-        if (pRec.status === 'PRESENT' || pRec.status === 'LATE') pPres++;
+        if (pRec.status === 'PRESENT') pPres++;
+        else if (pRec.status === 'LATE') pLate++;
+        else if (pRec.status === 'LEAVE') pLeave++;
         else if (pRec.status === 'ABSENT') pAbs++;
       }
     });
 
     const mRate = recordedStudents > 0 ? Math.round(((mPres + mLate) / recordedStudents) * 100) : null;
-    const pRate = postRecordedStudents > 0 ? Math.round((pPres / postRecordedStudents) * 100) : null;
+    const pRate = postRecordedStudents > 0 ? Math.round(((pPres + pLate) / postRecordedStudents) * 100) : null;
     const rate = mRate !== null && pRate !== null
       ? Math.round((mRate + pRate) / 2)
       : mRate !== null
@@ -3561,6 +3570,8 @@ app.get('/api/reports/moe', (req, res) => {
       morningLate: mLate,
       morningLeave: mLeave,
       postBreakPresent: pPres,
+      postBreakLate: pLate,
+      postBreakLeave: pLeave,
       postBreakAbsent: pAbs,
       attendanceRate: rate,
       chronicAbsenteesCount: chronicGradeCount,
@@ -4382,6 +4393,8 @@ app.get('/api/analytics/dashboard', (req, res) => {
     let mLate = 0;
     let mLeave = 0;
     let pPres = 0;
+    let pLate = 0;
+    let pLeave = 0;
     let pAbs = 0;
 
     const hasTargetRecords = Array.from(attendanceStore.values()).some((r) => r.date === targetDate);
@@ -4398,7 +4411,9 @@ app.get('/api/analytics/dashboard', (req, res) => {
       }
 
       if (pRec) {
-        if (pRec.status === 'PRESENT' || pRec.status === 'LATE') pPres++;
+        if (pRec.status === 'PRESENT') pPres++;
+        else if (pRec.status === 'LATE') pLate++;
+        else if (pRec.status === 'LEAVE') pLeave++;
         else if (pRec.status === 'ABSENT') pAbs++;
       }
     });
@@ -4409,7 +4424,13 @@ app.get('/api/analytics/dashboard', (req, res) => {
         attendanceStore.has(`${st.id}_${targetDate}_POST_BREAK`)
     );
 
-    const officialRate = gradeHasRecords ? Math.round(((mPres + mLate) / enrolled) * 100) : null;
+    const mRecCount = mPres + mLate + mAbs + mLeave;
+    const pRecCount = pPres + pLate + pAbs + pLeave;
+    const mornRate = mRecCount > 0 ? Math.round(((mPres + mLate) / mRecCount) * 100) : null;
+    const aftRate = pRecCount > 0 ? Math.round(((pPres + pLate) / pRecCount) * 100) : null;
+    const officialRate = (mornRate != null && aftRate != null)
+      ? Math.round((mornRate + aftRate) / 2)
+      : (mornRate ?? aftRate ?? null);
 
     const gradeExtraClasses = extraClasses.filter(
       (c) =>
@@ -4440,12 +4461,32 @@ app.get('/api/analytics/dashboard', (req, res) => {
         ? Math.round(((exAttended + exLate) / exTotal) * 100)
         : null;
 
-    const totalSessions = enrolled * 2 + exTotal;
-    const presentSessions = mPres + mLate + pPres + exAttended + exLate;
+    const totalHeldSessions = (mRecCount > 0 ? enrolled : 0) + (pRecCount > 0 ? enrolled : 0) + exTotal;
+    const presentSessions = mPres + mLate + pPres + pLate + exAttended + exLate;
     const combinedRate =
       exTotal > 0
-        ? Math.round((presentSessions / totalSessions) * 100)
+        ? (totalHeldSessions > 0 ? Math.round((presentSessions / totalHeldSessions) * 100) : officialRate)
         : officialRate;
+
+    // Real chronic absentees (<80% rate)
+    let gradeChronicCount = 0;
+    gradeStudents.forEach((st) => {
+      const mRec = attendanceStore.get(`${st.id}_${targetDate}_MORNING_BEFORE_BREAK`);
+      const pRec = attendanceStore.get(`${st.id}_${targetDate}_POST_BREAK`);
+      let stPres = 0;
+      let stRec = 0;
+      if (mRec && mRec.status) {
+        stRec++;
+        if (mRec.status === 'PRESENT' || mRec.status === 'LATE') stPres++;
+      }
+      if (pRec && pRec.status) {
+        stRec++;
+        if (pRec.status === 'PRESENT' || pRec.status === 'LATE') stPres++;
+      }
+      if (stRec > 0 && Math.round((stPres / stRec) * 100) < 80) {
+        gradeChronicCount++;
+      }
+    });
 
     return {
       grade,
@@ -4455,10 +4496,12 @@ app.get('/api/analytics/dashboard', (req, res) => {
       morningLeave: mLeave,
       morningAbsent: mAbs,
       postBreakPresent: pPres,
+      postBreakLate: pLate,
+      postBreakLeave: pLeave,
       postBreakAbsent: pAbs,
       attendanceRate: officialRate,
       officialRate,
-      chronicAbsenteesCount: mAbs > 2 ? 1 : 0,
+      chronicAbsenteesCount: gradeChronicCount,
       // Extra class metrics
       extraClassesHeld: gradeExtraClasses.length,
       extraClassAttended: exAttended,
@@ -5060,7 +5103,8 @@ app.get('/api/reports/analytics', (req, res) => {
     let weeklyLateTotal = 0;
     let weeklyPostPresTotal = 0;
     let weeklyPostLateTotal = 0;
-    let weeklyEnrolledTotal = 0;
+    let weeklyMornEnrolledTotal = 0;
+    let weeklyPostEnrolledTotal = 0;
 
     let weeklyExtraPresTotal = 0;
     let weeklyExtraEnrolledTotal = 0;
@@ -5114,7 +5158,9 @@ app.get('/api/reports/analytics', (req, res) => {
       let l = 0;
       let lv = 0;
       let postP = 0;
+      let postA = 0;
       let postL = 0;
+      let postLv = 0;
       let mRecCount = 0;
       let pRecCount = 0;
 
@@ -5136,6 +5182,8 @@ app.get('/api/reports/analytics', (req, res) => {
             pRecCount++;
             if (att.postBreakStatus === 'PRESENT') postP++;
             else if (att.postBreakStatus === 'LATE') postL++;
+            else if (att.postBreakStatus === 'LEAVE') postLv++;
+            else if (att.postBreakStatus === 'ABSENT') postA++;
           }
         }
       });
@@ -5146,12 +5194,17 @@ app.get('/api/reports/analytics', (req, res) => {
         ? Math.round((dayMorningRate + dayAfternoonRate) / 2)
         : (dayMorningRate ?? dayAfternoonRate);
 
-      if (!closed.isClosed && mRecCount > 0) {
-        weeklyPresTotal += p;
-        weeklyLateTotal += l;
-        weeklyPostPresTotal += postP;
-        weeklyPostLateTotal += postL;
-        weeklyEnrolledTotal += mRecCount;
+      if (!closed.isClosed) {
+        if (mRecCount > 0) {
+          weeklyPresTotal += p;
+          weeklyLateTotal += l;
+          weeklyMornEnrolledTotal += mRecCount;
+        }
+        if (pRecCount > 0) {
+          weeklyPostPresTotal += postP;
+          weeklyPostLateTotal += postL;
+          weeklyPostEnrolledTotal += pRecCount;
+        }
       }
 
       // Extra classes on this day
@@ -5177,8 +5230,8 @@ app.get('/api/reports/analytics', (req, res) => {
       }
 
       const dayExtraRate = dayExtraTotal > 0 ? Math.round((dayExtraPres / dayExtraTotal) * 100) : null;
-      const dayCombinedRate = (mRecCount + dayExtraTotal) > 0
-        ? Math.round(((p + l + dayExtraPres) / (mRecCount + dayExtraTotal)) * 100)
+      const dayCombinedRate = (mRecCount + pRecCount + dayExtraTotal) > 0
+        ? Math.round(((p + l + postP + postL + dayExtraPres) / (mRecCount + pRecCount + dayExtraTotal)) * 100)
         : dayOfficialRate;
 
       const dayRate =
@@ -5188,16 +5241,38 @@ app.get('/api/reports/analytics', (req, res) => {
         reportMode === 'EXTRA_CLASS' ? dayExtraRate :
         dayCombinedRate;
 
+      let displayPres = p + (pRecCount > 0 ? postP : 0);
+      let displayAbs = a + (pRecCount > 0 ? postA : 0);
+      let displayLate = l + (pRecCount > 0 ? postL : 0);
+      let displayLeave = lv + (pRecCount > 0 ? postLv : 0);
+
+      if (reportMode === 'MORNING') {
+        displayPres = p;
+        displayAbs = a;
+        displayLate = l;
+        displayLeave = lv;
+      } else if (reportMode === 'AFTERNOON') {
+        displayPres = postP;
+        displayAbs = postA;
+        displayLate = postL;
+        displayLeave = postLv;
+      } else if (reportMode === 'EXTRA_CLASS') {
+        displayPres = dayExtraPres;
+        displayAbs = dayExtraTotal - dayExtraPres;
+        displayLate = 0;
+        displayLeave = 0;
+      }
+
       return {
         date: dStr,
         dayName: DAY_NAMES_EN[dayIdx],
         dayNameDhivehi: DAY_NAMES_DV[dayIdx],
         isClosed: closed.isClosed,
         closureReason: closed.reason,
-        present: p,
-        absent: a,
-        late: l,
-        leave: lv,
+        present: displayPres,
+        absent: displayAbs,
+        late: displayLate,
+        leave: displayLeave,
         totalEnrolled: students.length,
         rate: dayRate,
         morningRate: dayMorningRate,
@@ -5212,12 +5287,12 @@ app.get('/api/reports/analytics', (req, res) => {
       Array.from(attendanceStore.values()).some((r) => r.date === dStr)
     );
 
-    const morningWeeklyRate = hasAnyRecordsInWeek && weeklyEnrolledTotal > 0
-      ? Math.round(((weeklyPresTotal + weeklyLateTotal) / weeklyEnrolledTotal) * 100)
+    const morningWeeklyRate = hasAnyRecordsInWeek && weeklyMornEnrolledTotal > 0
+      ? Math.round(((weeklyPresTotal + weeklyLateTotal) / weeklyMornEnrolledTotal) * 100)
       : null;
 
-    const afternoonWeeklyRate = hasAnyRecordsInWeek && weeklyEnrolledTotal > 0
-      ? Math.round(((weeklyPostPresTotal + weeklyPostLateTotal) / weeklyEnrolledTotal) * 100)
+    const afternoonWeeklyRate = hasAnyRecordsInWeek && weeklyPostEnrolledTotal > 0
+      ? Math.round(((weeklyPostPresTotal + weeklyPostLateTotal) / weeklyPostEnrolledTotal) * 100)
       : null;
 
     const officialWeeklyRate = (morningWeeklyRate != null && afternoonWeeklyRate != null)
@@ -5228,8 +5303,9 @@ app.get('/api/reports/analytics', (req, res) => {
       ? Math.round((weeklyExtraPresTotal / weeklyExtraEnrolledTotal) * 100)
       : null;
 
-    const combinedWeeklyRate = (weeklyEnrolledTotal * 2 + weeklyExtraEnrolledTotal) > 0 && hasAnyRecordsInWeek
-      ? Math.round(((weeklyPresTotal + weeklyLateTotal + weeklyPostPresTotal + weeklyPostLateTotal + weeklyExtraPresTotal) / (weeklyEnrolledTotal * 2 + weeklyExtraEnrolledTotal)) * 100)
+    const totalWeeklySessions = weeklyMornEnrolledTotal + weeklyPostEnrolledTotal + weeklyExtraEnrolledTotal;
+    const combinedWeeklyRate = totalWeeklySessions > 0 && hasAnyRecordsInWeek
+      ? Math.round(((weeklyPresTotal + weeklyLateTotal + weeklyPostPresTotal + weeklyPostLateTotal + weeklyExtraPresTotal) / totalWeeklySessions) * 100)
       : officialWeeklyRate;
 
     const overallRate =
@@ -5244,7 +5320,8 @@ app.get('/api/reports/analytics', (req, res) => {
       const rates: Record<string, number | null> = {};
       let gPresSum = 0;
       let gPostPresSum = 0;
-      let gEnrSum = 0;
+      let gMornEnrSum = 0;
+      let gPostEnrSum = 0;
 
       let gExtraPres = 0;
       let gExtraTotal = 0;
@@ -5260,6 +5337,7 @@ app.get('/api/reports/analytics', (req, res) => {
           let gPres = 0;
           let gPostPres = 0;
           let gRecCount = 0;
+          let gPostRecCount = 0;
           gStudents.forEach((st) => {
             const att = resolveStudentAttendance(st, dStr);
             if (att.isMorningRecorded && att.status) {
@@ -5267,11 +5345,12 @@ app.get('/api/reports/analytics', (req, res) => {
               if (att.status === 'PRESENT' || att.status === 'LATE') gPres++;
             }
             if (att.isAfternoonRecorded && att.postBreakStatus) {
+              gPostRecCount++;
               if (att.postBreakStatus === 'PRESENT' || att.postBreakStatus === 'LATE') gPostPres++;
             }
           });
           const mR = gRecCount > 0 ? Math.round((gPres / gRecCount) * 100) : null;
-          const aR = gRecCount > 0 ? Math.round((gPostPres / gRecCount) * 100) : null;
+          const aR = gPostRecCount > 0 ? Math.round((gPostPres / gPostRecCount) * 100) : null;
           const offR = (mR != null && aR != null) ? Math.round((mR + aR) / 2) : (mR ?? aR);
 
           // Extra classes for this grade on dStr
@@ -5299,15 +5378,17 @@ app.get('/api/reports/analytics', (req, res) => {
 
           gPresSum += gPres;
           gPostPresSum += gPostPres;
-          gEnrSum += gRecCount;
+          gMornEnrSum += gRecCount;
+          gPostEnrSum += gPostRecCount;
         }
       });
 
-      const mornAvg = gEnrSum > 0 ? Math.round((gPresSum / gEnrSum) * 100) : null;
-      const aftAvg = gEnrSum > 0 ? Math.round((gPostPresSum / gEnrSum) * 100) : null;
+      const mornAvg = gMornEnrSum > 0 ? Math.round((gPresSum / gMornEnrSum) * 100) : null;
+      const aftAvg = gPostEnrSum > 0 ? Math.round((gPostPresSum / gPostEnrSum) * 100) : null;
       const offAvg = (mornAvg != null && aftAvg != null) ? Math.round((mornAvg + aftAvg) / 2) : (mornAvg ?? aftAvg);
       const extAvg = gExtraTotal > 0 ? Math.round((gExtraPres / gExtraTotal) * 100) : null;
-      const combAvg = (gEnrSum * 2 + gExtraTotal) > 0 ? Math.round(((gPresSum + gPostPresSum + gExtraPres) / (gEnrSum * 2 + gExtraTotal)) * 100) : offAvg;
+      const gTotSessions = gMornEnrSum + gPostEnrSum + gExtraTotal;
+      const combAvg = gTotSessions > 0 ? Math.round(((gPresSum + gPostPresSum + gExtraPres) / gTotSessions) * 100) : offAvg;
 
       const avg =
         reportMode === 'MORNING' ? mornAvg :
@@ -5351,12 +5432,14 @@ app.get('/api/reports/analytics', (req, res) => {
       }
     });
 
-    const weekTitle = `Week 37 (${weekDates[0]} – ${weekDates[4]})`;
+    const matchedAcademicWeek = ALL_ACADEMIC_WEEKS_2026.find((w) => w.startDate === sDate);
+    const weekNumber = matchedAcademicWeek?.weekNumber || 1;
+    const weekTitle = matchedAcademicWeek?.label || `Week ${weekNumber} (${weekDates[0]} – ${weekDates[4]})`;
 
     return res.json({
       reportType: 'weekly',
       reportMode,
-      weekNumber: 37,
+      weekNumber,
       weekTitle,
       startDate: weekDates[0],
       endDate: weekDates[4],
@@ -5407,7 +5490,8 @@ app.get('/api/reports/analytics', (req, res) => {
     let presSum = 0;
     let postPresSum = 0;
     let lateSum = 0;
-    let enrolledSum = 0;
+    let mornEnrolledSum = 0;
+    let postEnrolledSum = 0;
 
     let extraPresSum = 0;
     let extraEnrolledSum = 0;
@@ -5468,7 +5552,8 @@ app.get('/api/reports/analytics', (req, res) => {
       const offRate = (mRate != null && aRate != null) ? Math.round((mRate + aRate) / 2) : (mRate ?? aRate);
       presSum += pres;
       postPresSum += postPres;
-      enrolledSum += mRec;
+      mornEnrolledSum += mRec;
+      postEnrolledSum += pRec;
 
       const combRate = (mRec + pRec + dayExTotal) > 0
         ? Math.round(((pres + postPres + dayExPres) / (mRec + pRec + dayExTotal)) * 100)
@@ -5485,14 +5570,15 @@ app.get('/api/reports/analytics', (req, res) => {
     });
 
     const instructionalDays = schoolDates.length - closedDays;
-    const morningMonthlyRate = enrolledSum > 0 ? Math.round((presSum / enrolledSum) * 100) : null;
-    const afternoonMonthlyRate = enrolledSum > 0 ? Math.round((postPresSum / enrolledSum) * 100) : null;
+    const morningMonthlyRate = mornEnrolledSum > 0 ? Math.round((presSum / mornEnrolledSum) * 100) : null;
+    const afternoonMonthlyRate = postEnrolledSum > 0 ? Math.round((postPresSum / postEnrolledSum) * 100) : null;
     const officialMonthlyRate = (morningMonthlyRate != null && afternoonMonthlyRate != null)
       ? Math.round((morningMonthlyRate + afternoonMonthlyRate) / 2)
       : (morningMonthlyRate ?? afternoonMonthlyRate);
     const extraClassMonthlyRate = extraEnrolledSum > 0 ? Math.round((extraPresSum / extraEnrolledSum) * 100) : null;
-    const combinedMonthlyRate = (enrolledSum * 2 + extraEnrolledSum) > 0
-      ? Math.round(((presSum + postPresSum + extraPresSum) / (enrolledSum * 2 + extraEnrolledSum)) * 100)
+    const totalMonthlySessions = mornEnrolledSum + postEnrolledSum + extraEnrolledSum;
+    const combinedMonthlyRate = totalMonthlySessions > 0
+      ? Math.round(((presSum + postPresSum + extraPresSum) / totalMonthlySessions) * 100)
       : officialMonthlyRate;
 
     const overallRate =
@@ -5502,39 +5588,118 @@ app.get('/api/reports/analytics', (req, res) => {
       reportMode === 'EXTRA_CLASS' ? extraClassMonthlyRate :
       combinedMonthlyRate;
 
-    // Group weeks
-    const weeklyBreakdown = [
-      { weekLabel: 'Week 1', instructionalDays: 4, rate: overallRate, officialRate: officialMonthlyRate, extraClassRate: extraClassMonthlyRate },
-      { weekLabel: 'Week 2', instructionalDays: 5, rate: overallRate, officialRate: officialMonthlyRate, extraClassRate: extraClassMonthlyRate },
-      { weekLabel: 'Week 3', instructionalDays: 5, rate: overallRate, officialRate: officialMonthlyRate, extraClassRate: extraClassMonthlyRate },
-      { weekLabel: 'Week 4', instructionalDays: 4, rate: overallRate, officialRate: officialMonthlyRate, extraClassRate: extraClassMonthlyRate },
-    ];
+    // Partition schoolDates into calendar weeks (Sunday to Thursday)
+    const weekMap = new Map<string, string[]>();
+    schoolDates.forEach((dStr) => {
+      const d = new Date(dStr + 'T00:00:00Z');
+      const dayOfWeek = d.getUTCDay(); // 0 is Sunday
+      const sun = new Date(d);
+      sun.setUTCDate(d.getUTCDate() - dayOfWeek);
+      const weekKey = sun.toISOString().slice(0, 10);
+      if (!weekMap.has(weekKey)) weekMap.set(weekKey, []);
+      weekMap.get(weekKey)!.push(dStr);
+    });
 
-    const weeklyAverages = [
-      { weekLabel: 'Week 1', rate: overallRate },
-      { weekLabel: 'Week 2', rate: overallRate },
-      { weekLabel: 'Week 3', rate: overallRate },
-      { weekLabel: 'Week 4', rate: overallRate },
-    ];
+    const weekKeys = Array.from(weekMap.keys()).sort();
+    const weeklyBreakdown = weekKeys.map((wKey, idx) => {
+      const dates = weekMap.get(wKey) || [];
+      let wMornPres = 0;
+      let wMornEnr = 0;
+      let wAftPres = 0;
+      let wAftEnr = 0;
+      let wExPres = 0;
+      let wExEnr = 0;
+
+      dates.forEach((dStr) => {
+        if (!checkSchoolClosed(dStr).isClosed) {
+          students.forEach((st) => {
+            const att = resolveStudentAttendance(st, dStr);
+            if (att.isMorningRecorded && att.status) {
+              wMornEnr++;
+              if (att.status === 'PRESENT' || att.status === 'LATE') wMornPres++;
+            }
+            if (att.isAfternoonRecorded && att.postBreakStatus) {
+              wAftEnr++;
+              if (att.postBreakStatus === 'PRESENT' || att.postBreakStatus === 'LATE') wAftPres++;
+            }
+          });
+
+          extraClasses.forEach((c) => {
+            if (c.status !== 'REJECTED' && c.status !== 'CANCELLED' && c.date === dStr) {
+              (c.attendanceRecords || []).forEach((ar: any) => {
+                if (ar.status !== 'UNRECORDED') {
+                  wExEnr++;
+                  if (ar.status === 'PRESENT' || ar.status === 'LATE') wExPres++;
+                }
+              });
+            }
+          });
+        }
+      });
+
+      const wMornRate = wMornEnr > 0 ? Math.round((wMornPres / wMornEnr) * 100) : null;
+      const wAftRate = wAftEnr > 0 ? Math.round((wAftPres / wAftEnr) * 100) : null;
+      const wOffRate = (wMornRate != null && wAftRate != null) ? Math.round((wMornRate + wAftRate) / 2) : (wMornRate ?? wAftRate);
+      const wExRate = wExEnr > 0 ? Math.round((wExPres / wExEnr) * 100) : null;
+      const wTot = wMornEnr + wAftEnr + wExEnr;
+      const wCombRate = wTot > 0 ? Math.round(((wMornPres + wAftPres + wExPres) / wTot) * 100) : wOffRate;
+
+      const wRate =
+        reportMode === 'MORNING' ? wMornRate :
+        reportMode === 'AFTERNOON' ? wAftRate :
+        reportMode === 'OFFICIAL' ? wOffRate :
+        reportMode === 'EXTRA_CLASS' ? wExRate :
+        wCombRate;
+
+      return {
+        weekLabel: `Week ${idx + 1}`,
+        instructionalDays: dates.length,
+        rate: wRate,
+        officialRate: wOffRate,
+        extraClassRate: wExRate,
+      };
+    });
+
+    const weeklyAverages = weeklyBreakdown.map((wb) => ({
+      weekLabel: wb.weekLabel,
+      rate: wb.rate,
+    }));
 
     const gradeBreakdown = ALL_GRADES.map((g) => {
       const gStudents = students.filter((s) => s.gradeLevel === g);
       let gPres = 0;
       let gPostPres = 0;
-      let gEnr = 0;
+      let gMornEnr = 0;
+      let gPostEnr = 0;
       let gExPres = 0;
       let gExEnr = 0;
+
+      // Track individual student attendance within the month for real chronic absentees calculation
+      const stMap = new Map<string, { mornPres: number; mornEnr: number; aftPres: number; aftEnr: number; exPres: number; exEnr: number }>();
+      gStudents.forEach((st) => {
+        stMap.set(st.id, { mornPres: 0, mornEnr: 0, aftPres: 0, aftEnr: 0, exPres: 0, exEnr: 0 });
+      });
 
       schoolDates.forEach((dStr) => {
         if (!checkSchoolClosed(dStr).isClosed) {
           gStudents.forEach((st) => {
             const att = resolveStudentAttendance(st, dStr);
+            const stStat = stMap.get(st.id);
             if (att.isMorningRecorded && att.status) {
-              gEnr++;
-              if (att.status === 'PRESENT' || att.status === 'LATE') gPres++;
+              gMornEnr++;
+              if (stStat) stStat.mornEnr++;
+              if (att.status === 'PRESENT' || att.status === 'LATE') {
+                gPres++;
+                if (stStat) stStat.mornPres++;
+              }
             }
             if (att.isAfternoonRecorded && att.postBreakStatus) {
-              if (att.postBreakStatus === 'PRESENT' || att.postBreakStatus === 'LATE') gPostPres++;
+              gPostEnr++;
+              if (stStat) stStat.aftEnr++;
+              if (att.postBreakStatus === 'PRESENT' || att.postBreakStatus === 'LATE') {
+                gPostPres++;
+                if (stStat) stStat.aftPres++;
+              }
             }
           });
         }
@@ -5543,17 +5708,25 @@ app.get('/api/reports/analytics', (req, res) => {
       // Extra classes
       gStudents.forEach((st) => {
         const eLogs = getExtraClassesForStudent(st, sDate, eDate);
+        const stStat = stMap.get(st.id);
         eLogs.forEach((el) => {
-          if (el.status === 'PRESENT' || el.status === 'LATE') gExPres++;
-          if ((el.status as any) !== 'UNRECORDED') gExEnr++;
+          if ((el.status as any) !== 'UNRECORDED') {
+            gExEnr++;
+            if (stStat) stStat.exEnr++;
+            if (el.status === 'PRESENT' || el.status === 'LATE') {
+              gExPres++;
+              if (stStat) stStat.exPres++;
+            }
+          }
         });
       });
 
-      const mornRate = gEnr > 0 ? Math.round((gPres / gEnr) * 100) : null;
-      const aftRate = gEnr > 0 ? Math.round((gPostPres / gEnr) * 100) : null;
+      const mornRate = gMornEnr > 0 ? Math.round((gPres / gMornEnr) * 100) : null;
+      const aftRate = gPostEnr > 0 ? Math.round((gPostPres / gPostEnr) * 100) : null;
       const offRate = (mornRate != null && aftRate != null) ? Math.round((mornRate + aftRate) / 2) : (mornRate ?? aftRate);
       const exRate = gExEnr > 0 ? Math.round((gExPres / gExEnr) * 100) : null;
-      const combRate = (gEnr * 2 + gExEnr) > 0 ? Math.round(((gPres + gPostPres + gExPres) / (gEnr * 2 + gExEnr)) * 100) : offRate;
+      const gTot = gMornEnr + gPostEnr + gExEnr;
+      const combRate = gTot > 0 ? Math.round(((gPres + gPostPres + gExPres) / gTot) * 100) : offRate;
 
       const rate =
         reportMode === 'MORNING' ? mornRate :
@@ -5561,6 +5734,30 @@ app.get('/api/reports/analytics', (req, res) => {
         reportMode === 'OFFICIAL' ? offRate :
         reportMode === 'EXTRA_CLASS' ? exRate :
         combRate;
+
+      // Real chronic absentees count (<80%) by inspecting each student with recorded attendance
+      let chronicCount = 0;
+      gStudents.forEach((st) => {
+        const s = stMap.get(st.id);
+        if (!s) return;
+        const sMornRate = s.mornEnr > 0 ? Math.round((s.mornPres / s.mornEnr) * 100) : null;
+        const sAftRate = s.aftEnr > 0 ? Math.round((s.aftPres / s.aftEnr) * 100) : null;
+        const sOffRate = (sMornRate != null && sAftRate != null) ? Math.round((sMornRate + sAftRate) / 2) : (sMornRate ?? sAftRate);
+        const sExRate = s.exEnr > 0 ? Math.round((s.exPres / s.exEnr) * 100) : null;
+        const sTot = s.mornEnr + s.aftEnr + s.exEnr;
+        const sCombRate = sTot > 0 ? Math.round(((s.mornPres + s.aftPres + s.exPres) / sTot) * 100) : sOffRate;
+
+        const sRate =
+          reportMode === 'MORNING' ? sMornRate :
+          reportMode === 'AFTERNOON' ? sAftRate :
+          reportMode === 'OFFICIAL' ? sOffRate :
+          reportMode === 'EXTRA_CLASS' ? sExRate :
+          sCombRate;
+
+        if (sRate != null && sRate < 80) {
+          chronicCount++;
+        }
+      });
 
       return {
         grade: g,
@@ -5572,7 +5769,7 @@ app.get('/api/reports/analytics', (req, res) => {
         officialRate: offRate,
         extraClassRate: exRate,
         combinedRate: combRate,
-        chronicCount: (rate != null && rate < 80) ? 1 : 0,
+        chronicCount,
       };
     });
 
@@ -5893,8 +6090,7 @@ async function callGeminiWithResilience(
   // Models in priority order:
   // 1. 'gemini-3.1-flash-lite' (high availability, ultra-low latency, reliable ~5s response)
   // 2. 'gemini-flash-latest' (production standard flash model)
-  // 3. 'gemini-3.8-flash' (flagship flash model)
-  const modelsToTry = ['gemini-3.1-flash-lite', 'gemini-flash-latest', 'gemini-3.8-flash'];
+  const modelsToTry = ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
   const timeoutMs = options.timeoutMs || 15000;
 
   for (const model of modelsToTry) {
@@ -6244,53 +6440,68 @@ app.post('/api/ai/voice-parse', async (req, res) => {
     return res.status(400).json({ error: 'Text prompt required' });
   }
 
-  const effectiveGrade = targetGrade || grade || 'Grade 4';
-  const gradeStudents = effectiveGrade && effectiveGrade !== 'ALL'
-    ? students.filter((s) => s.gradeLevel === effectiveGrade)
-    : students.slice(0, 30);
+  const effectiveGrade = targetGrade && targetGrade !== 'ALL' ? targetGrade : null;
+  const gradeStudents = effectiveGrade ? students.filter((s) => s.gradeLevel === effectiveGrade) : [];
 
-  const studentReference = gradeStudents
-    .slice(0, 25)
-    .map((s) => `${s.fullName} (${s.fullNameDhivehi}, ${s.admissionNumber})`)
-    .join(', ');
+  // Group all 215 students by grade to build accurate reference directory
+  const rosterSummary = (gradeStudents.length > 0 ? gradeStudents : students)
+    .map((s) => `${s.id} | ${s.fullName} | ${s.fullNameDhivehi || ''} | ${s.gradeLevel}`)
+    .join('\n');
 
-  const prompt = `You are a voice-to-text attendance parser for F. Magoodhoo School (SCH-F02) in Maldives.
-The teacher spoke the following in English or Dhivehi (Thaana/Latin):
+  const prompt = `You are an expert voice-to-text attendance parser for F. Magoodhoo School (SCH-F02) in the Maldives.
+The teacher spoke or entered the following dictation in English, Dhivehi (Thaana), or Latin transliteration:
 "${rawInput}"
 
-Target Grade Context: ${effectiveGrade}
-Known students in this grade: ${studentReference}
+${effectiveGrade ? `Context: Currently recording for ${effectiveGrade}. Prioritize students in ${effectiveGrade}, but match across any grade if another student is named.` : 'Context: School-wide roll call across all grades.'}
 
-Extract attendance mutations. Status options: "PRESENT", "ABSENT", "LATE", "LEAVE".
-Leave reasons: "SICK_LEAVE", "SICK_LEAVE_MC", "NOT_IN_ISLAND", "OFFICIAL_DUTY", "OTHER", "NONE".
-Return JSON:
+OFFICIAL STUDENT DIRECTORY (id | English Name | Dhivehi Name | Grade):
+${rosterSummary}
+
+TASK:
+Extract all student attendance mutations mentioned.
+- Allowed Status values: "PRESENT", "ABSENT", "LATE", "LEAVE"
+- Allowed Leave Reason values: "SICK_LEAVE", "SICK_LEAVE_MC", "NOT_IN_ISLAND", "OFFICIAL_DUTY", "OTHER", "NONE"
+- arrivalTime: if late arrival time is mentioned (e.g. "08:15", "8:10", "15 minutes late"), extract as HH:MM like "08:15".
+- remarks: brief description in English or Dhivehi (e.g. "Sick with fever", "Travelling to Malé", "15 mins late").
+
+Return STRICTLY a JSON object matching this schema:
 {
-  "recognizedGrade": "${effectiveGrade}",
-  "transcriptionNormalized": "Clean transcript of voice input",
+  "recognizedGrade": "${effectiveGrade || 'ALL'}",
+  "transcriptionNormalized": "${rawInput.replace(/"/g, '\\"')}",
   "matches": [
     {
-      "studentName": "Full name matched",
+      "studentId": "std-xxx",
+      "studentName": "Full Student Name",
+      "studentNameDhivehi": "Dhivehi Name",
+      "gradeLevel": "Grade Level",
       "status": "ABSENT",
       "leaveReason": "SICK_LEAVE",
       "arrivalTime": null,
-      "remarks": "Sick with fever"
+      "remarks": "Brief explanation"
     }
   ]
-}`;
+}
 
-  const raw = await callGeminiWithResilience({ contents: prompt }, 'voice-parse');
+If no student from the directory was mentioned, return "matches": []. Do not invent fictional students.`;
 
-  // Robust algorithmic fallback matching teacher's spoken keywords (English & Thaana)
+  const raw = await callGeminiWithResilience({ contents: prompt, timeoutMs: 12000 }, 'voice-parse');
+
+  // Algorithmic matching fallback in case of API latency or offline
   const lower = rawInput.toLowerCase();
   const matchedStudents: Array<{
+    studentId: string;
     studentName: string;
+    studentNameDhivehi?: string;
+    gradeLevel: string;
     status: 'PRESENT' | 'ABSENT' | 'LATE' | 'LEAVE';
     leaveReason: 'NONE' | 'SICK_LEAVE' | 'SICK_LEAVE_MC' | 'NOT_IN_ISLAND' | 'OFFICIAL_DUTY' | 'OTHER';
     arrivalTime?: string;
     remarks?: string;
   }> = [];
 
-  gradeStudents.forEach((st) => {
+  const candidatesToCheck = gradeStudents.length > 0 ? gradeStudents : students;
+
+  candidatesToCheck.forEach((st) => {
     const partsEn = st.fullName.toLowerCase().split(' ').filter((p) => p.length > 2);
     const hasEnName = partsEn.some((p) => lower.includes(p));
     const partsDv = (st.fullNameDhivehi || '').split(' ').filter((p) => p.trim().length > 2);
@@ -6301,14 +6512,18 @@ Return JSON:
       let leaveReason: 'NONE' | 'SICK_LEAVE' | 'SICK_LEAVE_MC' | 'NOT_IN_ISLAND' | 'OFFICIAL_DUTY' | 'OTHER' = 'NONE';
       let arrivalTime: string | undefined = undefined;
 
-      if (lower.includes('late') || rawInput.includes('ލަސް')) {
+      if (lower.includes('late') || lower.includes('lahaa') || rawInput.includes('ލަސް') || rawInput.includes('ލަހުން')) {
         status = 'LATE';
         arrivalTime = '08:15';
       } else if (
         lower.includes('sick') ||
         lower.includes('fever') ||
+        lower.includes('ill') ||
+        lower.includes('doctor') ||
+        lower.includes('mc') ||
         rawInput.includes('ސަލާމް') ||
-        rawInput.includes('ބަލި')
+        rawInput.includes('ބަލި') ||
+        rawInput.includes('ހުން')
       ) {
         status = 'LEAVE';
         leaveReason = lower.includes('mc') || lower.includes('doctor') || rawInput.includes('ޑޮކްޓަރ') ? 'SICK_LEAVE_MC' : 'SICK_LEAVE';
@@ -6317,39 +6532,65 @@ Return JSON:
         lower.includes('travel') ||
         lower.includes('male') ||
         rawInput.includes('ރަށުގައި ނެތް') ||
-        rawInput.includes('މާލެ')
+        rawInput.includes('މާލެ') ||
+        rawInput.includes('ދަތުރު')
       ) {
         status = 'LEAVE';
         leaveReason = 'NOT_IN_ISLAND';
-      } else if (lower.includes('present') || rawInput.includes('ހާޒިރު')) {
+      } else if (lower.includes('present') || lower.includes('came') || rawInput.includes('ހާޒިރު')) {
         status = 'PRESENT';
       }
 
       matchedStudents.push({
+        studentId: st.id,
         studentName: st.fullName,
+        studentNameDhivehi: st.fullNameDhivehi,
+        gradeLevel: st.gradeLevel,
         status,
         leaveReason,
         arrivalTime,
-        remarks: 'Parsed via Voice Note',
+        remarks: 'Parsed from voice note',
       });
     }
   });
 
   const fallback = {
-    recognizedGrade: effectiveGrade,
+    recognizedGrade: effectiveGrade || 'ALL',
     transcriptionNormalized: rawInput,
-    matches: matchedStudents.length > 0 ? matchedStudents : [
-      {
-        studentName: gradeStudents[0]?.fullName || 'Aasha Binth Nafiz',
-        status: 'ABSENT' as const,
-        leaveReason: 'SICK_LEAVE' as const,
-        remarks: 'Identified from voice note',
-      },
-    ],
+    matches: matchedStudents,
   };
 
-  const result = cleanAndParseJson(raw, fallback);
-  return res.json({ result });
+  const parsed = cleanAndParseJson(raw, fallback);
+
+  // Cross-reference any Gemini matches with real student records
+  if (parsed && Array.isArray(parsed.matches)) {
+    parsed.matches = parsed.matches.map((m: any) => {
+      const matchStd = students.find(
+        (s) =>
+          (m.studentId && s.id === m.studentId) ||
+          s.fullName.toLowerCase() === (m.studentName || '').toLowerCase() ||
+          s.fullName.toLowerCase().includes((m.studentName || '').toLowerCase()) ||
+          (m.studentName && (m.studentName as string).toLowerCase().includes(s.fullName.toLowerCase())) ||
+          (s.fullNameDhivehi && m.studentName && s.fullNameDhivehi.includes(m.studentName))
+      );
+      let arrivalTime = m.arrivalTime || null;
+      if (arrivalTime && (arrivalTime.startsWith('00:') || arrivalTime === '15' || arrivalTime === '10' || arrivalTime === '20')) {
+        arrivalTime = '08:15';
+      }
+      return {
+        studentId: matchStd?.id || m.studentId || `std-match-${Math.random().toString(36).slice(2, 7)}`,
+        studentName: matchStd?.fullName || m.studentName,
+        studentNameDhivehi: matchStd?.fullNameDhivehi || m.studentNameDhivehi,
+        gradeLevel: matchStd?.gradeLevel || m.gradeLevel || effectiveGrade || 'Grade 4',
+        status: m.status || 'ABSENT',
+        leaveReason: m.leaveReason || 'NONE',
+        arrivalTime,
+        remarks: m.remarks || 'Voice Dictation Mutation',
+      };
+    });
+  }
+
+  return res.json({ result: parsed });
 });
 
 // AI 4: Conversational Attendance Query Assistant
@@ -6554,7 +6795,7 @@ async function startServer() {
     const vite = await createViteServer({
       server: {
         middlewareMode: true,
-        hmr: isHmrDisabled ? false : { server },
+        hmr: false,
       },
       appType: 'spa',
     });

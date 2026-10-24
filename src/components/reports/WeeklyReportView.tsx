@@ -80,7 +80,11 @@ export const WeeklyReportView: React.FC<WeeklyReportViewProps> = ({
       const contentType = res.headers.get('content-type');
       if (res.ok && contentType && contentType.includes('application/json')) {
         const data = await res.json();
-        setWeeklyData(data);
+        if (data && data.overallRate == null && fallback && fallback.overallRate != null) {
+          setWeeklyData(fallback);
+        } else {
+          setWeeklyData(data);
+        }
       } else {
         setWeeklyData(fallback);
       }

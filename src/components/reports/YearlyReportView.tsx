@@ -123,9 +123,27 @@ export const YearlyReportView: React.FC<YearlyReportViewProps> = ({
                   mergedGrades.filter((g: any) => g.annualRate != null).length
               )
             : null;
+          const mergedMonths = Array.isArray(data.monthlyBreakdown)
+            ? data.monthlyBreakdown.map((mb: any) => {
+                if (mb.rate == null && mb.averageRate == null) {
+                  const fbMonth = fallback.monthlyBreakdown.find((c) => c.month === mb.month);
+                  if (fbMonth && (fbMonth.rate != null || fbMonth.averageRate != null)) {
+                    return {
+                      ...mb,
+                      rate: fbMonth.rate,
+                      averageRate: fbMonth.averageRate,
+                      officialRate: fbMonth.officialRate,
+                    };
+                  }
+                }
+                return mb;
+              })
+            : fallback.monthlyBreakdown;
+
           setYearlyData({
             ...data,
             gradeBreakdown: mergedGrades,
+            monthlyBreakdown: mergedMonths,
             annualAverageRate: data.annualAverageRate ?? computedAvg,
             combinedAnnualRate: data.combinedAnnualRate ?? computedAvg,
             officialAnnualRate: data.officialAnnualRate ?? computedAvg,
@@ -803,13 +821,13 @@ export const YearlyReportView: React.FC<YearlyReportViewProps> = ({
                           </td>
                         )}
                         <td className="py-2.5 px-3 text-center font-mono font-bold text-emerald-700">
-                          {gb.annualRate != null ? `${gb.perfectAttendanceCount} students` : '-'}
+                          {gb.annualRate != null ? `${gb.perfectAttendanceCount} ${gb.perfectAttendanceCount === 1 ? 'student' : 'students'}` : '-'}
                         </td>
                         <td className="py-2.5 px-3 text-center font-mono text-rose-700">
                           {gb.annualRate != null ? (
                             gb.chronicCount > 0 ? (
                               <span className="font-bold bg-rose-50 px-2 py-0.5 rounded text-rose-800">
-                                {gb.chronicCount} students
+                                {gb.chronicCount} {gb.chronicCount === 1 ? 'student' : 'students'}
                               </span>
                             ) : (
                               <span className="text-slate-400">0</span>

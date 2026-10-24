@@ -143,15 +143,23 @@ export function checkSessionMarkingEligibility(
       ? effective.morning.startTime
       : effective.afternoon.startTime;
 
-    if (curTimeStr < sessionStart) {
+    // Calculate early preparation window (45 minutes before official session start)
+    const [sH, sM] = sessionStart.split(':').map(Number);
+    const startMinutes = (isNaN(sH) ? 7 : sH) * 60 + (isNaN(sM) ? 45 : sM);
+    const earlyPrepMinutes = Math.max(0, startMinutes - 45);
+    const earlyH = String(Math.floor(earlyPrepMinutes / 60)).padStart(2, '0');
+    const earlyM = String(earlyPrepMinutes % 60).padStart(2, '0');
+    const earlyStartStr = `${earlyH}:${earlyM}`;
+
+    if (curTimeStr < earlyStartStr) {
       const isMorning = sessionType === 'MORNING_BEFORE_BREAK';
       const sessionLabel = isMorning ? 'Morning Session (Before Break)' : 'Afternoon Session (Post-Break)';
       const sessionLabelDv = isMorning ? 'ހެނދުނުގެ ސެޝަން' : 'މެންދުރުފަހުގެ ސެޝަން';
       return {
         allowed: false,
         reason: 'SESSION_NOT_STARTED',
-        message: `${sessionLabel} roll call has not started yet. Attendance can only be marked after the session starts at ${sessionStart}. (Current Maldives time: ${curTimeStr})`,
-        messageDhivehi: `${sessionLabelDv} އަދި ނުފެށެއެވެ. ހާޒިރީ ޖެހޭނީ ސެޝަން ފެށޭ ގަޑި (${sessionStart}) އަށްފަހުގައެވެ. (މިހާރުގެ ވަގުތު: ${curTimeStr})`,
+        message: `${sessionLabel} roll call opens at ${earlyStartStr} (Session starts at ${sessionStart}). Current Maldives time is ${curTimeStr}.`,
+        messageDhivehi: `${sessionLabelDv} ހާޒިރީ ހުޅުވޭނީ ${earlyStartStr} ގައެވެ (ސެޝަން ފެށެނީ ${sessionStart}). މިހާރުގެ ވަގުތަކީ ${curTimeStr}.`,
         startTime: sessionStart,
         currentTime: curTimeStr,
         currentDate: curDateStr,

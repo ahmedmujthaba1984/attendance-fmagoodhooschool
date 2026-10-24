@@ -88,55 +88,19 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
   }, [records, students, currentUser, selectedGrade]);
 
   const [selectedStudentId, setSelectedStudentId] = useState<string>(initialStudentId);
-  const [reportView, setReportView] = useState<'grade_summary' | 'chronic'>('grade_summary');
   const [reportMode, setReportMode] = useState<AttendanceReportMode>('BOTH');
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [serverAtRisk, setServerAtRisk] = useState<Array<{
-    adm: string;
-    name: string;
-    dv: string;
-    grade: string;
-    rate: number;
-    missedDays: number;
-    reason: string;
-  }>>([]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
       if (onRefresh) onRefresh();
-      const res = await fetch(`/api/reports/at-risk?date=${selectedDate}`);
-      if (res.ok) {
-        const data = await res.json();
-        setServerAtRisk(data.atRiskStudents || []);
-      }
     } catch (e) {
-      console.warn('Could not refresh at-risk students', e);
+      console.warn('Could not refresh reports', e);
     } finally {
       setTimeout(() => setIsRefreshing(false), 500);
     }
   };
-
-  useEffect(() => {
-    let isMounted = true;
-    const fetchAtRisk = async () => {
-      try {
-        const res = await fetch(`/api/reports/at-risk?date=${selectedDate}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (isMounted) {
-            setServerAtRisk(data.atRiskStudents || []);
-          }
-        }
-      } catch (e) {
-        console.warn('Could not fetch at-risk students', e);
-      }
-    };
-    fetchAtRisk();
-    return () => {
-      isMounted = false;
-    };
-  }, [selectedDate]);
 
   useEffect(() => {
     if (initialStudentId && (!selectedStudentId || !students.some((s) => s.id === selectedStudentId))) {
@@ -146,7 +110,10 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
 
   // Guaranteed grade-level statistics from client records if server stats are pending/offline
   const effectiveGradeStats = useMemo(() => {
-    const hasPropsData = gradeStats && gradeStats.some((gs) => gs.morningPresent > 0 || gs.morningLate > 0 || gs.morningAbsent > 0 || gs.postBreakPresent > 0);
+    const hasPropsData = gradeStats && gradeStats.some((gs) =>
+      gs.morningPresent > 0 || gs.morningLate > 0 || gs.morningAbsent > 0 ||
+      gs.postBreakPresent > 0 || (gs.postBreakLate ?? 0) > 0 || (gs.postBreakAbsent ?? 0) > 0
+    );
     if (hasPropsData) return gradeStats;
 
     const ALL_GRADES_LIST: GradeLevel[] = [
@@ -170,8 +137,11 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       let mLeave = 0;
       let mAbs = 0;
       let pPres = 0;
+      let pLate = 0;
+      let pLeave = 0;
       let pAbs = 0;
       let recCount = 0;
+      let postRecCount = 0;
 
       gradeStudents.forEach((st) => {
         const mRec = todayMap.get(`${st.id}_MORNING_BEFORE_BREAK`);
@@ -185,12 +155,41 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           else if (mRec.status === 'ABSENT') mAbs++;
         }
         if (pRec && pRec.status) {
-          if (pRec.status === 'PRESENT' || pRec.status === 'LATE') pPres++;
+          postRecCount++;
+          if (pRec.status === 'PRESENT') pPres++;
+          else if (pRec.status === 'LATE') pLate++;
+          else if (pRec.status === 'LEAVE') pLeave++;
           else if (pRec.status === 'ABSENT') pAbs++;
         }
       });
 
-      const rate = recCount > 0 ? Math.round(((mPres + mLate) / recCount) * 100) : null;
+      const mRate = recCount > 0 ? Math.round(((mPres + mLate) / recCount) * 100) : null;
+      const pRate = postRecCount > 0 ? Math.round(((pPres + pLate) / postRecCount) * 100) : null;
+      const rate = mRate !== null && pRate !== null
+        ? Math.round((mRate + pRate) / 2)
+        : mRate !== null
+        ? mRate
+        : pRate;
+
+      let gradeChronic = 0;
+      gradeStudents.forEach((st) => {
+        const mRec = todayMap.get(`${st.id}_MORNING_BEFORE_BREAK`);
+        const pRec = todayMap.get(`${st.id}_POST_BREAK`);
+        let stPres = 0;
+        let stRec = 0;
+        if (mRec && mRec.status) {
+          stRec++;
+          if (mRec.status === 'PRESENT' || mRec.status === 'LATE') stPres++;
+        }
+        if (pRec && pRec.status) {
+          stRec++;
+          if (pRec.status === 'PRESENT' || pRec.status === 'LATE') stPres++;
+        }
+        if (stRec > 0 && Math.round((stPres / stRec) * 100) < 80) {
+          gradeChronic++;
+        }
+      });
+
       return {
         grade,
         totalEnrolled,
@@ -199,9 +198,11 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
         morningLate: mLate,
         morningLeave: mLeave,
         postBreakPresent: pPres,
+        postBreakLate: pLate,
+        postBreakLeave: pLeave,
         postBreakAbsent: pAbs,
         attendanceRate: rate,
-        chronicAbsenteesCount: 0,
+        chronicAbsenteesCount: gradeChronic,
         isSchoolClosed,
       };
     });
@@ -217,66 +218,6 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
     return overallRate;
   }, [overallRate, effectiveGradeStats]);
 
-  // Chronic absentees (<80% threshold) derived from real attendance records (no fake student generation)
-  const chronicStudents = useMemo(() => {
-    if (serverAtRisk.length > 0) {
-      return serverAtRisk;
-    }
-    if (!students || students.length === 0) return [];
-
-    // Tally attendance per student from records
-    const studentStats = new Map<string, { total: number; present: number; absent: number; leave: number }>();
-    records.forEach((r) => {
-      const curr = studentStats.get(r.studentId) || { total: 0, present: 0, absent: 0, leave: 0 };
-      curr.total++;
-      if (r.status === 'PRESENT' || r.status === 'LATE') {
-        curr.present++;
-      } else if (r.status === 'ABSENT') {
-        curr.absent++;
-      } else if (r.status === 'LEAVE') {
-        curr.leave++;
-      }
-      studentStats.set(r.studentId, curr);
-    });
-
-    const belowThreshold: Array<{
-      adm: string;
-      name: string;
-      dv: string;
-      grade: string;
-      rate: number;
-      missedDays: number;
-      reason: string;
-    }> = [];
-
-    students.forEach((st) => {
-      const stat = studentStats.get(st.id);
-      if (stat && stat.total > 0) {
-        const rate = Math.round((stat.present / stat.total) * 100);
-        if (rate < 80) {
-          belowThreshold.push({
-            adm: st.admissionNumber,
-            name: st.fullName,
-            dv: st.fullNameDhivehi || st.fullName,
-            grade: st.gradeLevel,
-            rate,
-            missedDays: stat.absent,
-            reason:
-              stat.leave > 0
-                ? isRTL
-                  ? 'މާލެއަށް ބޭސްފަރުވާއަށް ފުރުން'
-                  : 'Specialist Medical Referral'
-                : isRTL
-                ? 'ސަބަބު ބަޔާންނުކޮށް ޣައިރުޙާޟިރުވުން'
-                : 'Unexcused Absences / Post-Weekend Spikes',
-          });
-        }
-      }
-    });
-
-    return belowThreshold.sort((a, b) => a.rate - b.rate);
-  }, [serverAtRisk, students, records, isRTL]);
-
   const handleSelectStudentFromClass = (studentId: string) => {
     setSelectedStudentId(studentId);
     setActiveTab('student');
@@ -290,7 +231,10 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       'Morning Late',
       'Morning Leave',
       'Morning Absent',
-      'Post-Break Present',
+      'Afternoon Present',
+      'Afternoon Late',
+      'Afternoon Leave',
+      'Afternoon Absent',
       'Attendance Rate (%)',
     ];
 
@@ -302,6 +246,9 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       g.morningLeave,
       g.morningAbsent,
       g.postBreakPresent,
+      g.postBreakLate ?? 0,
+      g.postBreakLeave ?? 0,
+      g.postBreakAbsent,
       `${g.attendanceRate}%`,
     ]);
 
@@ -321,31 +268,22 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
   const handleExportExcel = () => {
     const wb = XLSX.utils.book_new();
 
-    // Sheet 1: Grade Summary
-    const summaryData = gradeStats.map((g) => ({
+    // Grade Summary
+    const summaryData = effectiveGradeStats.map((g) => ({
       'Grade Level': g.grade,
       'Total Students': g.totalEnrolled,
       'Morning Present': g.morningPresent,
-      'Late (Recorded)': g.morningLate,
-      'Authorized Leaves': g.morningLeave,
-      'Unexcused Absent': g.morningAbsent,
-      'Post-Break Present': g.postBreakPresent,
-      'Attendance Rate': `${g.attendanceRate}%`,
+      'Morning Late': g.morningLate,
+      'Morning Leave': g.morningLeave,
+      'Morning Absent': g.morningAbsent,
+      'Afternoon Present': g.postBreakPresent,
+      'Afternoon Late': g.postBreakLate ?? 0,
+      'Afternoon Leave': g.postBreakLeave ?? 0,
+      'Afternoon Absent': g.postBreakAbsent,
+      'Attendance Rate': g.attendanceRate != null ? `${g.attendanceRate}%` : '-',
     }));
     const ws1 = XLSX.utils.json_to_sheet(summaryData);
     XLSX.utils.book_append_sheet(wb, ws1, 'MoE Grade Breakdown');
-
-    // Sheet 2: Chronic Absentees
-    const chronicData = chronicStudents.map((s) => ({
-      'Admission No': s.adm,
-      'Student Name': s.name,
-      Grade: s.grade,
-      'Attendance Rate': `${s.rate}%`,
-      'Missed Sessions': s.missedDays,
-      'Primary Pattern/Reason': s.reason,
-    }));
-    const ws2 = XLSX.utils.json_to_sheet(chronicData);
-    XLSX.utils.book_append_sheet(wb, ws2, 'MoE Chronic Risk (<80%)');
 
     XLSX.writeFile(wb, `MoE_Compliance_F_Magoodhoo_${selectedDate}.xlsx`);
   };
@@ -722,166 +660,88 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
               </div>
             )}
 
-            {/* Sub-tabs for Reports */}
-            <div className="no-print flex items-center gap-2 mb-4 border-b border-slate-200 pb-2">
-              <button
-                type="button"
-                onClick={() => setReportView('grade_summary')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                  reportView === 'grade_summary'
-                    ? 'bg-sky-700 text-white'
-                    : 'text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                {isRTL ? 'ގްރޭޑްތަކުގެ ތަފްސީލު (LKG - 10)' : 'Grade-by-Grade MoE Matrix (12 Grades)'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setReportView('chronic')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-                  reportView === 'chronic'
-                    ? chronicStudents.length > 0
-                      ? 'bg-rose-700 text-white'
-                      : 'bg-emerald-700 text-white'
-                    : 'text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                {chronicStudents.length > 0 ? (
-                  <AlertTriangle className="w-3.5 h-3.5" />
-                ) : (
-                  <CheckCircle className="w-3.5 h-3.5 text-emerald-300" />
-                )}
-                <span>{isRTL ? 'ހާޒިރީ ދަށް ދަރިވަރުން (<80%)' : 'MoE At-Risk Register (<80%)'}</span>
-                <span
-                  className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                    chronicStudents.length > 0
-                      ? 'bg-rose-100 text-rose-800'
-                      : 'bg-emerald-100 text-emerald-800'
-                  }`}
-                >
-                  {chronicStudents.length}
-                </span>
-              </button>
+            {/* Header for Grade-by-Grade MoE Matrix */}
+            <div className="flex items-center justify-between mb-4 border-b border-slate-200 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-sky-600 inline-block" />
+                <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                  {isRTL ? 'ގްރޭޑްތަކުގެ ތަފްސީލު (LKG - 10)' : 'Grade-by-Grade MoE Matrix (12 Grades)'}
+                </h3>
+              </div>
+              <span className="text-[11px] font-bold text-slate-500">
+                {isRTL ? '12 ގްރޭޑް' : '12 Grade Levels (LKG to Grade 10)'}
+              </span>
             </div>
 
-            {reportView === 'grade_summary' && (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-slate-100 text-slate-700 font-bold border-y border-slate-200">
-                      <th className="py-2.5 px-3">{t.gradeLevel}</th>
-                      <th className="py-2.5 px-3 text-center">{t.enrolled}</th>
-                      <th className="py-2.5 px-3 text-center">{t.morningPresent}</th>
-                      <th className="py-2.5 px-3 text-center">{t.morningLate}</th>
-                      <th className="py-2.5 px-3 text-center">{t.morningLeave}</th>
-                      <th className="py-2.5 px-3 text-center">{t.morningAbsent}</th>
-                      <th className="py-2.5 px-3 text-center">{t.postBreakPresent}</th>
-                      <th className="py-2.5 px-3 text-center">{t.attendanceRate}</th>
-                      <th className="py-2.5 px-3 text-center">MoE Status</th>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-100 text-slate-700 font-bold border-t border-slate-200">
+                    <th rowSpan={2} className="py-2.5 px-3 border-b border-r border-slate-200 align-middle">{t.gradeLevel}</th>
+                    <th rowSpan={2} className="py-2.5 px-3 text-center border-b border-r border-slate-200 align-middle">{t.enrolled}</th>
+                    <th colSpan={4} className="py-2 px-3 text-center bg-sky-50/80 text-sky-900 border-b border-r border-slate-200 font-black">
+                      {isRTL ? 'ހެނދުނު ދަންފަޅި (Morning Session)' : 'Morning Session'}
+                    </th>
+                    <th colSpan={4} className="py-2 px-3 text-center bg-teal-50/80 text-teal-900 border-b border-r border-slate-200 font-black">
+                      {isRTL ? 'މެންދުރުފަސް ދަންފަޅި (Afternoon Session)' : 'Afternoon Session'}
+                    </th>
+                    <th rowSpan={2} className="py-2.5 px-3 text-center border-b border-r border-slate-200 align-middle">{t.attendanceRate}</th>
+                    <th rowSpan={2} className="py-2.5 px-3 text-center border-b border-slate-200 align-middle">MoE Status</th>
+                  </tr>
+                  <tr className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 text-[11px]">
+                    {/* Morning columns */}
+                    <th className="py-2 px-2.5 text-center text-emerald-800 bg-sky-50/30">{isRTL ? 'ހާޒިރު' : 'Present'}</th>
+                    <th className="py-2 px-2.5 text-center text-amber-800 bg-sky-50/30">{isRTL ? 'ލަސްވި' : 'Late'}</th>
+                    <th className="py-2 px-2.5 text-center text-indigo-800 bg-sky-50/30">{isRTL ? 'ސަލާމް' : 'Leave'}</th>
+                    <th className="py-2 px-2.5 text-center text-rose-800 bg-sky-50/30 border-r border-slate-200">{isRTL ? 'ޣައިރު' : 'Absent'}</th>
+                    {/* Afternoon columns */}
+                    <th className="py-2 px-2.5 text-center text-teal-800 bg-teal-50/30">{isRTL ? 'ހާޒިރު' : 'Present'}</th>
+                    <th className="py-2 px-2.5 text-center text-amber-800 bg-teal-50/30">{isRTL ? 'ލަސްވި' : 'Late'}</th>
+                    <th className="py-2 px-2.5 text-center text-indigo-800 bg-teal-50/30">{isRTL ? 'ސަލާމް' : 'Leave'}</th>
+                    <th className="py-2 px-2.5 text-center text-rose-800 bg-teal-50/30 border-r border-slate-200">{isRTL ? 'ޣައިރު' : 'Absent'}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {effectiveGradeStats.map((stat) => (
+                    <tr key={stat.grade} className="hover:bg-slate-50/60 transition">
+                      <td className="py-2.5 px-3 font-bold text-slate-900 border-r border-slate-100">{stat.grade}</td>
+                      <td className="py-2.5 px-3 text-center font-mono text-slate-700 border-r border-slate-100">{stat.totalEnrolled}</td>
+                      {/* Morning breakdown */}
+                      <td className="py-2.5 px-2.5 text-center font-semibold text-emerald-700">{stat.morningPresent}</td>
+                      <td className="py-2.5 px-2.5 text-center text-amber-700">{stat.morningLate}</td>
+                      <td className="py-2.5 px-2.5 text-center text-indigo-700">{stat.morningLeave}</td>
+                      <td className="py-2.5 px-2.5 text-center text-rose-700 font-semibold border-r border-slate-200/80">{stat.morningAbsent}</td>
+                      {/* Afternoon breakdown */}
+                      <td className="py-2.5 px-2.5 text-center font-semibold text-teal-700">{stat.postBreakPresent}</td>
+                      <td className="py-2.5 px-2.5 text-center text-amber-700">{stat.postBreakLate ?? 0}</td>
+                      <td className="py-2.5 px-2.5 text-center text-indigo-700">{stat.postBreakLeave ?? 0}</td>
+                      <td className="py-2.5 px-2.5 text-center text-rose-700 font-semibold border-r border-slate-200/80">{stat.postBreakAbsent}</td>
+                      {/* Rate & Status */}
+                      <td className="py-2.5 px-3 text-center font-bold text-slate-900 border-r border-slate-100">
+                        {stat.attendanceRate != null ? `${stat.attendanceRate}%` : '-'}
+                      </td>
+                      <td className="py-2.5 px-3 text-center">
+                        {stat.attendanceRate != null ? (
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              stat.attendanceRate >= 90
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : 'bg-amber-100 text-amber-800'
+                            }`}
+                          >
+                            {stat.attendanceRate >= 90 ? 'Compliant' : 'Target <90%'}
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500">
+                            -
+                          </span>
+                        )}
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {effectiveGradeStats.map((stat) => (
-                      <tr key={stat.grade} className="hover:bg-slate-50/60 transition">
-                        <td className="py-2.5 px-3 font-bold text-slate-900">{stat.grade}</td>
-                        <td className="py-2.5 px-3 text-center font-mono">{stat.totalEnrolled}</td>
-                        <td className="py-2.5 px-3 text-center font-semibold text-emerald-700">{stat.morningPresent}</td>
-                        <td className="py-2.5 px-3 text-center text-amber-700">{stat.morningLate}</td>
-                        <td className="py-2.5 px-3 text-center text-indigo-700">{stat.morningLeave}</td>
-                        <td className="py-2.5 px-3 text-center text-rose-700 font-semibold">{stat.morningAbsent}</td>
-                        <td className="py-2.5 px-3 text-center text-teal-700">{stat.postBreakPresent}</td>
-                        <td className="py-2.5 px-3 text-center font-bold text-slate-900">
-                          {stat.attendanceRate != null ? `${stat.attendanceRate}%` : '-'}
-                        </td>
-                        <td className="py-2.5 px-3 text-center">
-                          {stat.attendanceRate != null ? (
-                            <span
-                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                stat.attendanceRate >= 90
-                                  ? 'bg-emerald-100 text-emerald-800'
-                                  : 'bg-amber-100 text-amber-800'
-                              }`}
-                            >
-                              {stat.attendanceRate >= 90 ? 'Compliant' : 'Target <90%'}
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500">
-                              -
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {reportView === 'chronic' && (
-              <div className="space-y-3">
-                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-900 flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
-                  <span>
-                    {isRTL
-                      ? 'މިނިސްޓްރީ އޮފް އެޑިޔުކޭޝަންގެ މިންގަނޑުން 80% އަށްވުރެ ދަށުގައިވާ ދަރިވަރުން. މި ދަރިވަރުންނާ ބެހޭގޮތުން ޚާއްޞަ ފިޔަވަޅު އަޅަންޖެހެއެވެ.'
-                      : 'Students below the 80% threshold required by Ministry of Education for Cambridge O-Level exam registrations and term promotion.'}
-                  </span>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead>
-                      <tr className="bg-slate-100 text-slate-700 font-bold border-y border-slate-200">
-                        <th className="py-2.5 px-3">Admission No</th>
-                        <th className="py-2.5 px-3">Student Name</th>
-                        <th className="py-2.5 px-3">Grade</th>
-                        <th className="py-2.5 px-3 text-center">Current Rate</th>
-                        <th className="py-2.5 px-3 text-center">Missed Sessions</th>
-                        <th className="py-2.5 px-3">Identified Pattern / Factor</th>
-                        <th className="py-2.5 px-3">Action Required</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {chronicStudents.length > 0 ? (
-                        chronicStudents.map((s) => (
-                          <tr key={s.adm} className="hover:bg-slate-50">
-                            <td className="py-2.5 px-3 font-mono font-bold text-slate-800">{s.adm}</td>
-                            <td className="py-2.5 px-3 font-bold text-slate-900">
-                              {isRTL ? s.dv : s.name}
-                            </td>
-                            <td className="py-2.5 px-3 font-semibold text-slate-700">{s.grade}</td>
-                            <td className="py-2.5 px-3 text-center font-bold text-rose-700">{s.rate}%</td>
-                            <td className="py-2.5 px-3 text-center font-bold">{s.missedDays}</td>
-                            <td className="py-2.5 px-3 text-slate-600">{s.reason}</td>
-                            <td className="py-2.5 px-3">
-                              <span className="px-2 py-0.5 rounded bg-rose-100 text-rose-800 font-bold text-[10px]">
-                                {isRTL ? 'ބެލެނިވެރިޔާ ހާޒިރުކުރުން' : 'Guardian Case Conference'}
-                              </span>
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={7} className="py-8 text-center text-slate-500">
-                            <div className="flex flex-col items-center justify-center gap-2">
-                              <CheckCircle className="w-8 h-8 text-emerald-500" />
-                              <span className="font-bold text-emerald-800 text-sm">
-                                {isRTL ? 'ހާޒިރީ 80% އަށްވުރެ ދަށް އެއްވެސް ދަރިވަރަކު ނެތް' : 'No Students Below 80% Threshold'}
-                              </span>
-                              <p className="text-xs text-slate-500 max-w-md">
-                                {isRTL
-                                  ? 'ހުރިހާ ދަރިވަރުންގެ ހާޒިރީ ވެސް ހުރީ މިނިސްޓްރީ އޮފް އެޑިޔުކޭޝަންގެ ކަނޑައެޅިފައިވާ މިންގަނޑަށްވުރެ މަތީގައެވެ.'
-                                  : 'All enrolled students currently meet or exceed Ministry of Education (MoE) attendance compliance standards.'}
-                              </p>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
             {/* Official MoE Signature Block for Prints */}
             <div className="mt-12 pt-8 border-t border-slate-300 grid grid-cols-2 sm:grid-cols-3 gap-8 text-xs">

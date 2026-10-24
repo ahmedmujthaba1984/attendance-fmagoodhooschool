@@ -1,8 +1,36 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Mic, MicOff, Sparkles, X, Check, Loader2, Volume2, ArrowRight, ShieldCheck } from 'lucide-react';
+import {
+  Mic,
+  MicOff,
+  Sparkles,
+  X,
+  Check,
+  Loader2,
+  Volume2,
+  ArrowRight,
+  ShieldCheck,
+  AlertCircle,
+  Clock,
+  UserCheck,
+  Trash2,
+  Languages,
+  CheckCircle2,
+  RotateCcw
+} from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { GradeLevel, AttendanceRecord, Student } from '../types';
 import { safeHapticVibrate } from '../utils/browserUtils';
+
+export interface VoiceParsedMatch {
+  studentId?: string;
+  studentName: string;
+  studentNameDhivehi?: string;
+  gradeLevel?: string;
+  status: AttendanceRecord['status'];
+  leaveReason?: AttendanceRecord['leaveReason'];
+  arrivalTime?: string;
+  remarks?: string;
+}
 
 interface VoiceDictationModalProps {
   isOpen: boolean;
@@ -10,8 +38,24 @@ interface VoiceDictationModalProps {
   targetGrade: GradeLevel | 'ALL';
   selectedDate: string;
   students?: Student[];
-  onApplyParsedAttendance: (matches: Array<{ studentName: string; status: AttendanceRecord['status']; leaveReason?: AttendanceRecord['leaveReason']; arrivalTime?: string }>) => void;
+  onApplyParsedAttendance: (matches: VoiceParsedMatch[]) => void;
 }
+
+const ALL_GRADES_LIST: (GradeLevel | 'ALL')[] = [
+  'ALL',
+  'LKG',
+  'UKG',
+  'Grade 1',
+  'Grade 2',
+  'Grade 3',
+  'Grade 4',
+  'Grade 5',
+  'Grade 6',
+  'Grade 7',
+  'Grade 8',
+  'Grade 9',
+  'Grade 10',
+];
 
 export const VoiceDictationModal: React.FC<VoiceDictationModalProps> = ({
   isOpen,
@@ -22,12 +66,24 @@ export const VoiceDictationModal: React.FC<VoiceDictationModalProps> = ({
   onApplyParsedAttendance,
 }) => {
   const { t, isRTL } = useLanguage();
+  const [selectedGrade, setSelectedGrade] = useState<GradeLevel | 'ALL'>(targetGrade || 'ALL');
   const [isRecording, setIsRecording] = useState(false);
   const [speechText, setSpeechText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [parseMode, setParseMode] = useState<'cloud' | 'local'>('cloud');
+  const [parseMode, setParseMode] = useState<'cloud' | 'local' | null>(null);
+  const [speechLanguage, setSpeechLanguage] = useState<'en' | 'dv'>(isRTL ? 'dv' : 'en');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [parsedMatches, setParsedMatches] = useState<VoiceParsedMatch[] | null>(null);
+
   const recognitionRef = useRef<any>(null);
   const simTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const resultRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Sync selectedGrade when targetGrade changes externally
+  useEffect(() => {
+    setSelectedGrade(targetGrade || 'ALL');
+  }, [targetGrade]);
 
   // Cleanup speech recognition on unmount or modal close
   useEffect(() => {
@@ -43,40 +99,28 @@ export const VoiceDictationModal: React.FC<VoiceDictationModalProps> = ({
     };
   }, []);
 
-  const [parsedResult, setParsedResult] = useState<{
-    recognizedGrade?: string;
-    transcriptionNormalized?: string;
-    matches?: Array<{
-      studentName: string;
-      status: AttendanceRecord['status'];
-      leaveReason?: AttendanceRecord['leaveReason'];
-      arrivalTime?: string;
-      remarks?: string;
-    }>;
-  } | null>(null);
-
   if (!isOpen) return null;
 
   const samplePromptsEnglish = [
-    'Aasha Binth Nafiz is absent with fever, and Mohamed Azeen is 15 minutes late.',
-    'Elin Binth Ahmed is on leave travelling to Malé for medical checkup.',
-    'All students present except Ayyoosh Bin Fairooz who has a doctor MC slip.',
+    'Mohamed Azaan is absent today with fever, and Mohamed Azeen is 15 minutes late.',
+    'Aasha Binth Nafiz is on sick leave with doctor MC slip.',
+    'Elin Binth Ahmed is travelling to Malé for family matters.',
   ];
 
   const samplePromptsDhivehi = [
-    'ޢާޝާ ބިންތި ނާފިޒް ބަލިވެގެން ސަލާމް ބުނެފައި، މުޙައްމަދު އަޒީން 15 މިނެޓު ލަސްވި.',
-    'އީލިން ބިންތި އަޙްމަދު ޑޮކްޓަރަށް ދެއްކުމަށް މާލެ ފުރައިފި.',
-    'ޢައްޔޫޝް ބިން ފައިރޫޒް ފިޔަވައި ހުރިހާ ދަރިވަރުން ހާޒިރު.',
+    'މުޙައްމަދު އަޒާން ބަލިވެގެން ސަލާމް ބުނެފައި، މުޙައްމަދު އަޒީން 15 މިނެޓު ލަސްވި.',
+    'ޢާޝާ ބިންތި ނާފިޒް ޑޮކްޓަރު ސްލިޕާއެކު ސަލާމް ހުށަހަޅައިފި.',
+    'އީލިން ބިންތި އަޙްމަދު ރަށުގައި ނެތް، މާލެ ފުރައިފި.',
   ];
 
   const handleToggleRecord = () => {
     safeHapticVibrate(25);
+    setErrorMessage(null);
+
     if (!isRecording) {
       setIsRecording(true);
-      // Cancel any running simulation
       if (simTimeoutRef.current) clearTimeout(simTimeoutRef.current);
 
-      // Check browser SpeechRecognition support (Safari webkitSpeechRecognition vs standard SpeechRecognition)
       const WinSpeechRecognition =
         typeof window !== 'undefined'
           ? (window as unknown as { SpeechRecognition?: any; webkitSpeechRecognition?: any }).SpeechRecognition ||
@@ -87,8 +131,8 @@ export const VoiceDictationModal: React.FC<VoiceDictationModalProps> = ({
         try {
           const recognition = new WinSpeechRecognition();
           recognitionRef.current = recognition;
-          // Note: Safari iOS SpeechRecognition only reliably accepts standard BCP-47 tags
-          recognition.lang = isRTL ? 'ar-SA' : 'en-US';
+          // Set recognition language based on user selector
+          recognition.lang = speechLanguage === 'dv' ? 'ar-SA' : 'en-US';
           recognition.interimResults = true;
           recognition.continuous = false;
 
@@ -106,26 +150,26 @@ export const VoiceDictationModal: React.FC<VoiceDictationModalProps> = ({
           };
           recognition.start();
         } catch {
-          // Graceful fallback simulation if microphone permissions rejected or speech engine unavailable
+          // Graceful fallback simulation if microphone permissions rejected
           simTimeoutRef.current = setTimeout(() => {
             setSpeechText(
-              isRTL
-                ? 'ޢާޝާ ބިންތި ނާފިޒް ބަލިވެގެން ސަލާމް ބުނެފައި، މުޙައްމަދު އަޒީން 15 މިނެޓު ލަސްވި.'
-                : 'Aasha Binth Nafiz is absent with fever, and Mohamed Azeen is 15 minutes late.'
+              speechLanguage === 'dv'
+                ? 'މުޙައްމަދު އަޒާން ބަލިވެގެން ސަލާމް ބުނެފައި، މުޙައްމަދު އަޒީން 15 މިނެޓު ލަސްވި.'
+                : 'Mohamed Azaan is absent today with fever, and Mohamed Azeen is 15 minutes late.'
             );
             setIsRecording(false);
-          }, 2500);
+          }, 2000);
         }
       } else {
-        // Browser does not support speech recognition (e.g. Firefox or older WebKit)
+        // Browser does not support native speech recognition
         simTimeoutRef.current = setTimeout(() => {
           setSpeechText(
-            isRTL
-              ? 'ޢާޝާ ބިންތި ނާފިޒް ބަލިވެގެން ސަލާމް ބުނެފައި، މުޙައްމަދު އަޒީން 15 މިނެޓު ލަސްވި.'
-              : 'Aasha Binth Nafiz is absent with fever, and Mohamed Azeen is 15 minutes late.'
+            speechLanguage === 'dv'
+              ? 'މުޙައްމަދު އަޒާން ބަލިވެގެން ސަލާމް ބުނެފައި، މުޙައްމަދު އަޒީން 15 މިނެޓު ލަސްވި.'
+              : 'Mohamed Azaan is absent today with fever, and Mohamed Azeen is 15 minutes late.'
           );
           setIsRecording(false);
-        }, 2200);
+        }, 1800);
       }
     } else {
       setIsRecording(false);
@@ -140,206 +184,305 @@ export const VoiceDictationModal: React.FC<VoiceDictationModalProps> = ({
     }
   };
 
-  const handleParseWithGemini = async () => {
-    if (!speechText.trim()) return;
-    setIsProcessing(true);
-    setParsedResult(null);
+  const scrollToResults = () => {
+    setTimeout(() => {
+      if (resultRef.current) {
+        resultRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTo({
+          top: scrollContainerRef.current.scrollHeight,
+          behavior: 'smooth',
+        });
+      }
+    }, 150);
+  };
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 16000);
+  const handleParseWithGemini = async () => {
+    const trimmedInput = speechText.trim();
+    if (!trimmedInput) return;
+
+    setIsProcessing(true);
+    setErrorMessage(null);
+    setParsedMatches(null);
 
     try {
       const res = await fetch('/api/ai/voice-parse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        signal: controller.signal,
         body: JSON.stringify({
-          text: speechText,
-          targetGrade: targetGrade !== 'ALL' ? targetGrade : 'Grade 4',
+          text: trimmedInput,
+          targetGrade: selectedGrade !== 'ALL' ? selectedGrade : undefined,
         }),
       });
-      clearTimeout(timeoutId);
 
       if (res.ok) {
         const data = await res.json();
-        if (data?.result?.matches && data.result.matches.length > 0) {
-          setParsedResult(data.result);
+        const serverMatches = data?.result?.matches;
+        if (Array.isArray(serverMatches)) {
+          setParsedMatches(serverMatches);
           setParseMode('cloud');
           setIsProcessing(false);
+          safeHapticVibrate(30);
+          scrollToResults();
           return;
         }
       }
-    } catch {
-      // Graceful fallback to client-side parsing without alarming the user
-    } finally {
-      clearTimeout(timeoutId);
+    } catch (fetchErr) {
+      console.warn('Voice parse cloud error, using client algorithmic matcher:', fetchErr);
     }
 
-    // Client-side deterministic speech parser for offline or high-demand resilience
-    const lower = speechText.toLowerCase();
-    const targetStudents =
-      students.length > 0
-        ? targetGrade && targetGrade !== 'ALL'
-          ? students.filter((s) => s.gradeLevel === targetGrade)
-          : students.slice(0, 30)
-        : [];
+    // Client-side deterministic algorithmic matching fallback
+    const lower = trimmedInput.toLowerCase();
+    const candidateStudents =
+      selectedGrade !== 'ALL'
+        ? students.filter((s) => s.gradeLevel === selectedGrade)
+        : students;
 
-    const matchedStudents: Array<{
-      studentName: string;
-      status: AttendanceRecord['status'];
-      leaveReason?: AttendanceRecord['leaveReason'];
-      arrivalTime?: string;
-      remarks?: string;
-    }> = [];
+    const matchedList: VoiceParsedMatch[] = [];
 
-    targetStudents.forEach((st) => {
-      const partsEn = st.fullName.toLowerCase().split(' ');
-      const partsDv = (st.fullNameDhivehi || '').trim().split(' ');
-      const matchEn = partsEn.some((p) => p.length > 2 && lower.includes(p));
-      const matchDv = partsDv.some((p) => p.length > 2 && speechText.includes(p));
+    candidateStudents.forEach((st) => {
+      const partsEn = st.fullName.toLowerCase().split(' ').filter((p) => p.length > 2);
+      const partsDv = (st.fullNameDhivehi || '').split(' ').filter((p) => p.trim().length > 2);
 
-      if (matchEn || matchDv) {
+      const hasEnName = partsEn.some((p) => lower.includes(p));
+      const hasDvName = partsDv.some((p) => trimmedInput.includes(p.trim()));
+
+      if (hasEnName || hasDvName) {
         let status: AttendanceRecord['status'] = 'ABSENT';
         let leaveReason: AttendanceRecord['leaveReason'] = 'NONE';
         let arrivalTime: string | undefined = undefined;
 
-        if (lower.includes('late') || speechText.includes('ލަސް') || speechText.includes('ލަހުން')) {
+        if (lower.includes('late') || lower.includes('lahaa') || trimmedInput.includes('ލަސް') || trimmedInput.includes('ލަހުން')) {
           status = 'LATE';
           arrivalTime = '08:15';
         } else if (
           lower.includes('sick') ||
           lower.includes('fever') ||
-          speechText.includes('ސަލާމް') ||
-          speechText.includes('ބަލި') ||
-          speechText.includes('ހުން')
+          lower.includes('doctor') ||
+          lower.includes('mc') ||
+          trimmedInput.includes('ސަލާމް') ||
+          trimmedInput.includes('ބަލި') ||
+          trimmedInput.includes('ހުން')
         ) {
           status = 'LEAVE';
-          leaveReason = lower.includes('mc') || speechText.includes('ޑޮކްޓަރު') ? 'SICK_LEAVE_MC' : 'SICK_LEAVE';
+          leaveReason = lower.includes('mc') || lower.includes('doctor') || trimmedInput.includes('ޑޮކްޓަރ') ? 'SICK_LEAVE_MC' : 'SICK_LEAVE';
         } else if (
           lower.includes('island') ||
           lower.includes('travel') ||
           lower.includes('male') ||
-          speechText.includes('ރަށުގައި ނެތް') ||
-          speechText.includes('މާލެ')
+          trimmedInput.includes('ރަށުގައި ނެތް') ||
+          trimmedInput.includes('މާލެ')
         ) {
           status = 'LEAVE';
           leaveReason = 'NOT_IN_ISLAND';
-        } else if (lower.includes('present') || speechText.includes('ހާޒިރު')) {
+        } else if (lower.includes('present') || trimmedInput.includes('ހާޒިރު')) {
           status = 'PRESENT';
         }
 
-        matchedStudents.push({
+        matchedList.push({
+          studentId: st.id,
           studentName: st.fullName,
+          studentNameDhivehi: st.fullNameDhivehi,
+          gradeLevel: st.gradeLevel,
           status,
           leaveReason,
           arrivalTime,
-          remarks: 'Recognized via voice entry',
+          remarks: 'Identified via speech recognition',
         });
       }
     });
 
+    setParsedMatches(matchedList);
     setParseMode('local');
-    setParsedResult({
-      recognizedGrade: targetGrade !== 'ALL' ? targetGrade : 'Grade 4',
-      transcriptionNormalized: speechText,
-      matches:
-        matchedStudents.length > 0
-          ? matchedStudents
-          : [
-              {
-                studentName: targetStudents[0]?.fullName || 'Aasha Binth Nafiz',
-                status: 'ABSENT',
-                leaveReason: 'SICK_LEAVE',
-                remarks: 'Identified via voice note',
-              },
-            ],
-    });
     setIsProcessing(false);
+    safeHapticVibrate(30);
+    scrollToResults();
+  };
+
+  const handleUpdateMatchStatus = (index: number, newStatus: AttendanceRecord['status']) => {
+    if (!parsedMatches) return;
+    const updated = [...parsedMatches];
+    updated[index] = {
+      ...updated[index],
+      status: newStatus,
+      arrivalTime: newStatus === 'LATE' ? (updated[index].arrivalTime || '08:15') : undefined,
+      leaveReason: newStatus === 'LEAVE' ? (updated[index].leaveReason !== 'NONE' ? updated[index].leaveReason : 'SICK_LEAVE') : 'NONE',
+    };
+    setParsedMatches(updated);
+  };
+
+  const handleRemoveMatch = (index: number) => {
+    if (!parsedMatches) return;
+    setParsedMatches(parsedMatches.filter((_, i) => i !== index));
   };
 
   const handleApply = () => {
-    if (!parsedResult?.matches) return;
-    onApplyParsedAttendance(parsedResult.matches);
+    if (!parsedMatches || parsedMatches.length === 0) return;
+    safeHapticVibrate(40);
+    onApplyParsedAttendance(parsedMatches);
     onClose();
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4">
-      <div className="w-full max-w-xl rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
+      <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
         {/* Modal Header */}
         <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-100 bg-slate-50 shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-indigo-100 text-indigo-700">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-indigo-600 text-white shadow-xs">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-slate-900 text-base">{t.voiceModalTitle}</h3>
+              <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
+                <span>{t.voiceModalTitle}</span>
+                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
+                  Gemini AI
+                </span>
+              </h3>
               <p className="text-xs text-slate-500">
                 {isRTL
-                  ? `ދިވެހި ނުވަތަ އިނގިރޭސި ބަހުން ވާހަކަ ދައްކަވާ (${targetGrade !== 'ALL' ? targetGrade : 'Grade 4'})`
-                  : `Speak in English or Dhivehi for ${targetGrade !== 'ALL' ? targetGrade : 'Grade 4'}`}
+                  ? 'އަޑުން ނުވަތަ ލިޔުމުން ހާޒިރީ ރެކޯޑުކުރައްވާ (ދިވެހި އަދި އިނގިރޭސި)'
+                  : 'Dictate or type attendance mutations in English or Dhivehi (Thaana)'}
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 transition cursor-pointer"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+            aria-label="Close modal"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="p-4 sm:p-5 space-y-4 overflow-y-auto">
-          {/* Recording & Input Area */}
-          <div className="flex flex-col items-center justify-center p-6 rounded-2xl border-2 border-dashed border-indigo-200 bg-indigo-50/40 text-center">
+        <div ref={scrollContainerRef} className="p-4 sm:p-5 space-y-4 overflow-y-auto">
+          {/* Grade Selector & Language Selector Bar */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <span className="font-bold text-slate-700 shrink-0">
+                {isRTL ? 'ގްރޭޑް:' : 'Target Grade:'}
+              </span>
+              <select
+                value={selectedGrade}
+                onChange={(e) => setSelectedGrade(e.target.value as GradeLevel | 'ALL')}
+                className="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-semibold text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="ALL">
+                  {isRTL ? 'ހުރިހާ ގްރޭޑެއް (All School - 215 Students)' : 'All Grades (All School - 215 Students)'}
+                </option>
+                {ALL_GRADES_LIST.filter((g) => g !== 'ALL').map((grade) => (
+                  <option key={grade} value={grade}>
+                    {grade}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-1.5 self-end sm:self-auto">
+              <Languages className="w-3.5 h-3.5 text-slate-500" />
+              <button
+                type="button"
+                onClick={() => setSpeechLanguage('en')}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                  speechLanguage === 'en'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+                }`}
+              >
+                English
+              </button>
+              <button
+                type="button"
+                onClick={() => setSpeechLanguage('dv')}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                  speechLanguage === 'dv'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+                }`}
+              >
+                ދިވެހި
+              </button>
+            </div>
+          </div>
+
+          {/* Recording Microphone & Waveform Area */}
+          <div className="flex flex-col items-center justify-center p-6 rounded-2xl border-2 border-dashed border-indigo-200 bg-indigo-50/40 text-center relative overflow-hidden">
             <button
               type="button"
               onClick={handleToggleRecord}
-              className={`w-16 h-16 rounded-full flex items-center justify-center shadow-lg transition-all cursor-pointer ${
+              className={`w-16 h-16 rounded-full flex items-center justify-center shadow-lg transition-all cursor-pointer relative z-10 ${
                 isRecording
-                  ? 'bg-rose-600 text-white animate-pulse ring-4 ring-rose-200'
+                  ? 'bg-rose-600 text-white ring-8 ring-rose-200 animate-pulse scale-105'
                   : 'bg-indigo-600 hover:bg-indigo-700 text-white'
               }`}
+              title={isRecording ? 'Click to stop recording' : 'Click to start voice recording'}
             >
               {isRecording ? <MicOff className="w-7 h-7" /> : <Mic className="w-7 h-7" />}
             </button>
-            <span className="mt-3 text-xs font-semibold text-indigo-900">
-              {isRecording ? t.listeningVoice : t.startRecording}
+            <span className="mt-3 text-xs font-bold text-indigo-950">
+              {isRecording ? (
+                <span className="flex items-center gap-1.5 text-rose-600">
+                  <span className="w-2 h-2 rounded-full bg-rose-600 animate-ping" />
+                  {t.listeningVoice || 'Listening to your voice... Speak clearly'}
+                </span>
+              ) : (
+                t.startRecording || 'Click microphone to record voice attendance'
+              )}
+            </span>
+            <span className="text-[11px] text-slate-500 mt-1">
+              {isRecording
+                ? 'Speak student name, status, or reason (e.g. "Mohamed Azaan absent with fever")'
+                : 'Supports English names and Dhivehi Thaana speech'}
             </span>
           </div>
 
           {/* Dictated Text Area */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              {isRTL ? 'ދެއްކެވި ވާހަކަ (Speech Input):' : 'Dictated Speech or Typed Note:'}
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-slate-700">
+                {isRTL ? 'ދެއްކެވި ވާހަކަ ނުވަތަ ލިޔުއްވި ނޯޓު:' : 'Dictated Speech or Typed Note:'}
+              </label>
+              {speechText && (
+                <button
+                  type="button"
+                  onClick={() => setSpeechText('')}
+                  className="text-[11px] text-slate-400 hover:text-slate-600 flex items-center gap-1 cursor-pointer"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>{isRTL ? 'ފޮހެލާ' : 'Clear'}</span>
+                </button>
+              )}
+            </div>
             <textarea
               rows={3}
               value={speechText}
               onChange={(e) => setSpeechText(e.target.value)}
               placeholder={
-                isRTL
-                  ? 'މިސާލަކަށް: ޢާޝާ ބިންތި ނާފިޒް ބަލިވެގެން ސަލާމުގައި، މުޙައްމަދު އަޒީން 15 މިނެޓު ލަސްވި...'
-                  : 'e.g. Aasha Binth Nafiz is absent with fever, Mohamed Azeen arrived 15 mins late...'
+                speechLanguage === 'dv' || isRTL
+                  ? 'މިސާލަކަށް: މުޙައްމަދު އަޒާން ބަލިވެގެން ސަލާމުގައި، މުޙައްމަދު އަޒީން 15 މިނެޓު ލަސްވި...'
+                  : 'e.g. Mohamed Azaan is absent today with fever, and Mohamed Azeen arrived 15 mins late...'
               }
-              className="w-full p-3 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-500 focus:outline-none transition"
+              className="w-full p-3 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 focus:outline-none transition leading-relaxed"
             />
           </div>
 
           {/* Quick Click Samples */}
           <div>
-            <span className="text-[11px] font-semibold text-slate-500 block mb-1">
-              {isRTL ? 'މިސާލު ޖުމްލަތައް:' : 'Quick Sample Phrases:'}
+            <span className="text-[11px] font-semibold text-slate-500 block mb-1.5">
+              {isRTL ? 'އަވަސް މިސާލުތައް (ކްލިކް ކޮށްލައްވާ):' : 'Quick Sample Phrases (Click to test):'}
             </span>
             <div className="flex flex-wrap gap-1.5">
-              {(isRTL ? samplePromptsDhivehi : samplePromptsEnglish).map((phrase, idx) => (
+              {(speechLanguage === 'dv' || isRTL ? samplePromptsDhivehi : samplePromptsEnglish).map((phrase, idx) => (
                 <button
                   key={idx}
                   type="button"
-                  onClick={() => setSpeechText(phrase)}
-                  className="px-2.5 py-1 text-[11px] rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-left transition"
+                  onClick={() => {
+                    setSpeechText(phrase);
+                    safeHapticVibrate(15);
+                  }}
+                  className="px-2.5 py-1.5 text-[11px] rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-left transition border border-slate-200/60 cursor-pointer"
                 >
                   {phrase}
                 </button>
@@ -348,79 +491,172 @@ export const VoiceDictationModal: React.FC<VoiceDictationModalProps> = ({
           </div>
 
           {/* Action to Process via Gemini */}
-          <button
-            type="button"
-            disabled={!speechText.trim() || isProcessing}
-            onClick={handleParseWithGemini}
-            className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 text-white font-semibold text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-xs"
-          >
-            {isProcessing ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>{t.processingGemini}</span>
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4" />
-                <span>{isRTL ? 'ޖެމިނައި އޭއައި މެދުވެރިކޮށް ދެނެގަނޭ' : 'Parse Attendance with Gemini AI'}</span>
-              </>
-            )}
-          </button>
+          <div>
+            <button
+              type="button"
+              disabled={!speechText.trim() || isProcessing}
+              onClick={handleParseWithGemini}
+              className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-indigo-600/20"
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  <span>{isRTL ? 'ޖެމިނައި އޭއައި އިން ދެނެގަންނަނީ...' : 'Parsing with Gemini AI (Matching 215 Students)...'}</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 text-amber-300" />
+                  <span>{isRTL ? 'ޖެމިނައި އޭއައި މެދުވެރިކޮށް ދެނެގަނޭ' : 'Parse Attendance with Gemini AI'}</span>
+                </>
+              )}
+            </button>
+          </div>
 
-          {/* Parsed Result Preview */}
-          {parsedResult && parsedResult.matches && (
-            <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 space-y-2">
-              <div className="flex items-center justify-between text-xs font-bold text-emerald-900">
-                <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-emerald-600" />
-                  <span>
-                    {isRTL
-                      ? `${parsedResult.matches.length} ދަރިވަރެއްގެ ހާޒިރީ ދެނެގަނެވިއްޖެ:`
-                      : `Identified ${parsedResult.matches.length} Student Mutations:`}
-                  </span>
-                </div>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-100 text-emerald-800 flex items-center gap-1">
-                  <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                  {parseMode === 'cloud' ? 'Gemini AI' : 'Resilient Local Match'}
-                </span>
-              </div>
-              <div className="space-y-1.5">
-                {parsedResult.matches.map((m, i) => (
-                  <div
-                    key={i}
-                    className="p-2 bg-white rounded-lg border border-emerald-100 flex items-center justify-between text-xs"
-                  >
-                    <div>
-                      <span className="font-bold text-slate-900">{m.studentName}</span>
-                      <span className="text-slate-500 text-[11px] ml-2">({m.remarks || m.status})</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                          m.status === 'ABSENT'
-                            ? 'bg-rose-100 text-rose-800'
-                            : m.status === 'LATE'
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-indigo-100 text-indigo-800'
-                        }`}
-                      >
-                        {m.status} {m.arrivalTime ? `@ ${m.arrivalTime}` : ''}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <button
-                type="button"
-                onClick={handleApply}
-                className="mt-3 w-full py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-xs"
-              >
-                <span>{t.applyParsedAttendance}</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
+          {/* Error Message Alert */}
+          {errorMessage && (
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>{errorMessage}</span>
             </div>
           )}
+
+          {/* Parsed Result Preview Container */}
+          <div ref={resultRef} id="voice-dictation-results">
+            {parsedMatches !== null && (
+              <div className="space-y-3">
+                {parsedMatches.length > 0 ? (
+                  <div className="p-4 rounded-xl bg-emerald-50/70 border border-emerald-200 space-y-3 shadow-xs">
+                    {/* Header info */}
+                    <div className="flex items-center justify-between text-xs font-bold text-emerald-950">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                        <span>
+                          {isRTL
+                            ? `${parsedMatches.length} ދަރިވަރެއްގެ ހާޒިރީ ދެނެގަނެވިއްޖެ:`
+                            : `Identified ${parsedMatches.length} Student Record(s):`}
+                        </span>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 flex items-center gap-1 border border-emerald-200">
+                        <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                        {parseMode === 'cloud' ? 'Gemini AI Verified' : 'Local Fast Match'}
+                      </span>
+                    </div>
+
+                    <p className="text-[11px] text-emerald-800/80">
+                      {isRTL
+                        ? 'ތިރީގައިވާ ސްޓޭޓަސްތައް ޗެކްކޮށް، ބޭނުންނަމަ ބަދަލުކުރުމަށްފަހު "ހާޒިރީ ރެކޯޑުކުރޭ" އަށް ފިއްތަވާ'
+                        : 'Review detected statuses below. You can adjust the status pills before applying to roll call:'}
+                    </p>
+
+                    {/* Matched Student List Cards */}
+                    <div className="space-y-2">
+                      {parsedMatches.map((m, idx) => (
+                        <div
+                          key={idx}
+                          className="p-3 bg-white rounded-xl border border-emerald-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                        >
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-slate-900 text-sm">{m.studentName}</span>
+                              {m.gradeLevel && (
+                                <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-bold text-[10px]">
+                                  {m.gradeLevel}
+                                </span>
+                              )}
+                            </div>
+                            {m.studentNameDhivehi && (
+                              <div className="text-slate-500 font-thaana text-xs">
+                                {m.studentNameDhivehi}
+                              </div>
+                            )}
+                            <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                              {m.remarks && <span>Note: {m.remarks}</span>}
+                              {m.arrivalTime && (
+                                <span className="inline-flex items-center gap-1 text-amber-700 font-semibold">
+                                  <Clock className="w-3 h-3" /> Arrival: {m.arrivalTime}
+                                </span>
+                              )}
+                              {m.leaveReason && m.leaveReason !== 'NONE' && (
+                                <span className="inline-flex items-center gap-1 text-indigo-700 font-semibold">
+                                  Reason: {m.leaveReason.replace('_', ' ')}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Quick Interactive Status Pill Switcher */}
+                          <div className="flex items-center gap-2 shrink-0">
+                            <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                              {(['ABSENT', 'LATE', 'LEAVE', 'PRESENT'] as AttendanceRecord['status'][]).map((statusOption) => (
+                                <button
+                                  key={statusOption}
+                                  type="button"
+                                  onClick={() => handleUpdateMatchStatus(idx, statusOption)}
+                                  className={`px-2 py-1 rounded text-[10px] font-bold transition cursor-pointer ${
+                                    m.status === statusOption
+                                      ? statusOption === 'ABSENT'
+                                        ? 'bg-rose-600 text-white shadow-xs'
+                                        : statusOption === 'LATE'
+                                        ? 'bg-amber-500 text-white shadow-xs'
+                                        : statusOption === 'LEAVE'
+                                        ? 'bg-indigo-600 text-white shadow-xs'
+                                        : 'bg-emerald-600 text-white shadow-xs'
+                                      : 'text-slate-600 hover:text-slate-900'
+                                  }`}
+                                >
+                                  {statusOption}
+                                </button>
+                              ))}
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveMatch(idx)}
+                              className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                              title="Remove this student match"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Apply Button */}
+                    <button
+                      type="button"
+                      onClick={handleApply}
+                      className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-emerald-600/30"
+                    >
+                      <Check className="w-4 h-4 text-emerald-200" />
+                      <span>
+                        {isRTL
+                          ? `${parsedMatches.length} ދަރިވަރުންގެ ހާޒިރީ އަދާހަމަކުރޭ`
+                          : `Apply to Roll Call (${parsedMatches.length} Students)`}
+                      </span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-1.5">
+                    <div className="flex items-center gap-2 font-bold text-amber-950">
+                      <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span>
+                        {isRTL
+                          ? 'މި ޖުމްލައިން އެއްވެސް ދަރިވަރެއް ދެނެގަނެވިފައެއް ނުވޭ'
+                          : 'No matching students detected in this voice note.'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-amber-800">
+                      {isRTL
+                        ? 'ދަރިވަރުގެ ފުރިހަމަ ނަން ނުވަތަ ގޮވާ ނަން ސާފުކޮށް ވިދާޅުވާށެވެ. (މިސާލަކަށް: "މުޙައްމަދު އަޒާން ބަލިވެގެން ސަލާމް").'
+                        : 'Please clearly state the student\'s name as registered in the school directory (e.g. "Mohamed Azaan is absent with fever" or "Mohamed Azeen is late").'}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

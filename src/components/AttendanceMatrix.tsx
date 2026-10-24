@@ -183,6 +183,8 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
     const hasPrivilege =
       Boolean(currentUser?.hasRapidRollCallPrivilege) ||
       Boolean(currentUser?.loginViaMobile) ||
+      Boolean(currentUser?.isSuperAdmin) ||
+      currentUser?.role === 'ADMIN' ||
       safeLocalStorage.getItem('moe_rapid_roll_call_privileged') === 'true' ||
       safeLocalStorage.getItem('moe_login_source') === 'mobile' ||
       safeLocalStorage.getItem('moe_default_roll_call_mode') === 'rapid';
@@ -264,7 +266,17 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
     return checkSessionMarkingEligibility(selectedDate, 'POST_BREAK', sessionTimings);
   }, [selectedDate, sessionTimings, currentMinuteTick]);
 
-  const isMarkingAllowed = sessionEligibility.allowed && !isSchoolClosed;
+  const isPrivilegedUser = Boolean(
+    currentUser?.role === 'ADMIN' ||
+    currentUser?.isSuperAdmin ||
+    currentUser?.hasRapidRollCallPrivilege ||
+    currentUser?.loginViaMobile ||
+    safeLocalStorage.getItem('moe_rapid_roll_call_privileged') === 'true'
+  );
+
+  const isMarkingAllowed =
+    (sessionEligibility.allowed || (isPrivilegedUser && sessionEligibility.reason === 'SESSION_NOT_STARTED')) &&
+    !isSchoolClosed;
   const [showEligibilityNoticeModal, setShowEligibilityNoticeModal] = useState(false);
 
   const handlePrevDay = () => {
@@ -568,11 +580,12 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
 
   const handleVoiceModalClicked = () => {
     if (isSchoolClosed) return;
-    if (!sessionEligibility.allowed) {
+    const isEarlyAllowed = isMobileOrPrivileged && sessionEligibility.reason === 'SESSION_NOT_STARTED';
+    if (!sessionEligibility.allowed && !isEarlyAllowed) {
       setShowEligibilityNoticeModal(true);
       return;
     }
-    if (isSessionSubmitted && !isSuperAdmin) {
+    if (isSessionSubmitted && !isSuperAdmin && !isMobileOrPrivileged) {
       setShowLockedNoticeModal(true);
       return;
     }

@@ -82,7 +82,33 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
       const contentType = res.headers.get('content-type');
       if (res.ok && contentType && contentType.includes('application/json')) {
         const data = await res.json();
-        setMonthlyData(data);
+        if (records && records.length > 0) {
+          const mergedWeekly = (data.weeklyBreakdown || []).map((wb: any) => {
+            const fb = fallback.weeklyBreakdown.find((f: any) => f.weekLabel === wb.weekLabel);
+            if (wb.rate == null && fb && fb.rate != null) {
+              return { ...wb, rate: fb.rate, officialRate: fb.officialRate, extraClassRate: fb.extraClassRate };
+            }
+            return wb;
+          });
+          const mergedGrades = (data.gradeBreakdown || []).map((gb: any) => {
+            const fb = fallback.gradeBreakdown.find((f: any) => f.grade === gb.grade);
+            if (gb.monthlyRate == null && fb && fb.monthlyRate != null) {
+              return { ...gb, monthlyRate: fb.monthlyRate, rate: fb.monthlyRate, officialRate: fb.officialRate, combinedRate: fb.combinedRate, chronicCount: fb.chronicCount };
+            }
+            return gb;
+          });
+          setMonthlyData({
+            ...data,
+            weeklyBreakdown: mergedWeekly,
+            gradeBreakdown: mergedGrades,
+            monthlyRate: data.monthlyRate ?? fallback.monthlyRate,
+            overallRate: data.overallRate ?? fallback.overallRate,
+            combinedMonthlyRate: data.combinedMonthlyRate ?? fallback.combinedMonthlyRate,
+            officialMonthlyRate: data.officialMonthlyRate ?? fallback.officialMonthlyRate,
+          });
+        } else {
+          setMonthlyData(data);
+        }
       } else {
         setMonthlyData(fallback);
       }
@@ -505,12 +531,16 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
                       <span className="font-black text-sky-900">{w.rate != null ? `${w.rate}%` : '-'}</span>
                     </div>
                     <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full ${
-                          (w.rate ?? 0) >= 90 ? 'bg-emerald-600' : (w.rate ?? 0) >= 80 ? 'bg-sky-600' : 'bg-rose-500'
-                        }`}
-                        style={{ width: `${Math.min(100, w.rate || 0)}%` }}
-                      />
+                      {w.rate != null ? (
+                        <div
+                          className={`h-full rounded-full transition-all duration-300 ${
+                            w.rate >= 90 ? 'bg-emerald-600' : w.rate >= 80 ? 'bg-sky-600' : 'bg-rose-500'
+                          }`}
+                          style={{ width: `${Math.min(100, w.rate)}%` }}
+                        />
+                      ) : (
+                        <div className="h-full bg-slate-200 w-0" />
+                      )}
                     </div>
                     <span className="text-[10px] text-slate-400 block mt-1.5 font-medium">
                       {w.instructionalDays} school days
@@ -598,7 +628,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
                         <td className="py-2.5 px-3 text-center font-mono text-slate-600">
                           {gb.chronicCount > 0 ? (
                             <span className="text-rose-600 font-bold">
-                              {gb.chronicCount} students
+                              {gb.chronicCount} {gb.chronicCount === 1 ? 'student' : 'students'}
                             </span>
                           ) : (
                             <span className="text-emerald-600 font-semibold">0 (None)</span>

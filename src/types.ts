@@ -240,6 +240,8 @@ export interface MoEGradeStat {
   morningRate?: number | null;
   afternoonRate?: number | null;
   postBreakPresent: number;
+  postBreakLate?: number;
+  postBreakLeave?: number;
   postBreakAbsent: number;
   attendanceRate: number;
   officialRate?: number | null;

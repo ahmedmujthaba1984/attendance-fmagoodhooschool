@@ -182,7 +182,11 @@ export const StudentReportView: React.FC<StudentReportViewProps> = ({
             }
           }
         }
-        setReportData(data);
+        if (data && data.attendanceRate == null && fallbackReport && fallbackReport.attendanceRate != null) {
+          setReportData(fallbackReport);
+        } else {
+          setReportData(data);
+        }
       } else {
         // Non-JSON or serverless failure (e.g. on Vercel deployment) -> use guaranteed client report
         setReportData(fallbackReport);

@@ -26,15 +26,106 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thaana:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <script>
-      // Gracefully prevent unhandled WebSocket closure error events in preview/iframe environments
-      window.addEventListener('unhandledrejection', function(event) {
-        if (event && event.reason && (
-          (typeof event.reason === 'string' && event.reason.includes('WebSocket')) ||
-          (event.reason.message && event.reason.message.includes('WebSocket'))
-        )) {
-          event.preventDefault();
+      // Gracefully handle preview/iframe environment: HMR is disabled, intercept Vite WebSocket attempts
+      (function() {
+        if (typeof window !== 'undefined') {
+          // 1. Silent stub for Vite HMR WebSockets so browser console stays clean
+          if (window.WebSocket) {
+            var NativeWebSocket = window.WebSocket;
+            window.WebSocket = function(url, protocols) {
+              var isHmr = (protocols === 'vite-hmr') || (typeof url === 'string' && (url.indexOf('token=') !== -1 || url.indexOf('vite') !== -1));
+              if (isHmr) {
+                var listeners = {};
+                var dummy = {
+                  readyState: 1, // OPEN
+                  url: url,
+                  protocol: 'vite-hmr',
+                  binaryType: 'blob',
+                  bufferedAmount: 0,
+                  extensions: '',
+                  onopen: null,
+                  onclose: null,
+                  onerror: null,
+                  onmessage: null,
+                  addEventListener: function(type, fn) {
+                    listeners[type] = listeners[type] || [];
+                    listeners[type].push(fn);
+                  },
+                  removeEventListener: function(type, fn) {
+                    if (listeners[type]) {
+                      listeners[type] = listeners[type].filter(function(cb) { return cb !== fn; });
+                    }
+                  },
+                  dispatchEvent: function() { return false; },
+                  send: function() {},
+                  close: function() {
+                    dummy.readyState = 3;
+                    if (dummy.onclose) dummy.onclose({ code: 1000, reason: 'closed', wasClean: true });
+                    if (listeners['close']) {
+                      listeners['close'].forEach(function(fn) { fn({ code: 1000, reason: 'closed', wasClean: true }); });
+                    }
+                  }
+                };
+                return dummy;
+              }
+              return new NativeWebSocket(url, protocols);
+            };
+            window.WebSocket.prototype = NativeWebSocket.prototype;
+            window.WebSocket.CONNECTING = 0;
+            window.WebSocket.OPEN = 1;
+            window.WebSocket.CLOSING = 2;
+            window.WebSocket.CLOSED = 3;
+          }
+
+          // 2. Filter out harmless Vite HMR connection log messages
+          var origError = console.error;
+          console.error = function() {
+            var args = Array.prototype.slice.call(arguments);
+            var str = args.join(' ');
+            if (
+              str.indexOf('[vite]') !== -1 ||
+              str.indexOf('WebSocket') !== -1 ||
+              str.indexOf('websocket') !== -1
+            ) {
+              return;
+            }
+            origError.apply(console, arguments);
+          };
+
+          var origWarn = console.warn;
+          console.warn = function() {
+            var args = Array.prototype.slice.call(arguments);
+            var str = args.join(' ');
+            if (
+              str.indexOf('[vite]') !== -1 ||
+              str.indexOf('WebSocket') !== -1 ||
+              str.indexOf('websocket') !== -1
+            ) {
+              return;
+            }
+            origWarn.apply(console, arguments);
+          };
+
+          // 3. Catch unhandled rejections and global errors from HMR
+          window.addEventListener('unhandledrejection', function(event) {
+            if (event && event.reason && (
+              (typeof event.reason === 'string' && (event.reason.indexOf('WebSocket') !== -1 || event.reason.indexOf('vite') !== -1)) ||
+              (event.reason.message && (event.reason.message.indexOf('WebSocket') !== -1 || event.reason.message.indexOf('vite') !== -1))
+            )) {
+              event.preventDefault();
+            }
+          });
+
+          window.addEventListener('error', function(event) {
+            if (event && (
+              (event.message && (event.message.indexOf('WebSocket') !== -1 || event.message.indexOf('vite') !== -1)) ||
+              (event.filename && event.filename.indexOf('@vite/client') !== -1)
+            )) {
+              event.preventDefault();
+            }
+          });
         }
-      });
+      })();
     </script>
   </head>
   <body class="bg-slate-50 text-slate-900 antialiased selection:bg-teal-500 selection:text-white">

@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { User } from '../types';
-import { PWAInstallButton } from './PWAInstallButton';
+import { PWAInstallButton } from './pwa/PWAInstallButton';
 
 interface MobileMenuDrawerProps {
   isOpen: boolean;
@@ -271,6 +271,11 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({
               <span>{isRTL ? 'ސިންކް ކުރޭ' : 'Sync Offline'}</span>
             </button>
           )}
+        </div>
+
+        {/* PWA Mobile App Installation Prompt (suppresses automatically when app is already installed) */}
+        <div>
+          <PWAInstallButton className="w-full justify-center py-2.5 text-xs shadow-xs" />
         </div>
 
         {/* Secondary Modules List */}

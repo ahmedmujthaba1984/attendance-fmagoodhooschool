@@ -25,6 +25,7 @@ import { MobileMenuDrawer } from './components/MobileMenuDrawer';
 import { ExtraClassesModule } from './components/ExtraClassesModule';
 import { syncEngine } from './lib/syncEngine';
 import { offlineDb } from './lib/db';
+import { OfflineIndicator } from './components/pwa/OfflineIndicator';
 import { checkSessionMarkingEligibility, getMaldivesNow } from './utils/sessionTimingsHelper';
 import { safeLocalStorage, safeJsonParse } from './utils/browserUtils';
 import {
@@ -646,7 +647,7 @@ function MainApp() {
     // Immediately fetch session timings in parallel
     fetchSessionTimings();
     try {
-      // 1. Fetch Staff
+      // 1. Fetch Staff (with offline localStorage persistence)
       try {
         const staffRes = await fetch('/api/auth/staff');
         const cType = staffRes.headers.get('content-type') || '';
@@ -654,6 +655,7 @@ function MainApp() {
           const data = await staffRes.json();
           if (data.staff && data.staff.length > 0) {
             setStaffList(data.staff);
+            safeLocalStorage.setItem('moe_cached_staff', JSON.stringify(data.staff));
             const savedId = safeLocalStorage.getItem('moe_active_user_id');
             const isSessionValid = safeLocalStorage.getItem('moe_portal_logged_in');
             if (isSessionValid === 'true' && savedId) {
@@ -675,8 +677,22 @@ function MainApp() {
               }
             }
           }
+        } else {
+          // Offline fallback
+          const cachedStaff = safeLocalStorage.getItem('moe_cached_staff');
+          if (cachedStaff) {
+            const parsed = safeJsonParse(cachedStaff, []);
+            if (parsed.length > 0) setStaffList(parsed);
+          }
         }
-      } catch (e) {}
+      } catch (e) {
+        // Network offline fallback
+        const cachedStaff = safeLocalStorage.getItem('moe_cached_staff');
+        if (cachedStaff) {
+          const parsed = safeJsonParse(cachedStaff, []);
+          if (parsed.length > 0) setStaffList(parsed);
+        }
+      }
 
       // 2. Fetch Students
       try {
@@ -809,7 +825,35 @@ function MainApp() {
       }
       if (res.ok) {
         const data = await res.json();
-        setAttendanceRecords(data.records || []);
+        const serverRecords: AttendanceRecord[] = data.records || [];
+
+        // Safe Offline Merge: Keep any pending offline records not yet synced to server
+        try {
+          const pendingOffline = await offlineDb.attendance
+            .where('date')
+            .equals(selectedDate)
+            .and((r) => r.sessionType === selectedSession && r.syncStatus === 'PENDING_OFFLINE')
+            .toArray();
+
+          let mergedRecords = serverRecords;
+          if (pendingOffline.length > 0) {
+            const pendingMap = new Map(pendingOffline.map((r) => [r.studentId, r]));
+            mergedRecords = serverRecords.map((r) => pendingMap.get(r.studentId) || r);
+          }
+          setAttendanceRecords(mergedRecords);
+
+          // Update Dexie cache with latest server records, protecting pending changes
+          if (serverRecords.length > 0) {
+            const pendingStudentIds = new Set(pendingOffline.map((r) => r.studentId));
+            const recordsToCache = serverRecords.filter((sr) => !pendingStudentIds.has(sr.studentId));
+            if (recordsToCache.length > 0) {
+              await offlineDb.attendance.bulkPut(recordsToCache);
+            }
+          }
+        } catch {
+          setAttendanceRecords(serverRecords);
+        }
+
         setCounterpartRecords(data.counterpartRecords || []);
         setIsSchoolClosed(Boolean(data.isSchoolClosed));
         const rawReason = data.schoolClosureReason || data.closureDetails?.reason || '';
@@ -2385,6 +2429,9 @@ function MainApp() {
           </div>
         </div>
       )}
+
+      {/* Offline Mode & Sync Notification Floating Indicator */}
+      <OfflineIndicator />
     </div>
   );
 }

@@ -26,7 +26,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
-import { PWAInstallButton } from './PWAInstallButton';
+import { PWAInstallButton } from './pwa/PWAInstallButton';
 import { syncEngine, SyncState } from '../lib/syncEngine';
 import { User } from '../types';
 import { OfflineQueueModal } from './OfflineQueueModal';
@@ -242,9 +242,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Right Section: Active Staff Profile & Install PWA */}
         <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-          <div className="hidden sm:block">
-            <PWAInstallButton />
-          </div>
+          <PWAInstallButton />
 
           {/* Session Timings Direct Button */}
           {onOpenTimingsModal && (

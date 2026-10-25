@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "Magoodhoo School Attendance & Analytics Portal",
-  "short_name": "Magoodhoo School",
+  "name": "Magoodhoo School Attendance Portal",
+  "short_name": "Magoodhoo",
   "description": "Offline-First Attendance Tracking & Analytics Portal for F. Magoodhoo School, Maldives",
   "start_url": "/",
   "scope": "/",
@@ -11,6 +11,24 @@
   "theme_color": "#0284c7",
   "categories": ["education", "productivity"],
   "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
     {
       "src": "/logo.jpg",
       "sizes": "192x192 512x512",

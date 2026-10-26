@@ -2030,9 +2030,9 @@ const ExtraClassAttendanceModal: React.FC<ExtraClassAttendanceModalProps> = ({
     if (!searchFilter.trim()) return true;
     const q = searchFilter.toLowerCase();
     return (
-      st.fullName.toLowerCase().includes(q) ||
-      st.fullNameDhivehi.includes(q) ||
-      st.admissionNumber.toLowerCase().includes(q)
+      (st.fullName || '').toLowerCase().includes(q) ||
+      (st.fullNameDhivehi || '').includes(q) ||
+      (st.admissionNumber || '').toLowerCase().includes(q)
     );
   });
 

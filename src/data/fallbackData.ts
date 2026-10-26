@@ -34,12 +34,25 @@ export function hasStaffLocalCustomPassword(email: string): boolean {
   return false;
 }
 
+export const isUserSuperAdmin = (user: User | null | undefined): boolean => {
+  if (!user) return false;
+  if (user.isSuperAdmin) return true;
+  const email = (user.email || '').toLowerCase().trim();
+  return (
+    email === 'ahmed.mujthaba@fmagoodhooschool.edu.mv' ||
+    email === 'ahmedmujthaba@gmail.com' ||
+    email.includes('ahmedmujthaba')
+  );
+};
+
 // Staff Enrichment matching server logic
 export const DEFAULT_STAFF: User[] = (rawStaff as any[]).map((s) => {
   const email = (s.email || '').toLowerCase().trim();
   const isSuperAdmin = Boolean(
     s.isSuperAdmin ||
-    email === 'ahmed.mujthaba@fmagoodhooschool.edu.mv'
+    email === 'ahmed.mujthaba@fmagoodhooschool.edu.mv' ||
+    email === 'ahmedmujthaba@gmail.com' ||
+    email.includes('ahmedmujthaba')
   );
   const userHasCustom = hasStaffLocalCustomPassword(email);
 

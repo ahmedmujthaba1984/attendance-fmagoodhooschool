@@ -127,10 +127,10 @@ export const SuperAdminPasswordModal: React.FC<SuperAdminPasswordModalProps> = (
       if (!searchQuery.trim()) return true;
       const q = searchQuery.toLowerCase().trim();
       return (
-        s.fullName.toLowerCase().includes(q) ||
+        (s.fullName || '').toLowerCase().includes(q) ||
         (s.fullNameDhivehi && s.fullNameDhivehi.includes(q)) ||
-        s.email.toLowerCase().includes(q) ||
-        s.staffId.toLowerCase().includes(q) ||
+        (s.email || '').toLowerCase().includes(q) ||
+        (s.staffId || '').toLowerCase().includes(q) ||
         (s.designation && s.designation.toLowerCase().includes(q)) ||
         (s.department && s.department.toLowerCase().includes(q))
       );

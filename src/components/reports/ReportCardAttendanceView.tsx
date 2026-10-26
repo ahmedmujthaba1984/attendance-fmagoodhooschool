@@ -318,10 +318,10 @@ export const ReportCardAttendanceView: React.FC<ReportCardAttendanceViewProps> =
       if (!searchQuery.trim()) return true;
       const q = searchQuery.toLowerCase().trim();
       return (
-        st.fullName.toLowerCase().includes(q) ||
+        (st.fullName || '').toLowerCase().includes(q) ||
         (st.fullNameDhivehi && st.fullNameDhivehi.includes(q)) ||
-        st.admissionNumber.toLowerCase().includes(q) ||
-        st.gradeLevel.toLowerCase().includes(q)
+        (st.admissionNumber || '').toLowerCase().includes(q) ||
+        (st.gradeLevel || '').toLowerCase().includes(q)
       );
     });
   }, [reportData?.students, searchQuery]);

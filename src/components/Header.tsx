@@ -30,6 +30,7 @@ import { PWAInstallButton } from './pwa/PWAInstallButton';
 import { syncEngine, SyncState } from '../lib/syncEngine';
 import { User } from '../types';
 import { OfflineQueueModal } from './OfflineQueueModal';
+import { isUserSuperAdmin } from '../data/fallbackData';
 
 interface HeaderProps {
   activeTab: string;
@@ -69,6 +70,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenOfflineQueueModal,
 }) => {
   const { t, language, toggleLanguage, isRTL } = useLanguage();
+  const isSuperAdmin = isUserSuperAdmin(currentUser);
   const [syncState, setSyncState] = useState<SyncState>('online_synced');
   const [pendingCount, setPendingCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -260,7 +262,7 @@ export const Header: React.FC<HeaderProps> = ({
           )}
 
           {/* Super Admin Direct Access Button */}
-          {((currentUser?.isSuperAdmin || currentUser?.email?.toLowerCase() === 'ahmed.mujthaba@fmagoodhooschool.edu.mv') && onOpenSuperAdminPasswords) && (
+          {(isSuperAdmin && onOpenSuperAdminPasswords) && (
             <button
               type="button"
               onClick={onOpenSuperAdminPasswords}
@@ -289,14 +291,14 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="hidden sm:block">
                 <div className="text-xs font-semibold text-slate-900 leading-tight flex items-center gap-1.5">
                   <span>{isRTL ? currentUser?.fullNameDhivehi || currentUser?.fullName : currentUser?.fullName}</span>
-                  {(currentUser?.isSuperAdmin || currentUser?.email?.toLowerCase() === 'ahmed.mujthaba@fmagoodhooschool.edu.mv') && (
+                  {isSuperAdmin && (
                     <span className="px-1 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-300 text-[9px] font-black">
                       SUPER
                     </span>
                   )}
                 </div>
                 <div className="text-[11px] text-slate-600">
-                  {currentUser?.role === 'ADMIN' ? (
+                  {currentUser?.role === 'ADMIN' || isSuperAdmin ? (
                     <span className="text-amber-700 font-semibold">{t.admin}</span>
                   ) : (
                     <span>{currentUser?.designation || t.teacher}</span>
@@ -317,7 +319,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 mb-2">
                   <div className="text-xs font-extrabold text-slate-900 flex items-center justify-between">
                     <span>{isRTL ? currentUser?.fullNameDhivehi || currentUser?.fullName : currentUser?.fullName}</span>
-                    {(currentUser?.isSuperAdmin || currentUser?.email?.toLowerCase() === 'ahmed.mujthaba@fmagoodhooschool.edu.mv') ? (
+                    {isSuperAdmin ? (
                       <span className="px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-black">
                         SUPER ADMIN
                       </span>
@@ -345,7 +347,7 @@ export const Header: React.FC<HeaderProps> = ({
                 {/* Actions Menu */}
                 <div className="space-y-1">
                   {/* Super Admin Password Management Option */}
-                  {((currentUser?.isSuperAdmin || currentUser?.email?.toLowerCase() === 'ahmed.mujthaba@fmagoodhooschool.edu.mv') && onOpenSuperAdminPasswords) && (
+                  {(isSuperAdmin && onOpenSuperAdminPasswords) && (
                     <button
                       type="button"
                       onClick={() => {
@@ -365,7 +367,7 @@ export const Header: React.FC<HeaderProps> = ({
                   )}
 
                   {/* Super Admin Reset All Attendance Option */}
-                  {((currentUser?.isSuperAdmin || currentUser?.email?.toLowerCase() === 'ahmed.mujthaba@fmagoodhooschool.edu.mv') && onResetAllAttendance) && (
+                  {(isSuperAdmin && onResetAllAttendance) && (
                     <button
                       id="reset-all-attendance-header-btn"
                       type="button"

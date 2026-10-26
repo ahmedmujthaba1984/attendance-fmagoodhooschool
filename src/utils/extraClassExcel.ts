@@ -290,7 +290,7 @@ export async function parseExtraClassExcel(
           // Match with staff list if possible
           let matchedTeacher = staffList.find(
             (s) =>
-              s.fullName.toLowerCase() === teacherNameInput.toLowerCase() ||
+              (s.fullName || '').toLowerCase() === teacherNameInput.toLowerCase() ||
               (s.fullNameDhivehi && s.fullNameDhivehi === teacherNameInput)
           );
 

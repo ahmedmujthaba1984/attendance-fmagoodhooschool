@@ -33,6 +33,7 @@ import {
   DEFAULT_STUDENTS,
   DEFAULT_CALENDAR,
   hasStaffLocalCustomPassword,
+  isUserSuperAdmin,
 } from './data/fallbackData';
 import {
   User,
@@ -85,7 +86,7 @@ function MainApp() {
           : found;
       }
     }
-    const def = DEFAULT_STAFF[0] || null;
+    const def = DEFAULT_STAFF.find((s) => isUserSuperAdmin(s)) || DEFAULT_STAFF[0] || null;
     return def && isMobileOrPrivileged
       ? { ...def, hasRapidRollCallPrivilege: true, loginViaMobile: true }
       : def;
@@ -1003,6 +1004,7 @@ function MainApp() {
   const isPrivilegedUser = Boolean(
     currentUser?.role === 'ADMIN' ||
     currentUser?.isSuperAdmin ||
+    isUserSuperAdmin(currentUser) ||
     currentUser?.hasRapidRollCallPrivilege ||
     currentUser?.loginViaMobile ||
     safeLocalStorage.getItem('moe_rapid_roll_call_privileged') === 'true' ||
@@ -1148,7 +1150,7 @@ function MainApp() {
           records: updatedRecords,
           hasRapidRollCallPrivilege: Boolean(currentUser?.hasRapidRollCallPrivilege || isPrivilegedUser),
           loginViaMobile: Boolean(currentUser?.loginViaMobile || isPrivilegedUser),
-          isSuperAdmin: Boolean(currentUser?.isSuperAdmin),
+          isSuperAdmin: Boolean(currentUser?.isSuperAdmin || isUserSuperAdmin(currentUser)),
         }),
       });
       if (res.ok) {
@@ -1824,7 +1826,7 @@ function MainApp() {
       // 2. Fallback to name search across English and Dhivehi
       if (!student) {
         student = students.find((s) => {
-          const matchNameEn = s.fullName.toLowerCase();
+          const matchNameEn = (s.fullName || '').toLowerCase();
           const matchNameDv = (s.fullNameDhivehi || '').trim();
           const queryName = (match.studentName || '').trim().toLowerCase();
           const queryNameRaw = (match.studentName || '').trim();

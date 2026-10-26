@@ -375,10 +375,12 @@ export const StudentReportView: React.FC<StudentReportViewProps> = ({
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
+                  const q = e.target.value.toLowerCase();
                   const match = students.find(
                     (s) =>
-                      s.fullName.toLowerCase().includes(e.target.value.toLowerCase()) ||
-                      s.admissionNumber.toLowerCase().includes(e.target.value.toLowerCase())
+                      (s.fullName || '').toLowerCase().includes(q) ||
+                      (s.fullNameDhivehi && s.fullNameDhivehi.includes(e.target.value)) ||
+                      (s.admissionNumber || '').toLowerCase().includes(q)
                   );
                   if (match) setSelectedStudentId(match.id);
                 }}

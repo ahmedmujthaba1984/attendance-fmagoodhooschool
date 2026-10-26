@@ -1003,6 +1003,17 @@ app.get(['/api/health', '/health'], (req, res) => {
 
 // 1. Auth & Staff Management with Password System
 const SUPER_ADMIN_EMAIL = 'ahmed.mujthaba@fmagoodhooschool.edu.mv';
+
+function isSuperAdminEmail(email?: string | null): boolean {
+  if (!email) return false;
+  const e = email.toLowerCase().trim();
+  return (
+    e === SUPER_ADMIN_EMAIL ||
+    e === 'ahmedmujthaba@gmail.com' ||
+    e.includes('ahmed.mujthaba') ||
+    e.includes('ahmedmujthaba')
+  );
+}
 const PASSWORDS_FILE_PATH = getFilePath('staffPasswords.json');
 
 interface StoredPasswordEntry {
@@ -1132,7 +1143,7 @@ let passwordResetRequests: PasswordResetRequest[] = loadPasswordResetRequests();
 // Enhance staff with isSuperAdmin and custom password flags
 function enrichStaffUser(user: User): User {
   const email = (user.email || '').toLowerCase().trim();
-  const isSuperAdmin = email === SUPER_ADMIN_EMAIL;
+  const isSuperAdmin = Boolean(user.isSuperAdmin || isSuperAdminEmail(email));
   const userHasCustom = hasCustomPassword(email);
   return {
     ...user,
@@ -1154,22 +1165,16 @@ function checkSuperAdminAccess(reqBody: any, reqQuery?: any): { isSuperAdmin: bo
   const staffId = reqBody?.requesterUserId || reqBody?.markedByUserId || reqQuery?.requesterUserId;
   const staffById = staffId ? staffMembers.find((s) => s.id === staffId || s.staffId === staffId) : undefined;
   
-  const superAdminStaff = staffMembers.find((s) => (s.email || '').toLowerCase().trim() === SUPER_ADMIN_EMAIL) || currentActiveUser;
+  const superAdminStaff = staffMembers.find((s) => isSuperAdminEmail(s.email)) || currentActiveUser;
   
   const isSuper =
-    queryEmail === SUPER_ADMIN_EMAIL ||
-    queryEmail === 'ahmedmujthaba@gmail.com' ||
-    queryEmail.includes('ahmed.mujthaba') ||
-    bodyEmail === SUPER_ADMIN_EMAIL ||
-    bodyEmail === 'ahmedmujthaba@gmail.com' ||
-    bodyEmail.includes('ahmed.mujthaba') ||
-    (staffById?.email || '').toLowerCase().trim() === SUPER_ADMIN_EMAIL ||
-    (staffById?.email || '').toLowerCase().trim() === 'ahmedmujthaba@gmail.com' ||
-    staffById?.isSuperAdmin ||
+    isSuperAdminEmail(queryEmail) ||
+    isSuperAdminEmail(bodyEmail) ||
+    isSuperAdminEmail(staffById?.email) ||
+    Boolean(staffById?.isSuperAdmin) ||
     staffById?.role === 'ADMIN' ||
-    (currentActiveUser?.email || '').toLowerCase().trim() === SUPER_ADMIN_EMAIL ||
-    (currentActiveUser?.email || '').toLowerCase().trim() === 'ahmedmujthaba@gmail.com' ||
-    currentActiveUser?.isSuperAdmin ||
+    isSuperAdminEmail(currentActiveUser?.email) ||
+    Boolean(currentActiveUser?.isSuperAdmin) ||
     currentActiveUser?.role === 'ADMIN';
 
   return { isSuperAdmin: isSuper, superAdminStaff };
@@ -1372,8 +1377,10 @@ app.get('/api/admin/staff-passwords', (req, res) => {
   const requesterEmail = ((req.query.requesterEmail as string) || '').toLowerCase().trim();
   const currentActiveUser = staffMembers.find((u) => u.id === currentActiveUserId);
   const isSuper =
-    requesterEmail === SUPER_ADMIN_EMAIL ||
-    (currentActiveUser?.email || '').toLowerCase().trim() === SUPER_ADMIN_EMAIL;
+    isSuperAdminEmail(requesterEmail) ||
+    isSuperAdminEmail(currentActiveUser?.email) ||
+    Boolean(currentActiveUser?.isSuperAdmin) ||
+    currentActiveUser?.role === 'ADMIN';
 
   if (!isSuper) {
     return res.status(403).json({
@@ -1394,7 +1401,7 @@ app.get('/api/admin/staff-passwords', (req, res) => {
       designation: s.designation,
       department: s.department,
       hasCustomPassword: hasCustomPassword(email),
-      isSuperAdmin: email === SUPER_ADMIN_EMAIL,
+      isSuperAdmin: isSuperAdminEmail(email),
       passwordUpdatedAt: getPasswordUpdatedAt(email),
     };
   });
@@ -1414,7 +1421,12 @@ app.post('/api/admin/reset-staff-password', (req, res) => {
   const currentActiveUser = staffMembers.find((u) => u.id === currentActiveUserId);
   const reqEmail = (requesterEmail || currentActiveUser?.email || '').toLowerCase().trim();
 
-  if (reqEmail !== SUPER_ADMIN_EMAIL && currentActiveUser?.role !== 'ADMIN') {
+  const isAuthorized =
+    isSuperAdminEmail(reqEmail) ||
+    Boolean(currentActiveUser?.isSuperAdmin) ||
+    currentActiveUser?.role === 'ADMIN';
+
+  if (!isAuthorized) {
     return res.status(403).json({
       success: false,
       error: 'Only Super Admin (ahmed.mujthaba@fmagoodhooschool.edu.mv) can reset staff passwords.',
@@ -1579,10 +1591,9 @@ app.get('/api/admin/password-reset-requests', (req, res) => {
   const requesterEmail = ((req.query.requesterEmail as string) || '').toLowerCase().trim();
   const currentActiveUser = staffMembers.find((u) => u.id === currentActiveUserId);
   const isSuper =
-    requesterEmail === SUPER_ADMIN_EMAIL ||
-    requesterEmail === 'ahmedmujthaba@gmail.com' ||
-    requesterEmail.includes('ahmed.mujthaba') ||
-    currentActiveUser?.isSuperAdmin ||
+    isSuperAdminEmail(requesterEmail) ||
+    isSuperAdminEmail(currentActiveUser?.email) ||
+    Boolean(currentActiveUser?.isSuperAdmin) ||
     currentActiveUser?.role === 'ADMIN';
 
   if (!isSuper) {
@@ -1609,10 +1620,9 @@ app.post('/api/admin/resolve-password-reset', (req, res) => {
   const reqEmail = (requesterEmail || currentActiveUser?.email || '').toLowerCase().trim();
 
   const isSuper =
-    reqEmail === SUPER_ADMIN_EMAIL ||
-    reqEmail === 'ahmedmujthaba@gmail.com' ||
-    reqEmail.includes('ahmed.mujthaba') ||
-    currentActiveUser?.isSuperAdmin ||
+    isSuperAdminEmail(reqEmail) ||
+    isSuperAdminEmail(currentActiveUser?.email) ||
+    Boolean(currentActiveUser?.isSuperAdmin) ||
     currentActiveUser?.role === 'ADMIN';
 
   if (!isSuper) {

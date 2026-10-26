@@ -23,6 +23,7 @@ import {
 import { useLanguage } from '../i18n/LanguageContext';
 import { User } from '../types';
 import { PWAInstallButton } from './pwa/PWAInstallButton';
+import { isUserSuperAdmin } from '../data/fallbackData';
 
 interface MobileMenuDrawerProps {
   isOpen: boolean;
@@ -59,7 +60,7 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({
 
   if (!isOpen) return null;
 
-  const isSuperAdmin = currentUser?.isSuperAdmin || currentUser?.email?.toLowerCase() === 'ahmed.mujthaba@fmagoodhooschool.edu.mv';
+  const isSuperAdmin = isUserSuperAdmin(currentUser);
 
   const menuItems = [
     ...(onOpenTimingsModal ? [{

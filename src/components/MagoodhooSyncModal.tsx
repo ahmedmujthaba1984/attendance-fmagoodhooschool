@@ -220,10 +220,10 @@ export const MagoodhooSyncModal: React.FC<MagoodhooSyncModalProps> = ({
     const q = searchQuery.toLowerCase();
     const matchesSearch =
       !searchQuery ||
-      s.fullName.toLowerCase().includes(q) ||
-      s.fullNameDhivehi.includes(searchQuery) ||
-      s.admissionNumber.toLowerCase().includes(q) ||
-      s.gradeLevel.toLowerCase().includes(q);
+      (s.fullName || '').toLowerCase().includes(q) ||
+      (s.fullNameDhivehi && s.fullNameDhivehi.includes(searchQuery)) ||
+      (s.admissionNumber || '').toLowerCase().includes(q) ||
+      (s.gradeLevel || '').toLowerCase().includes(q);
     return matchesGrade && matchesSearch;
   });
 

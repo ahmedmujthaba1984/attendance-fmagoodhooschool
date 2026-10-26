@@ -27,7 +27,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
       <button
         type="button"
         onClick={install}
-        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-sky-600 to-teal-600 hover:from-sky-700 hover:to-teal-700 text-white font-bold text-xs shadow-xs transition active:scale-95 cursor-pointer ${className}`}
+        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-linear-to-r from-sky-600 to-teal-600 hover:from-sky-700 hover:to-teal-700 text-white font-bold text-xs shadow-xs transition active:scale-95 cursor-pointer ${className}`}
         title={isRTL ? 'ފޯނަށް މި އެޕް އިންސްޓޯލް ކުރައްވާ (އޮފްލައިންކޮށް ބޭނުންކުރެވޭނެ)' : 'Install App on Mobile (Works Offline)'}
       >
         <Smartphone className="w-3.5 h-3.5 shrink-0" />

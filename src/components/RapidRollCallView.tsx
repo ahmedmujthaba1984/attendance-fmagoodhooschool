@@ -187,9 +187,9 @@ export const RapidRollCallView: React.FC<RapidRollCallViewProps> = ({
     const q = localSearch.toLowerCase().trim();
     return students.filter(
       (s) =>
-        s.fullName.toLowerCase().includes(q) ||
-        s.fullNameDhivehi.includes(q) ||
-        s.admissionNumber.toLowerCase().includes(q)
+        (s.fullName || '').toLowerCase().includes(q) ||
+        (s.fullNameDhivehi || '').includes(q) ||
+        (s.admissionNumber || '').toLowerCase().includes(q)
     );
   }, [students, localSearch]);
 

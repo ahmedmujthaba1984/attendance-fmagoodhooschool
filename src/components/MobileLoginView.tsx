@@ -32,6 +32,7 @@ import {
   getStaffLocalPassword,
   setStaffLocalPassword,
   hasStaffLocalCustomPassword,
+  isUserSuperAdmin,
 } from '../data/fallbackData';
 
 interface MobileLoginViewProps {
@@ -70,11 +71,7 @@ export const MobileLoginView: React.FC<MobileLoginViewProps> = ({
     }
     // Default to Leading Teacher / Ahmed Mujthaba or first assigned teacher
     return (
-      allStaff.find(
-        (s) =>
-          s.isSuperAdmin ||
-          s.email?.toLowerCase() === 'ahmed.mujthaba@fmagoodhooschool.edu.mv'
-      ) ||
+      allStaff.find((s) => isUserSuperAdmin(s)) ||
       allStaff.find((s) => Boolean(s.assignedGrade)) ||
       allStaff[0] ||
       null
@@ -171,7 +168,7 @@ export const MobileLoginView: React.FC<MobileLoginViewProps> = ({
       if (!directorySearch.trim()) return true;
       const q = directorySearch.toLowerCase().trim();
       return (
-        s.fullName.toLowerCase().includes(q) ||
+        (s.fullName || '').toLowerCase().includes(q) ||
         (s.fullNameDhivehi && s.fullNameDhivehi.includes(q)) ||
         (s.email && s.email.toLowerCase().includes(q)) ||
         (s.staffId && s.staffId.toLowerCase().includes(q)) ||
@@ -290,10 +287,7 @@ export const MobileLoginView: React.FC<MobileLoginViewProps> = ({
       loginSucceeded = true;
       loggedInUser = {
         ...matched,
-        isSuperAdmin: Boolean(
-          matched.isSuperAdmin ||
-          matched.email?.toLowerCase() === 'ahmed.mujthaba@fmagoodhooschool.edu.mv'
-        ),
+        isSuperAdmin: isUserSuperAdmin(matched),
       };
     }
 
@@ -1337,7 +1331,7 @@ export const MobileLoginView: React.FC<MobileLoginViewProps> = ({
             {/* Staff List */}
             <div className="flex-1 overflow-y-auto p-2 divide-y divide-slate-100">
               {filteredDirectory.map((staff) => {
-                const isSuperAdmin = staff.email?.toLowerCase() === 'ahmed.mujthaba@fmagoodhooschool.edu.mv';
+                const isSuperAdmin = isUserSuperAdmin(staff);
                 return (
                   <button
                     key={staff.id}

@@ -6,6 +6,7 @@ export type SyncState = 'online_synced' | 'offline_saved' | 'syncing' | 'error';
 class SyncEngine {
   private isOnline: boolean = typeof navigator !== 'undefined' ? navigator.onLine : true;
   private listeners: Set<(state: SyncState, pendingCount: number) => void> = new Set();
+  private syncSuccessListeners: Set<(syncedCount: number) => void> = new Set();
   private currentState: SyncState = 'online_synced';
   private syncInProgress: boolean = false;
   private isProcessing: boolean = false;
@@ -13,9 +14,14 @@ class SyncEngine {
 
   constructor() {
     if (typeof window !== 'undefined') {
-      window.addEventListener('online', () => {
+      window.addEventListener('online', async () => {
         this.isOnline = true;
-        this.flushQueue();
+        const count = await this.getPendingCount();
+        if (count > 0) {
+          this.flushQueue().catch(() => {});
+        } else {
+          this.notify();
+        }
       });
 
       window.addEventListener('offline', () => {
@@ -23,13 +29,23 @@ class SyncEngine {
         this.notify();
       });
 
-      // Periodic check every 3 seconds for fast automatic background synchronization
-      setInterval(() => {
+      // Periodic check only triggers when there are actual pending offline records
+      setInterval(async () => {
         if (this.isOnline && !this.syncInProgress) {
-          this.flushQueue().catch(() => {});
+          const count = await this.getPendingCount();
+          if (count > 0) {
+            this.flushQueue().catch(() => {});
+          }
         }
-      }, 3000);
+      }, 4000);
     }
+  }
+
+  public onSyncSuccess(callback: (syncedCount: number) => void) {
+    this.syncSuccessListeners.add(callback);
+    return () => {
+      this.syncSuccessListeners.delete(callback);
+    };
   }
 
   public subscribe(callback: (state: SyncState, pendingCount: number) => void) {
@@ -136,6 +152,15 @@ class SyncEngine {
    * Process all queued payloads to server using a continuous draining loop
    */
   public async flushQueue(): Promise<{ success: boolean; syncedCount: number; error?: string }> {
+    const initialCount = await this.getPendingCount();
+    if (initialCount === 0) {
+      if (this.currentState !== 'online_synced' && this.isOnline) {
+        this.currentState = 'online_synced';
+        await this.notify();
+      }
+      return { success: true, syncedCount: 0 };
+    }
+
     if (this.isProcessing) {
       if (!this.queuedPromise) {
         this.queuedPromise = (async () => {
@@ -204,6 +229,9 @@ class SyncEngine {
       this.isProcessing = false;
       this.syncInProgress = false;
       await this.notify();
+      if (totalSynced > 0) {
+        this.syncSuccessListeners.forEach((cb) => cb(totalSynced));
+      }
       return { success: true, syncedCount: totalSynced };
     } catch (err: any) {
       console.warn('Sync flush postponed: offline or server unavailable', err);

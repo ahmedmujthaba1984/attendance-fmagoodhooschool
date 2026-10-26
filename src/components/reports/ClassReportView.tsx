@@ -367,9 +367,9 @@ export const ClassReportView: React.FC<ClassReportViewProps> = ({
       if (!searchFilter.trim()) return true;
       const q = searchFilter.toLowerCase();
       return (
-        s.fullName.toLowerCase().includes(q) ||
+        (s.fullName || '').toLowerCase().includes(q) ||
         (s.fullNameDhivehi && s.fullNameDhivehi.includes(q)) ||
-        s.admissionNumber.toLowerCase().includes(q)
+        (s.admissionNumber || '').toLowerCase().includes(q)
       );
     }) || [];
 

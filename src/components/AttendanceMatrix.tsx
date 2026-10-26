@@ -61,6 +61,7 @@ import {
   getMaldivesNow,
 } from '../utils/sessionTimingsHelper';
 import { safeLocalStorage } from '../utils/browserUtils';
+import { isUserSuperAdmin } from '../data/fallbackData';
 
 interface AttendanceMatrixProps {
   students: Student[];
@@ -166,10 +167,7 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
 }) => {
   const { t, isRTL } = useLanguage();
 
-  const isSuperAdmin = Boolean(
-    currentUser?.isSuperAdmin ||
-    currentUser?.email?.toLowerCase() === 'ahmed.mujthaba@fmagoodhooschool.edu.mv'
-  );
+  const isSuperAdmin = isUserSuperAdmin(currentUser);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PRESENT' | 'LATE' | 'LEAVE' | 'ABSENT' | 'UNMARKED'>('ALL');
@@ -375,9 +373,9 @@ export const AttendanceMatrix: React.FC<AttendanceMatrixProps> = ({
       if (!searchQuery.trim()) return true;
       const q = searchQuery.toLowerCase();
       return (
-        st.fullName.toLowerCase().includes(q) ||
-        st.fullNameDhivehi.includes(q) ||
-        st.admissionNumber.toLowerCase().includes(q)
+        (st.fullName || '').toLowerCase().includes(q) ||
+        (st.fullNameDhivehi || '').includes(q) ||
+        (st.admissionNumber || '').toLowerCase().includes(q)
       );
     });
   }, [students, selectedGrade, searchQuery]);

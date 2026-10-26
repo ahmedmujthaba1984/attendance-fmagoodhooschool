@@ -19,6 +19,7 @@ export const OfflineIndicator: React.FC = () => {
     const unsubscribeState = syncEngine.subscribe((state, count) => {
       setSyncState(state);
       setPendingCount(count);
+      setIsOnline(syncEngine.getOnlineStatus());
     });
 
     // 2. Only show "All attendance records synced" when actual records were uploaded from the queue!

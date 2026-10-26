@@ -234,7 +234,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ stats }) => {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-4">
+        <div className="dashboard-stats-grid grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-4">
           {cards.map((card) => {
             const Icon = card.icon;
             const style = colorStyles[card.color];
@@ -243,7 +243,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ stats }) => {
               <div
                 key={card.id}
                 id={`stat-card-${card.id}`}
-                className={`p-3 sm:p-4 rounded-xl ${style.bg} border ${style.border} shadow-xs transition-all hover:shadow-md flex flex-col justify-between`}
+                className={`dashboard-stats-card p-3 sm:p-4 rounded-xl ${style.bg} border ${style.border} shadow-xs transition-all hover:shadow-md flex flex-col justify-between`}
               >
                 <div className="flex items-start justify-between gap-1.5 mb-2">
                   <div className={`p-1.5 sm:p-2 rounded-lg border ${style.iconBg}`}>

@@ -89,3 +89,16 @@ html, body {
   }
 }
 
+/* Media query to stack DashboardStats cards vertically on mobile for improved readability */
+@media (max-width: 639px) {
+  .dashboard-stats-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+  }
+
+  .dashboard-stats-grid .dashboard-stats-card {
+    width: 100% !important;
+  }
+}
+
+

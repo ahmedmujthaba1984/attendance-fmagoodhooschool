@@ -56,34 +56,84 @@ import {
  * Even if serverRecords is empty (due to serverless cold start or network latency),
  * local offline or newly marked records are never wiped.
  */
+/**
+ * Persistent Master Attendance Registry helpers to ensure locally marked attendance
+ * is NEVER lost across session switches, browser reloads, PWA launches, or serverless cold starts.
+ */
+const MASTER_ATTENDANCE_STORAGE_KEY = 'moe_attendance_master_records';
+
+function getLocalMasterRecords(date: string, session: SessionType): AttendanceRecord[] {
+  try {
+    const raw = safeLocalStorage.getItem(MASTER_ATTENDANCE_STORAGE_KEY);
+    if (!raw) return [];
+    const master: Record<string, AttendanceRecord> = JSON.parse(raw);
+    const result: AttendanceRecord[] = [];
+    for (const key of Object.keys(master)) {
+      const rec = master[key];
+      if (rec && rec.date === date && rec.sessionType === session) {
+        result.push(rec);
+      }
+    }
+    return result;
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalMasterRecord(record: AttendanceRecord) {
+  try {
+    const raw = safeLocalStorage.getItem(MASTER_ATTENDANCE_STORAGE_KEY);
+    const master: Record<string, AttendanceRecord> = raw ? JSON.parse(raw) : {};
+    const key = `${record.studentId}_${record.date}_${record.sessionType}`;
+    master[key] = record;
+    safeLocalStorage.setItem(MASTER_ATTENDANCE_STORAGE_KEY, JSON.stringify(master));
+  } catch {}
+}
+
+function saveLocalMasterRecordsBulk(records: AttendanceRecord[]) {
+  try {
+    const raw = safeLocalStorage.getItem(MASTER_ATTENDANCE_STORAGE_KEY);
+    const master: Record<string, AttendanceRecord> = raw ? JSON.parse(raw) : {};
+    for (const record of records) {
+      const key = `${record.studentId}_${record.date}_${record.sessionType}`;
+      master[key] = record;
+    }
+    safeLocalStorage.setItem(MASTER_ATTENDANCE_STORAGE_KEY, JSON.stringify(master));
+  } catch {}
+}
+
 function mergeAttendanceRecords(
   serverRecords: AttendanceRecord[],
   localRecords: AttendanceRecord[]
 ): AttendanceRecord[] {
   const map = new Map<string, AttendanceRecord>();
 
-  // 1. First, populate from server
+  // 1. Populate from server
   for (const s of serverRecords) {
     if (s && s.studentId) {
       map.set(s.studentId, s);
     }
   }
 
-  // 2. Overlay local records
+  // 2. Overlay local records (never discard locally marked records)
   for (const l of localRecords) {
     if (!l || !l.studentId) continue;
     const existing = map.get(l.studentId);
     if (!existing) {
-      // Local record exists but server does not have it -> Keep local record!
+      // Local record exists but server does not have it -> Always keep local record!
       map.set(l.studentId, l);
     } else if (l.syncStatus === 'PENDING_OFFLINE') {
-      // Unsynced local change always wins over older server data
       map.set(l.studentId, l);
     } else {
-      // Compare timestamps
       const lTime = l.updatedAt ? new Date(l.updatedAt).getTime() : 0;
       const sTime = existing.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
-      if (lTime >= sTime) {
+      // If local has an explicit status and server is unmarked or older/equal, keep local
+      if (l.status && !existing.status) {
+        map.set(l.studentId, l);
+      } else if (lTime >= sTime) {
+        map.set(l.studentId, l);
+      } else if (l.status && l.status !== existing.status && lTime >= sTime - 10000) {
+        // Guard against slight clock skew where server updatedAt was generated milliseconds ahead
         map.set(l.studentId, l);
       }
     }
@@ -164,10 +214,17 @@ function MainApp() {
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>(() => {
     try {
       const savedDate = safeLocalStorage.getItem('moe_selected_date') || getMaldivesNow().dateStr;
-      const savedSession = safeLocalStorage.getItem('moe_selected_session') || 'MORNING_BEFORE_BREAK';
+      const savedSession = (safeLocalStorage.getItem('moe_selected_session') as SessionType) || 'MORNING_BEFORE_BREAK';
       const storageKey = `moe_att_${savedDate}_${savedSession}`;
       const saved = safeLocalStorage.getJSON<AttendanceRecord[]>(storageKey, []);
-      return Array.isArray(saved) ? saved : [];
+      const masterList = getLocalMasterRecords(savedDate, savedSession);
+      const combined = Array.isArray(saved) ? [...saved] : [];
+      for (const m of masterList) {
+        if (!combined.some((c) => c.studentId === m.studentId)) {
+          combined.push(m);
+        }
+      }
+      return combined;
     } catch {
       return [];
     }
@@ -445,10 +502,16 @@ function MainApp() {
             .toArray().catch(() => []);
           const storageKey = `moe_att_${curDate}_${curSession}`;
           const storedList = safeLocalStorage.getJSON<AttendanceRecord[]>(storageKey, []);
+          const masterList = getLocalMasterRecords(curDate, curSession);
           const allLocal = [...localRecords];
           for (const s of storedList) {
             if (!allLocal.some((l) => l.studentId === s.studentId)) {
               allLocal.push(s);
+            }
+          }
+          for (const m of masterList) {
+            if (!allLocal.some((l) => l.studentId === m.studentId)) {
+              allLocal.push(m);
             }
           }
           const mergedRecords = mergeAttendanceRecords(data.records, allLocal);
@@ -470,6 +533,7 @@ function MainApp() {
           });
           if (mergedRecords.length > 0) {
             safeLocalStorage.setJSON(storageKey, mergedRecords);
+            saveLocalMasterRecordsBulk(mergedRecords);
           }
           setCounterpartRecords((prev) => {
             const next = data.counterpartRecords || [];
@@ -909,20 +973,6 @@ function MainApp() {
         res = new Response(null, { status: 503 });
       }
 
-      if (!res.ok && res.status >= 500) {
-        try {
-          const fallbackRes = await fetch(
-            `https://ais-pre-hcbb6j45j7x6ggddv3drjx-736669025161.asia-east1.run.app${url}`,
-            {
-              cache: 'no-store',
-              headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
-            }
-          );
-          if (fallbackRes.ok) {
-            res = fallbackRes;
-          }
-        } catch {}
-      }
       if (res.ok) {
         const data = await res.json();
         const serverRecords: AttendanceRecord[] = data.records || [];
@@ -937,19 +987,26 @@ function MainApp() {
 
           const storageKey = `moe_att_${selectedDate}_${selectedSession}`;
           const storedList = safeLocalStorage.getJSON<AttendanceRecord[]>(storageKey, []);
+          const masterList = getLocalMasterRecords(selectedDate, selectedSession);
           const allLocal = [...localRecords];
           for (const s of storedList) {
             if (!allLocal.some((l) => l.studentId === s.studentId)) {
               allLocal.push(s);
             }
           }
+          for (const m of masterList) {
+            if (!allLocal.some((l) => l.studentId === m.studentId)) {
+              allLocal.push(m);
+            }
+          }
 
           const mergedRecords = mergeAttendanceRecords(serverRecords, allLocal);
           setAttendanceRecords(mergedRecords);
 
-          // Update Dexie cache & safeLocalStorage with merged records
+          // Update Dexie cache, safeLocalStorage & master local dictionary with merged records
           if (mergedRecords.length > 0) {
             safeLocalStorage.setJSON(storageKey, mergedRecords);
+            saveLocalMasterRecordsBulk(mergedRecords);
             await offlineDb.attendance.bulkPut(mergedRecords).catch(() => {});
           }
         } catch {
@@ -1136,6 +1193,7 @@ function MainApp() {
     const storageKey = `moe_att_${enrichedRecord.date}_${enrichedRecord.sessionType}`;
 
     // 1. Optimistic UI update and immediate synchronous local persistence
+    saveLocalMasterRecord(enrichedRecord);
     setAttendanceRecords((prev) => {
       const idx = prev.findIndex((r) => r.studentId === enrichedRecord.studentId);
       const updated = idx >= 0 ? [...prev] : [...prev, enrichedRecord];
@@ -1149,11 +1207,14 @@ function MainApp() {
 
     // 2. Direct fast-path sync to server API with offline fallback
     try {
+      const nowTimes = getMaldivesNow();
       const res = await fetch('/api/attendance/single', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           record: enrichedRecord,
+          clientTime: nowTimes.timeStr,
+          clientDate: enrichedRecord.date,
           hasRapidRollCallPrivilege: Boolean(currentUser?.hasRapidRollCallPrivilege || isPrivilegedUser),
           loginViaMobile: Boolean(currentUser?.loginViaMobile || isPrivilegedUser),
           isSuperAdmin: Boolean(currentUser?.isSuperAdmin || isUserSuperAdmin(currentUser)),
@@ -1164,6 +1225,7 @@ function MainApp() {
       if (res.ok) {
         const resData = await res.json();
         const savedRec = resData.record || enrichedRecord;
+        saveLocalMasterRecord(savedRec);
         await offlineDb.attendance.put({ ...savedRec, syncStatus: 'SYNCED' });
         const currentList = safeLocalStorage.getJSON<AttendanceRecord[]>(storageKey, []);
         const idx = currentList.findIndex((r) => r.studentId === savedRec.studentId);
@@ -1253,6 +1315,7 @@ function MainApp() {
       (r) => !relevantStudents.some((st) => st.id === r.studentId)
     );
     const combinedNew = [...otherRecords, ...updatedRecords];
+    saveLocalMasterRecordsBulk(updatedRecords);
     setAttendanceRecords(combinedNew);
     const storageKey = `moe_att_${selectedDate}_${selectedSession}`;
     safeLocalStorage.setJSON(storageKey, combinedNew);

@@ -1993,6 +1993,25 @@ app.get('/api/attendance', (req, res) => {
   const pendingSession = getPreviousPendingSession(targetDate, targetSession);
   const isCurrentSessionSubmitted = submittedSessions.has(`${targetDate}_${targetSession}`);
 
+  // Sync any newly persisted records from disk into attendanceStore
+  try {
+    if (fs.existsSync(ATTENDANCE_FILE_PATH)) {
+      const raw = fs.readFileSync(ATTENDANCE_FILE_PATH, "utf-8");
+      const diskList = JSON.parse(raw);
+      if (Array.isArray(diskList)) {
+        diskList.forEach((rec) => {
+          if (rec && rec.studentId && rec.date && rec.sessionType) {
+            const k = `${rec.studentId}_${rec.date}_${rec.sessionType}`;
+            const mem = attendanceStore.get(k);
+            if (!mem || (rec.updatedAt && mem.updatedAt && new Date(rec.updatedAt).getTime() >= new Date(mem.updatedAt).getTime())) {
+              attendanceStore.set(k, rec);
+            }
+          }
+        });
+      }
+    }
+  } catch {}
+
   let relevantStudents = students;
   if (grade && typeof grade === 'string' && grade !== 'ALL') {
     relevantStudents = students.filter((s) => s.gradeLevel === grade);
@@ -2121,9 +2140,9 @@ app.post('/api/attendance/bulk', (req, res) => {
       req.body.loginViaMobile ||
       /Android|iPhone|iPad|Mobile/i.test(req.headers['user-agent'] || '')
     );
-  const isEarlyAllowed = isAuthorizedMarker && sessionStartInfo.error === 'SESSION_NOT_STARTED';
+  const isEarlyAllowed = (isAuthorizedMarker || isSuperAdmin) && (sessionStartInfo.error === 'SESSION_NOT_STARTED' || sessionStartInfo.error === 'FUTURE_DATE_NOT_ALLOWED');
 
-  if (!sessionStartInfo.allowed && !isEarlyAllowed) {
+  if (!sessionStartInfo.allowed && !isEarlyAllowed && !isSuperAdmin) {
     return res.status(400).json({
       error: sessionStartInfo.error,
       message: sessionStartInfo.message,
@@ -2229,9 +2248,9 @@ const handleSingleAttendance = (req: express.Request, res: express.Response) => 
       req.body.loginViaMobile ||
       /Android|iPhone|iPad|Mobile/i.test(req.headers['user-agent'] || '')
     );
-  const isEarlyAllowed = isAuthorizedMarker && sessionStartInfo.error === 'SESSION_NOT_STARTED';
+  const isEarlyAllowed = (isAuthorizedMarker || isSuperAdmin) && (sessionStartInfo.error === 'SESSION_NOT_STARTED' || sessionStartInfo.error === 'FUTURE_DATE_NOT_ALLOWED');
 
-  if (!sessionStartInfo.allowed && !isEarlyAllowed) {
+  if (!sessionStartInfo.allowed && !isEarlyAllowed && !isSuperAdmin) {
     return res.status(400).json({
       error: sessionStartInfo.error,
       message: sessionStartInfo.message,

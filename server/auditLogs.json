@@ -1,5 +1,25 @@
 [
   {
+    "id": "audit-1793115235051-ga5lwj",
+    "timestamp": "2026-10-27T15:33:55.051Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Liam Bin Abdul Majeedh (Grade 4) as LEAVE (SICK_LEAVE) on 2026-10-27 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1793097439710-lnow9a",
+    "timestamp": "2026-10-27T10:37:19.710Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Liam Bin Abdul Majeedh (Grade 4) as LEAVE (SICK_LEAVE) on 2026-10-27 by Ahmed Mujthaba (Senior School Administration Officer)"
+  },
+  {
     "id": "audit-1793089873258-lnbkza",
     "timestamp": "2026-10-27T08:31:13.258Z",
     "userId": "stf-03",

@@ -2111,12 +2111,17 @@ app.post('/api/attendance/bulk', (req, res) => {
 
   // 2. Validate session has started / date has arrived
   const sessionStartInfo = checkSessionStartEligibility(targetDate, targetSession, clientTime, clientDate);
-  const isMobileClient = Boolean(
-    req.body.hasRapidRollCallPrivilege ||
-    req.body.loginViaMobile ||
-    /Android|iPhone|iPad|Mobile/i.test(req.headers['user-agent'] || '')
-  );
-  const isEarlyAllowed = isMobileClient && sessionStartInfo.error === 'SESSION_NOT_STARTED';
+  const { isSuperAdmin } = checkSuperAdminAccess(req.body);
+  const isAuthorizedMarker =
+    isSuperAdmin ||
+    checkIsLeadingTeacherOrAdmin(req.body.requesterUserId || currentActiveUserId) ||
+    Boolean(
+      req.body.isSuperAdmin ||
+      req.body.hasRapidRollCallPrivilege ||
+      req.body.loginViaMobile ||
+      /Android|iPhone|iPad|Mobile/i.test(req.headers['user-agent'] || '')
+    );
+  const isEarlyAllowed = isAuthorizedMarker && sessionStartInfo.error === 'SESSION_NOT_STARTED';
 
   if (!sessionStartInfo.allowed && !isEarlyAllowed) {
     return res.status(400).json({
@@ -2135,7 +2140,7 @@ app.post('/api/attendance/bulk', (req, res) => {
   const sessionKey = `${targetDate}_${targetSession}`;
   if (submittedSessions.has(sessionKey)) {
     const { isSuperAdmin } = checkSuperAdminAccess(req.body);
-    if (!isSuperAdmin && !isMobileClient) {
+    if (!isSuperAdmin && !isAuthorizedMarker) {
       return res.status(403).json({
         error: 'SESSION_LOCKED',
         message: 'This attendance session has already been finalized and locked. Only Super Admin can modify or revert finalized sessions.',
@@ -2214,12 +2219,17 @@ const handleSingleAttendance = (req: express.Request, res: express.Response) => 
     req.body.clientTime,
     req.body.clientDate
   );
-  const isMobileClient = Boolean(
-    req.body.hasRapidRollCallPrivilege ||
-    req.body.loginViaMobile ||
-    /Android|iPhone|iPad|Mobile/i.test(req.headers['user-agent'] || '')
-  );
-  const isEarlyAllowed = isMobileClient && sessionStartInfo.error === 'SESSION_NOT_STARTED';
+  const { isSuperAdmin } = checkSuperAdminAccess(req.body);
+  const isAuthorizedMarker =
+    isSuperAdmin ||
+    checkIsLeadingTeacherOrAdmin(req.body.requesterUserId || normalizedRecord.markedByUserId || currentActiveUserId) ||
+    Boolean(
+      req.body.isSuperAdmin ||
+      req.body.hasRapidRollCallPrivilege ||
+      req.body.loginViaMobile ||
+      /Android|iPhone|iPad|Mobile/i.test(req.headers['user-agent'] || '')
+    );
+  const isEarlyAllowed = isAuthorizedMarker && sessionStartInfo.error === 'SESSION_NOT_STARTED';
 
   if (!sessionStartInfo.allowed && !isEarlyAllowed) {
     return res.status(400).json({
@@ -2238,7 +2248,7 @@ const handleSingleAttendance = (req: express.Request, res: express.Response) => 
   const sessionKey = `${normalizedRecord.date}_${normalizedRecord.sessionType}`;
   if (submittedSessions.has(sessionKey)) {
     const { isSuperAdmin } = checkSuperAdminAccess(req.body);
-    if (!isSuperAdmin && !isMobileClient) {
+    if (!isSuperAdmin && !isAuthorizedMarker) {
       return res.status(403).json({
         error: 'SESSION_LOCKED',
         message: 'This attendance session has already been finalized. If a student was marked incorrectly (e.g. present marked as absent), please contact Super Admin (Ahmed Mujthaba) to revert or correct.',

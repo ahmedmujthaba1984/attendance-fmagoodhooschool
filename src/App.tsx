@@ -51,6 +51,47 @@ import {
   SchoolSessionTimings,
 } from './types';
 
+/**
+ * Merges server and local attendance records without dropping local entries.
+ * Even if serverRecords is empty (due to serverless cold start or network latency),
+ * local offline or newly marked records are never wiped.
+ */
+function mergeAttendanceRecords(
+  serverRecords: AttendanceRecord[],
+  localRecords: AttendanceRecord[]
+): AttendanceRecord[] {
+  const map = new Map<string, AttendanceRecord>();
+
+  // 1. First, populate from server
+  for (const s of serverRecords) {
+    if (s && s.studentId) {
+      map.set(s.studentId, s);
+    }
+  }
+
+  // 2. Overlay local records
+  for (const l of localRecords) {
+    if (!l || !l.studentId) continue;
+    const existing = map.get(l.studentId);
+    if (!existing) {
+      // Local record exists but server does not have it -> Keep local record!
+      map.set(l.studentId, l);
+    } else if (l.syncStatus === 'PENDING_OFFLINE') {
+      // Unsynced local change always wins over older server data
+      map.set(l.studentId, l);
+    } else {
+      // Compare timestamps
+      const lTime = l.updatedAt ? new Date(l.updatedAt).getTime() : 0;
+      const sTime = existing.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
+      if (lTime >= sTime) {
+        map.set(l.studentId, l);
+      }
+    }
+  }
+
+  return Array.from(map.values());
+}
+
 function MainApp() {
   const { t, isRTL } = useLanguage();
 
@@ -91,8 +132,46 @@ function MainApp() {
       ? { ...def, hasRapidRollCallPrivilege: true, loginViaMobile: true }
       : def;
   });
+
+  // Selection state with resilient local persistence
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    try {
+      const saved = safeLocalStorage.getItem('moe_selected_date');
+      const today = getMaldivesNow().dateStr;
+      return saved && saved <= today ? saved : today;
+    } catch {
+      return getMaldivesNow().dateStr;
+    }
+  });
+  const [selectedGrade, setSelectedGrade] = useState<GradeLevel | 'ALL'>(() => {
+    try {
+      const saved = safeLocalStorage.getItem('moe_selected_grade');
+      return (saved as GradeLevel | 'ALL') || 'Grade 10';
+    } catch {
+      return 'Grade 10';
+    }
+  });
+  const [selectedSession, setSelectedSession] = useState<SessionType>(() => {
+    try {
+      const saved = safeLocalStorage.getItem('moe_selected_session');
+      return (saved as SessionType) || 'MORNING_BEFORE_BREAK';
+    } catch {
+      return 'MORNING_BEFORE_BREAK';
+    }
+  });
+
   const [students, setStudents] = useState<Student[]>(DEFAULT_STUDENTS);
-  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>(() => {
+    try {
+      const savedDate = safeLocalStorage.getItem('moe_selected_date') || getMaldivesNow().dateStr;
+      const savedSession = safeLocalStorage.getItem('moe_selected_session') || 'MORNING_BEFORE_BREAK';
+      const storageKey = `moe_att_${savedDate}_${savedSession}`;
+      const saved = safeLocalStorage.getJSON<AttendanceRecord[]>(storageKey, []);
+      return Array.isArray(saved) ? saved : [];
+    } catch {
+      return [];
+    }
+  });
   const [counterpartRecords, setCounterpartRecords] = useState<AttendanceRecord[]>([]);
   const [calendarDays, setCalendarDays] = useState<AcademicCalendarDay[]>(DEFAULT_CALENDAR);
   const [delegations, setDelegations] = useState<ClassDelegation[]>([]);
@@ -109,20 +188,22 @@ function MainApp() {
     } catch (e) {}
   };
 
-  // Selection state
-  const [selectedDate, setSelectedDate] = useState<string>(() => {
-    return getMaldivesNow().dateStr;
-  });
-  const [selectedGrade, setSelectedGrade] = useState<GradeLevel | 'ALL'>('Grade 4');
-  const [selectedSession, setSelectedSession] = useState<SessionType>('MORNING_BEFORE_BREAK');
-
   // Active refs to maintain live session sync state without stale closure traps
   const selectedDateRef = useRef(selectedDate);
   const selectedGradeRef = useRef(selectedGrade);
   const selectedSessionRef = useRef(selectedSession);
-  useEffect(() => { selectedDateRef.current = selectedDate; }, [selectedDate]);
-  useEffect(() => { selectedGradeRef.current = selectedGrade; }, [selectedGrade]);
-  useEffect(() => { selectedSessionRef.current = selectedSession; }, [selectedSession]);
+  useEffect(() => {
+    selectedDateRef.current = selectedDate;
+    safeLocalStorage.setItem('moe_selected_date', selectedDate);
+  }, [selectedDate]);
+  useEffect(() => {
+    selectedGradeRef.current = selectedGrade;
+    safeLocalStorage.setItem('moe_selected_grade', selectedGrade);
+  }, [selectedGrade]);
+  useEffect(() => {
+    selectedSessionRef.current = selectedSession;
+    safeLocalStorage.setItem('moe_selected_session', selectedSession);
+  }, [selectedSession]);
 
   // Stats state
   const [stats, setStats] = useState<AttendanceStatsSummary>(() => {
@@ -357,12 +438,27 @@ function MainApp() {
       if (res.ok) {
         const data = await res.json();
         if (data.records && curDate === selectedDateRef.current && curSession === selectedSessionRef.current) {
+          const localRecords = await offlineDb.attendance
+            .where('date')
+            .equals(curDate)
+            .and((r) => r.sessionType === curSession)
+            .toArray().catch(() => []);
+          const storageKey = `moe_att_${curDate}_${curSession}`;
+          const storedList = safeLocalStorage.getJSON<AttendanceRecord[]>(storageKey, []);
+          const allLocal = [...localRecords];
+          for (const s of storedList) {
+            if (!allLocal.some((l) => l.studentId === s.studentId)) {
+              allLocal.push(s);
+            }
+          }
+          const mergedRecords = mergeAttendanceRecords(data.records, allLocal);
+
           setAttendanceRecords((prev) => {
-            if (prev.length === data.records.length) {
+            if (prev.length === mergedRecords.length) {
               let isSame = true;
               for (let i = 0; i < prev.length; i++) {
                 const a = prev[i];
-                const b = data.records[i];
+                const b = mergedRecords[i];
                 if (a.id !== b.id || a.status !== b.status || a.leaveReason !== b.leaveReason || a.arrivalTime !== b.arrivalTime) {
                   isSame = false;
                   break;
@@ -370,8 +466,11 @@ function MainApp() {
               }
               if (isSame) return prev;
             }
-            return data.records;
+            return mergedRecords;
           });
+          if (mergedRecords.length > 0) {
+            safeLocalStorage.setJSON(storageKey, mergedRecords);
+          }
           setCounterpartRecords((prev) => {
             const next = data.counterpartRecords || [];
             if (prev.length === next.length) {
@@ -828,28 +927,30 @@ function MainApp() {
         const data = await res.json();
         const serverRecords: AttendanceRecord[] = data.records || [];
 
-        // Safe Offline Merge: Keep any pending offline records not yet synced to server
+        // Safe Offline Merge: Keep any local records not yet synced or newer
         try {
-          const pendingOffline = await offlineDb.attendance
+          const localRecords = await offlineDb.attendance
             .where('date')
             .equals(selectedDate)
-            .and((r) => r.sessionType === selectedSession && r.syncStatus === 'PENDING_OFFLINE')
-            .toArray();
+            .and((r) => r.sessionType === selectedSession)
+            .toArray().catch(() => []);
 
-          let mergedRecords = serverRecords;
-          if (pendingOffline.length > 0) {
-            const pendingMap = new Map(pendingOffline.map((r) => [r.studentId, r]));
-            mergedRecords = serverRecords.map((r) => pendingMap.get(r.studentId) || r);
+          const storageKey = `moe_att_${selectedDate}_${selectedSession}`;
+          const storedList = safeLocalStorage.getJSON<AttendanceRecord[]>(storageKey, []);
+          const allLocal = [...localRecords];
+          for (const s of storedList) {
+            if (!allLocal.some((l) => l.studentId === s.studentId)) {
+              allLocal.push(s);
+            }
           }
+
+          const mergedRecords = mergeAttendanceRecords(serverRecords, allLocal);
           setAttendanceRecords(mergedRecords);
 
-          // Update Dexie cache with latest server records, protecting pending changes
-          if (serverRecords.length > 0) {
-            const pendingStudentIds = new Set(pendingOffline.map((r) => r.studentId));
-            const recordsToCache = serverRecords.filter((sr) => !pendingStudentIds.has(sr.studentId));
-            if (recordsToCache.length > 0) {
-              await offlineDb.attendance.bulkPut(recordsToCache);
-            }
+          // Update Dexie cache & safeLocalStorage with merged records
+          if (mergedRecords.length > 0) {
+            safeLocalStorage.setJSON(storageKey, mergedRecords);
+            await offlineDb.attendance.bulkPut(mergedRecords).catch(() => {});
           }
         } catch {
           setAttendanceRecords(serverRecords);
@@ -1032,16 +1133,19 @@ function MainApp() {
       markedByUserName: record.markedByUserName || currentUser?.fullName,
     };
 
-    // 1. Optimistic UI update
+    const storageKey = `moe_att_${enrichedRecord.date}_${enrichedRecord.sessionType}`;
+
+    // 1. Optimistic UI update and immediate synchronous local persistence
     setAttendanceRecords((prev) => {
       const idx = prev.findIndex((r) => r.studentId === enrichedRecord.studentId);
-      if (idx >= 0) {
-        const updated = [...prev];
-        updated[idx] = enrichedRecord;
-        return updated;
-      }
-      return [...prev, enrichedRecord];
+      const updated = idx >= 0 ? [...prev] : [...prev, enrichedRecord];
+      if (idx >= 0) updated[idx] = enrichedRecord;
+      safeLocalStorage.setJSON(storageKey, updated);
+      return updated;
     });
+
+    // Also persist immediately to Dexie offline DB
+    await offlineDb.attendance.put(enrichedRecord).catch(() => {});
 
     // 2. Direct fast-path sync to server API with offline fallback
     try {
@@ -1052,12 +1156,20 @@ function MainApp() {
           record: enrichedRecord,
           hasRapidRollCallPrivilege: Boolean(currentUser?.hasRapidRollCallPrivilege || isPrivilegedUser),
           loginViaMobile: Boolean(currentUser?.loginViaMobile || isPrivilegedUser),
+          isSuperAdmin: Boolean(currentUser?.isSuperAdmin || isUserSuperAdmin(currentUser)),
+          requesterEmail: currentUser?.email,
+          requesterUserId: currentUser?.id,
         }),
       });
       if (res.ok) {
         const resData = await res.json();
         const savedRec = resData.record || enrichedRecord;
         await offlineDb.attendance.put({ ...savedRec, syncStatus: 'SYNCED' });
+        const currentList = safeLocalStorage.getJSON<AttendanceRecord[]>(storageKey, []);
+        const idx = currentList.findIndex((r) => r.studentId === savedRec.studentId);
+        const updatedList = idx >= 0 ? [...currentList] : [...currentList, savedRec];
+        if (idx >= 0) updatedList[idx] = savedRec;
+        safeLocalStorage.setJSON(storageKey, updatedList);
         try {
           if (typeof BroadcastChannel !== 'undefined') {
             const channel = new BroadcastChannel('school_portal_sync');
@@ -1080,6 +1192,7 @@ function MainApp() {
         ) {
           // Revert optimistic update
           setAttendanceRecords(previousRecords);
+          safeLocalStorage.setJSON(storageKey, previousRecords);
           showNotification(errData.message || 'Cannot mark attendance.', 'warning');
           return;
         }
@@ -1139,7 +1252,11 @@ function MainApp() {
     const otherRecords = attendanceRecords.filter(
       (r) => !relevantStudents.some((st) => st.id === r.studentId)
     );
-    setAttendanceRecords([...otherRecords, ...updatedRecords]);
+    const combinedNew = [...otherRecords, ...updatedRecords];
+    setAttendanceRecords(combinedNew);
+    const storageKey = `moe_att_${selectedDate}_${selectedSession}`;
+    safeLocalStorage.setJSON(storageKey, combinedNew);
+    await offlineDb.attendance.bulkPut(updatedRecords).catch(() => {});
 
     // Direct fast-path sync to server API with offline fallback
     try {
@@ -1151,11 +1268,14 @@ function MainApp() {
           hasRapidRollCallPrivilege: Boolean(currentUser?.hasRapidRollCallPrivilege || isPrivilegedUser),
           loginViaMobile: Boolean(currentUser?.loginViaMobile || isPrivilegedUser),
           isSuperAdmin: Boolean(currentUser?.isSuperAdmin || isUserSuperAdmin(currentUser)),
+          requesterEmail: currentUser?.email,
+          requesterUserId: currentUser?.id,
         }),
       });
       if (res.ok) {
         const resData = await res.json().catch(() => ({}));
-        await offlineDb.attendance.bulkPut(updatedRecords);
+        await offlineDb.attendance.bulkPut(updatedRecords).catch(() => {});
+        safeLocalStorage.setJSON(storageKey, combinedNew);
         if (resData.isSessionSubmitted) {
           setIsSessionSubmitted(true);
         }
@@ -1179,6 +1299,7 @@ function MainApp() {
           errData.error === 'SESSION_LOCKED'
         ) {
           setAttendanceRecords(previousRecords);
+          safeLocalStorage.setJSON(storageKey, previousRecords);
           showNotification(errData.message || 'Cannot mark attendance.', 'warning');
           return;
         }

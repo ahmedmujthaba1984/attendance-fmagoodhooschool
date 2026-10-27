@@ -1,5 +1,55 @@
 [
   {
+    "id": "audit-1793120011738-u30wiv",
+    "timestamp": "2026-10-27T16:53:31.738Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_SESSION_REVERTED_BY_SUPER_ADMIN",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Super Admin (Ahmed Mujthaba) unlocked/reopened finalized attendance session for 2026-10-27 (MORNING_BEFORE_BREAK). Reason: Automated test verification unlock"
+  },
+  {
+    "id": "audit-1793120011734-wn5kc0",
+    "timestamp": "2026-10-27T16:53:31.734Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_SESSION_FINALIZED",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Attendance session finalized for 2026-10-27 (MORNING_BEFORE_BREAK) by Ahmed Mujthaba (Senior School Administration Officer)"
+  },
+  {
+    "id": "audit-1793120011729-2qwf2z",
+    "timestamp": "2026-10-27T16:53:31.729Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "OFFLINE_QUEUE_FLUSH",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "BullMQ Worker synced 1 queued attendance payloads (0 conflicts resolved, 0 rejected)"
+  },
+  {
+    "id": "audit-1793120011722-3jghff",
+    "timestamp": "2026-10-27T16:53:31.722Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "BULK_ATTENDANCE_MARKED",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Bulk attendance saved for 1 students on 2026-10-27 (MORNING_BEFORE_BREAK) by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1793120011709-m1pbdi",
+    "timestamp": "2026-10-27T16:53:31.709Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Liam Bin Abdul Majeedh (Grade 4) as LEAVE (SICK_LEAVE) on 2026-10-27 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
     "id": "audit-1793115235051-ga5lwj",
     "timestamp": "2026-10-27T15:33:55.051Z",
     "userId": "stf-03",

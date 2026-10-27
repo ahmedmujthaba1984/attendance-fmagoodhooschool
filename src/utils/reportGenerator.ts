@@ -265,9 +265,11 @@ export function generateClientStudentReport({
       ? afternoonAttendanceRate
       : officialAttendanceRate;
 
-  const moeStatus = (displayRate != null && displayRate >= 90)
+  const moeStatus = displayRate == null
+    ? '-'
+    : displayRate >= 90
     ? 'EXEMPLARY'
-    : (displayRate != null && displayRate >= 80)
+    : displayRate >= 80
     ? 'SATISFACTORY'
     : 'AT_RISK';
 

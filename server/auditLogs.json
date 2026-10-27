@@ -1,5 +1,35 @@
 [
   {
+    "id": "audit-1793123843747-yifrjn",
+    "timestamp": "2026-10-27T17:57:23.747Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_RESET_ALL",
+    "entityAffected": "AttendanceRecord",
+    "ipAddress": "127.0.0.1",
+    "details": "All attendance records and submitted sessions have been reset to empty by Aishath Sulthana. System is ready for fresh attendance entry."
+  },
+  {
+    "id": "audit-1793123843723-iff4or",
+    "timestamp": "2026-10-27T17:57:23.723Z",
+    "userId": "stf-01",
+    "userName": "Mohamed Fayaz",
+    "actionType": "BULK_ATTENDANCE_MARKED",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Bulk attendance saved for 1 students on 2026-10-27 (MORNING_BEFORE_BREAK) by Mohamed Fayaz (Principal)"
+  },
+  {
+    "id": "audit-1793123587007-wdpcl2",
+    "timestamp": "2026-10-27T17:53:07.007Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_RESET_ALL",
+    "entityAffected": "AttendanceRecord",
+    "ipAddress": "127.0.0.1",
+    "details": "All attendance records and submitted sessions have been reset to empty by Aishath Sulthana. System is ready for fresh attendance entry."
+  },
+  {
     "id": "audit-1793120011738-u30wiv",
     "timestamp": "2026-10-27T16:53:31.738Z",
     "userId": "stf-32",

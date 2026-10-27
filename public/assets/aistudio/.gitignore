@@ -1,1 +1,5 @@
-*
+-e *.mp4
+*.mov
+*.avi
+*.webm
+*.mkv

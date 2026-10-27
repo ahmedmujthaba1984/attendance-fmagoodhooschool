@@ -368,8 +368,8 @@ export interface StudentAttendanceReport {
   lateDays: number;
   leaveDays: number;
   absentDays: number;
-  attendanceRate: number; // Primary display rate (conforms to reportMode: OFFICIAL, EXTRA_CLASS, or BOTH)
-  moeStatus: 'EXEMPLARY' | 'SATISFACTORY' | 'AT_RISK';
+  attendanceRate?: number; // Primary display rate (conforms to reportMode: OFFICIAL, EXTRA_CLASS, or BOTH)
+  moeStatus: 'EXEMPLARY' | 'SATISFACTORY' | 'AT_RISK' | '-';
   dailyRecords: StudentAttendanceDailyLog[];
   // Official sessions metrics (Morning & Afternoon)
   morningPresentDays?: number;
@@ -410,8 +410,8 @@ export interface ClassStudentRow {
   lateCount: number;
   leaveCount: number;
   absentCount: number;
-  attendanceRate: number;
-  moeStatus: 'EXEMPLARY' | 'SATISFACTORY' | 'AT_RISK';
+  attendanceRate: number | null;
+  moeStatus: 'EXEMPLARY' | 'SATISFACTORY' | 'AT_RISK' | '-';
   // Mode-specific metrics
   morningRate?: number;
   morningPresent?: number;

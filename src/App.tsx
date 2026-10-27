@@ -102,6 +102,26 @@ function saveLocalMasterRecordsBulk(records: AttendanceRecord[]) {
   } catch {}
 }
 
+export function clearAllLocalAttendanceStores() {
+  try {
+    safeLocalStorage.removeItem(MASTER_ATTENDANCE_STORAGE_KEY);
+    if (typeof localStorage !== 'undefined') {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && (k.startsWith('moe_att_') || k === MASTER_ATTENDANCE_STORAGE_KEY)) {
+          keysToRemove.push(k);
+        }
+      }
+      for (const k of keysToRemove) {
+        safeLocalStorage.removeItem(k);
+      }
+    }
+  } catch (err) {
+    console.warn('Error clearing local attendance stores:', err);
+  }
+}
+
 function mergeAttendanceRecords(
   serverRecords: AttendanceRecord[],
   localRecords: AttendanceRecord[]
@@ -616,11 +636,13 @@ function MainApp() {
             data?.type === 'CALENDAR_UPDATED'
           ) {
             if (data?.resetAll) {
+              clearAllLocalAttendanceStores();
               setAttendanceRecords([]);
               setCounterpartRecords([]);
               setIsSessionSubmitted(false);
               try {
                 offlineDb.attendance.clear().catch(() => {});
+                offlineDb.syncQueue.clear().catch(() => {});
               } catch {}
             }
             fetchAttendanceSilent();
@@ -703,11 +725,13 @@ function MainApp() {
                 data.type === 'CALENDAR_UPDATED'
               ) {
                 if (data?.resetAll) {
+                  clearAllLocalAttendanceStores();
                   setAttendanceRecords([]);
                   setCounterpartRecords([]);
                   setIsSessionSubmitted(false);
                   try {
                     offlineDb.attendance.clear().catch(() => {});
+                    offlineDb.syncQueue.clear().catch(() => {});
                   } catch {}
                 }
                 fetchAttendanceSilent();
@@ -1905,7 +1929,8 @@ function MainApp() {
   const handleResetAllAttendance = async () => {
     setIsResettingAttendance(true);
     try {
-      // 1. Immediately wipe IndexedDB and UI state locally so user is never blocked
+      // 1. Immediately wipe safeLocalStorage, IndexedDB and UI state locally so user is never blocked
+      clearAllLocalAttendanceStores();
       try {
         await offlineDb.attendance.clear();
         await offlineDb.syncQueue.clear();

@@ -8,6 +8,7 @@ coverage/
 dev-dist/
 .tempmediaStorage/
 .cache/
+.aistudio/
 
 # Large media & chat screen recordings (prevents GitHub 25MB+ API push failure)
 *.mp4
@@ -17,6 +18,8 @@ dev-dist/
 *.webm
 public/frames/
 public/assets/tmp_frames/
+public/assets/aistudio/*.mp4
+public/assets/aistudio/*.mov
 
 # System and logs
 .DS_Store

@@ -5866,7 +5866,7 @@ app.get('/api/reports/analytics', (req, res) => {
   let yearlyExtraTotal = 0;
 
   // Pre-calculate student yearly stats
-  const studentYearlyMap = new Map<string, { pres: number; late: number; total: number; postPres: number; postLate: number }>();
+  const studentYearlyMap = new Map<string, { pres: number; late: number; total: number; postPres: number; postLate: number; postTotal: number }>();
   students.forEach((st) => {
     let p = 0;
     let l = 0;
@@ -5887,7 +5887,7 @@ app.get('/api/reports/analytics', (req, res) => {
         else if (att.postBreakStatus === 'LATE') { pp++; pl++; }
       }
     });
-    studentYearlyMap.set(st.id, { pres: p, late: l, total: mRec, postPres: pp, postLate: pl });
+    studentYearlyMap.set(st.id, { pres: p, late: l, total: mRec, postPres: pp, postLate: pl, postTotal: pRec });
     yearlyMorningPres += p;
     yearlyMorningRec += mRec;
     yearlyAfternoonPres += pp;
@@ -6026,14 +6026,18 @@ app.get('/api/reports/analytics', (req, res) => {
 
     gStudents.forEach((st) => {
       const stats = studentYearlyMap.get(st.id);
-      if (stats && stats.total > 0) {
+      if (stats) {
         gMornPres += stats.pres;
         gMornRec += stats.total;
         gAftPres += stats.postPres;
-        gAftRec += stats.total;
-        const stRate = Math.round((stats.pres / stats.total) * 100);
-        if (stRate < 80) chronic++;
-        if (stRate === 100) perfect++;
+        gAftRec += stats.postTotal;
+        const totalPres = reportMode === 'MORNING' ? stats.pres : reportMode === 'AFTERNOON' ? stats.postPres : (stats.pres + stats.postPres);
+        const totalRec = reportMode === 'MORNING' ? stats.total : reportMode === 'AFTERNOON' ? stats.postTotal : (stats.total + stats.postTotal);
+        if (totalRec > 0) {
+          const stRate = Math.round((totalPres / totalRec) * 100);
+          if (stRate < 80) chronic++;
+          if (stRate === 100) perfect++;
+        }
       }
     });
 

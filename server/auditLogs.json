@@ -1,5 +1,125 @@
 [
   {
+    "id": "audit-1793125320905-l7uq8d",
+    "timestamp": "2026-10-27T18:22:00.905Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "STAFF_LOGIN",
+    "entityAffected": "User",
+    "ipAddress": "127.0.0.1",
+    "details": "Ahmed Mujthaba (ahmed.mujthaba@fmagoodhooschool.edu.mv) logged in successfully"
+  },
+  {
+    "id": "audit-1793125282998-fhutw9",
+    "timestamp": "2026-10-27T18:21:22.998Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_RESET_ALL",
+    "entityAffected": "AttendanceRecord",
+    "ipAddress": "127.0.0.1",
+    "details": "All attendance records and submitted sessions have been reset to empty by Aishath Sulthana. System is ready for fresh attendance entry."
+  },
+  {
+    "id": "audit-1793125282989-7wtr7p",
+    "timestamp": "2026-10-27T18:21:22.989Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "EXTRA_CLASS_DELETED",
+    "entityAffected": "ExtraClass",
+    "ipAddress": "127.0.0.1",
+    "details": "Deleted extra class \"LKG Mathematics Extra Class\" (LKG) on 2026-10-27"
+  },
+  {
+    "id": "audit-1793125282984-3kkmbt",
+    "timestamp": "2026-10-27T18:21:22.984Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "EXTRA_CLASS_REQUESTED",
+    "entityAffected": "ExtraClass",
+    "ipAddress": "127.0.0.1",
+    "details": "undefined scheduled extra class \"LKG Mathematics Extra Class\" (LKG) on 2026-10-27 [PENDING_APPROVAL]"
+  },
+  {
+    "id": "audit-1793125282980-nyjk9r",
+    "timestamp": "2026-10-27T18:21:22.980Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_RECORD_REVERTED_BY_SUPER_ADMIN",
+    "entityAffected": "AttendanceRecord",
+    "ipAddress": "127.0.0.1",
+    "details": "Super Admin (Ahmed Mujthaba) reverted attendance for Aasha Binth Nafiz (LKG) on 2026-10-27 (MORNING_BEFORE_BREAK): was LATE → corrected to PRESENT. Reason: Correction by admin"
+  },
+  {
+    "id": "audit-1793125282972-wmlazc",
+    "timestamp": "2026-10-27T18:21:22.972Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_SESSION_REVERTED_BY_SUPER_ADMIN",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Super Admin (Ahmed Mujthaba) unlocked/reopened finalized attendance session for 2026-10-27 (MORNING_BEFORE_BREAK). Reason: Test revert"
+  },
+  {
+    "id": "audit-1793125282965-3dezfv",
+    "timestamp": "2026-10-27T18:21:22.965Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_SESSION_FINALIZED",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Attendance session finalized for 2026-10-27 (MORNING_BEFORE_BREAK) by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1793125282956-relh5i",
+    "timestamp": "2026-10-27T18:21:22.956Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "BULK_ATTENDANCE_MARKED",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Bulk attendance saved for 1 students on 2026-10-27 (MORNING_BEFORE_BREAK) by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1793125282952-0tkrq3",
+    "timestamp": "2026-10-27T18:21:22.952Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_UPDATE",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Marked Aasha Binth Nafiz (LKG) as PRESENT  on 2026-10-27 by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1793125212589-tm744i",
+    "timestamp": "2026-10-27T18:20:12.589Z",
+    "userId": "stf-32",
+    "userName": "Ahmed Mujthaba",
+    "actionType": "ATTENDANCE_SESSION_REVERTED_BY_SUPER_ADMIN",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Super Admin (Ahmed Mujthaba) unlocked/reopened finalized attendance session for 2026-10-27 (morning). Reason: Teacher reported attendance marked incorrectly; session reopened for homeroom correction"
+  },
+  {
+    "id": "audit-1793125212585-n0i7nu",
+    "timestamp": "2026-10-27T18:20:12.585Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "ATTENDANCE_SESSION_FINALIZED",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Attendance session finalized for 2026-10-27 (morning) by Aishath Sulthana (Leading Teacher)"
+  },
+  {
+    "id": "audit-1793125212577-d3zvur",
+    "timestamp": "2026-10-27T18:20:12.577Z",
+    "userId": "stf-03",
+    "userName": "Aishath Sulthana",
+    "actionType": "BULK_ATTENDANCE_MARKED",
+    "entityAffected": "AttendanceSession",
+    "ipAddress": "127.0.0.1",
+    "details": "Bulk attendance saved for 1 students on 2026-10-27 () by Aishath Sulthana (Leading Teacher)"
+  },
+  {
     "id": "audit-1793123843747-yifrjn",
     "timestamp": "2026-10-27T17:57:23.747Z",
     "userId": "stf-03",

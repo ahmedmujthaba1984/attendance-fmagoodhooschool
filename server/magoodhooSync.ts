@@ -77,12 +77,14 @@ export class MagoodhooSyncEngine {
 
   private constructor() {
     this.loadInitialCache();
-    // In persistent server mode (e.g. AI Studio dev), perform initial live sync & start interval
+    // In persistent server mode (e.g. AI Studio dev), perform initial live sync & start interval after boot
     if (!process.env.VERCEL && !process.env.NOW_REGION) {
-      this.syncFromRemotePortal().catch((err) => {
-        console.warn('[MagoodhooSync] Initial live sync failed, using cached directory:', err.message);
-      });
-      this.startAutoSync(3 * 60 * 1000); // Check every 3 minutes
+      setTimeout(() => {
+        this.syncFromRemotePortal().catch((err) => {
+          console.warn('[MagoodhooSync] Initial live sync failed, using cached directory:', err?.message || err);
+        });
+        this.startAutoSync(5 * 60 * 1000); // Check every 5 minutes
+      }, 5000);
     }
   }
 
@@ -220,20 +222,27 @@ export class MagoodhooSyncEngine {
 
   private fetchUrl(targetUrl: string): Promise<string> {
     return new Promise((resolve, reject) => {
-      const client = targetUrl.startsWith('https') ? https : http;
-      client
-        .get(targetUrl, (res) => {
-          if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-            return resolve(this.fetchUrl(res.headers.location));
-          }
-          if (res.statusCode && res.statusCode >= 400) {
-            return reject(new Error(`HTTP ${res.statusCode} from ${targetUrl}`));
-          }
-          let data = '';
-          res.on('data', (chunk) => (data += chunk));
-          res.on('end', () => resolve(data));
-        })
-        .on('error', reject);
+      try {
+        const client = targetUrl.startsWith('https') ? https : http;
+        const req = client
+          .get(targetUrl, (res) => {
+            if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+              return resolve(this.fetchUrl(res.headers.location));
+            }
+            if (res.statusCode && res.statusCode >= 400) {
+              return reject(new Error(`HTTP ${res.statusCode} from ${targetUrl}`));
+            }
+            let data = '';
+            res.on('data', (chunk) => (data += chunk));
+            res.on('end', () => resolve(data));
+          });
+        req.setTimeout(8000, () => {
+          req.destroy(new Error(`Timeout connecting to ${targetUrl}`));
+        });
+        req.on('error', reject);
+      } catch (err) {
+        reject(err);
+      }
     });
   }
 
@@ -260,26 +269,33 @@ export class MagoodhooSyncEngine {
   private fetchGradeFromFirestore(grade: GradeLevel): Promise<{ grade: GradeLevel; students: any[] }> {
     const url = `${FIRESTORE_BASE_URL}${encodeURIComponent(grade)}?key=${FIRESTORE_API_KEY}`;
     return new Promise((resolve, reject) => {
-      https
-        .get(url, (res) => {
-          if (res.statusCode !== 200) {
-            return reject(new Error(`Firestore returned HTTP ${res.statusCode} for grade ${grade}`));
-          }
-          const chunks: Buffer[] = [];
-          res.on('data', (c) => chunks.push(c));
-          res.on('end', () => {
-            try {
-              const fullBuffer = Buffer.concat(chunks);
-              const json = JSON.parse(fullBuffer.toString('utf8'));
-              const rawStudents = json.fields?.students?.arrayValue?.values || [];
-              const unwrapped = rawStudents.map((val: any) => this.unwrapFirestoreValue(val));
-              resolve({ grade, students: unwrapped });
-            } catch (err) {
-              reject(err);
+      try {
+        const req = https
+          .get(url, (res) => {
+            if (res.statusCode !== 200) {
+              return reject(new Error(`Firestore returned HTTP ${res.statusCode} for grade ${grade}`));
             }
+            const chunks: Buffer[] = [];
+            res.on('data', (c) => chunks.push(c));
+            res.on('end', () => {
+              try {
+                const fullBuffer = Buffer.concat(chunks);
+                const json = JSON.parse(fullBuffer.toString('utf8'));
+                const rawStudents = json.fields?.students?.arrayValue?.values || [];
+                const unwrapped = rawStudents.map((val: any) => this.unwrapFirestoreValue(val));
+                resolve({ grade, students: unwrapped });
+              } catch (err) {
+                reject(err);
+              }
+            });
           });
-        })
-        .on('error', reject);
+        req.setTimeout(8000, () => {
+          req.destroy(new Error(`Timeout reading grade ${grade} from Firestore`));
+        });
+        req.on('error', reject);
+      } catch (err) {
+        reject(err);
+      }
     });
   }
 
